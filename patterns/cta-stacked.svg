@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {{WIDTH}} {{HEIGHT}}" width="{{WIDTH}}" height="{{HEIGHT}}">
   <defs>
     <style>
-      @import url('https://fonts.googleapis.com/css2?family={{FONT_DISPLAY_URL}}:wght@700;800&amp;family={{FONT_BODY_URL}}:wght@400;500;600&amp;display=swap');
+      {{FONT_IMPORTS}}
       .hook { font-family: {{FONT_DISPLAY_STACK}}; font-weight: 800; font-size: {{TYPE_HEADLINE}}px; fill: {{ON_SURFACE}}; letter-spacing: {{CTA_HOOK_LETTERSPACE}}; }
       .button-label { font-family: {{FONT_BODY_STACK}}; font-weight: 600; font-size: {{TYPE_BODY_LARGE}}px; fill: {{ON_ACCENT}}; letter-spacing: 0.02em; }
       .subtext { font-family: {{FONT_BODY_STACK}}; font-weight: 400; font-size: {{TYPE_BODY}}px; fill: {{SURFACE_MUTED}}; }

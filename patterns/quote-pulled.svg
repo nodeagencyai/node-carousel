@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {{WIDTH}} {{HEIGHT}}" width="{{WIDTH}}" height="{{HEIGHT}}">
   <defs>
     <style>
-      @import url('https://fonts.googleapis.com/css2?family={{FONT_DISPLAY_URL}}:ital,wght@1,700&amp;family={{FONT_BODY_URL}}:wght@400;500&amp;display=swap');
+      {{FONT_IMPORTS}}
       .quote { font-family: {{FONT_DISPLAY_STACK}}; font-style: italic; font-weight: 700; font-size: {{TYPE_SUBHEAD}}px; fill: {{ACCENT}}; letter-spacing: -0.02em; }
       .attribution { font-family: {{FONT_BODY_STACK}}; font-weight: 500; font-size: {{TYPE_BODY}}px; fill: {{SURFACE_MUTED}}; letter-spacing: 0.1em; text-transform: uppercase; }
       .handle { font-family: {{FONT_BODY_STACK}}; font-weight: 500; font-size: 26px; fill: {{SURFACE_MUTED}}; letter-spacing: 0.05em; }

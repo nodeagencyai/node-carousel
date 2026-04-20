@@ -1,0 +1,37 @@
+{
+  "brand": {
+    "name": "",
+    "handle": "",
+    "tone": ""
+  },
+  "visual": {
+    "colors": {
+      "background": "#0A0A0A",
+      "text": "#FAFAFA",
+      "accent": "#C9FF4E",
+      "accentSecondary": "#85C72E",
+      "muted": "#777777"
+    },
+    "fonts": {
+      "display": "Satoshi",
+      "body": "Satoshi"
+    },
+    "background": {
+      "type": "radial",
+      "color": "#0A0A0A",
+      "gradient": { "from": "#0A0A0A", "to": "#1A1A1A", "angle": 135 },
+      "radial": { "center": "50% 30%", "from": "#1E1E1E", "to": "#0A0A0A", "stops": [0.15, 0.85] },
+      "imagePath": null,
+      "grain": { "enabled": true, "intensity": 0.06, "baseFrequency": 1.1 }
+    },
+    "numbering": { "style": "fraction-mono", "position": "bottom-right" },
+    "decorations": {
+      "cornerMarks": true,
+      "accentRule": true,
+      "numberBadges": false,
+      "pullQuoteBlock": false,
+      "oversizedMark": false
+    },
+    "dimensions": { "width": 1080, "height": 1350 }
+  }
+}

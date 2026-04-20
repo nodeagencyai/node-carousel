@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {{WIDTH}} {{HEIGHT}}" width="{{WIDTH}}" height="{{HEIGHT}}">
   <defs>
     <style>
-      @import url('https://fonts.googleapis.com/css2?family={{FONT_DISPLAY_URL}}:wght@700;800&amp;family={{FONT_BODY_URL}}:wght@400;500&amp;display=swap');
+      {{FONT_IMPORTS}}
       .kicker { font-family: {{FONT_BODY_STACK}}; font-weight: 500; font-size: 26px; letter-spacing: 0.22em; text-transform: uppercase; fill: {{ACCENT}}; }
       .headline { font-family: {{FONT_DISPLAY_STACK}}; font-weight: 800; font-size: {{TYPE_HERO}}px; fill: {{ON_SURFACE}}; letter-spacing: {{TITLE_LETTER_SPACING}}; }
       .handle { font-family: {{FONT_BODY_STACK}}; font-weight: 500; font-size: 26px; fill: {{SURFACE_MUTED}}; letter-spacing: 0.05em; }

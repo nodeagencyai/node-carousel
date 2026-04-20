@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {{WIDTH}} {{HEIGHT}}" width="{{WIDTH}}" height="{{HEIGHT}}">
   <defs>
     <style>
-      @import url('https://fonts.googleapis.com/css2?family={{FONT_DISPLAY_URL}}:wght@700;800&amp;family={{FONT_BODY_URL}}:wght@400;500;600&amp;display=swap');
+      {{FONT_IMPORTS}}
       .headline { font-family: {{FONT_DISPLAY_STACK}}; font-weight: 700; font-size: {{TYPE_SUBHEAD}}px; fill: {{ON_SURFACE}}; letter-spacing: {{SUBHEAD_LETTER_SPACING}}; }
       .arrow { font-family: {{FONT_BODY_STACK}}; font-weight: 600; font-size: {{TYPE_BODY_LARGE}}px; fill: {{ACCENT}}; }
       .item { font-family: {{FONT_BODY_STACK}}; font-weight: 500; font-size: {{TYPE_BODY_LARGE}}px; fill: {{ON_SURFACE}}; }

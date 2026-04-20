@@ -43,6 +43,46 @@ const MANIFEST = JSON.parse(
 );
 const PATTERN_BY_ID = Object.fromEntries(MANIFEST.patterns.map((p) => [p.id, p]));
 
+// Fonts not available on Google Fonts — served by Fontshare instead.
+// Map family name → Fontshare slug.
+const FONTSHARE_FONTS = {
+  'Satoshi': 'satoshi',
+  'Cabinet Grotesk': 'cabinet-grotesk',
+  'Clash Display': 'clash-display',
+  'Clash Grotesk': 'clash-grotesk',
+  'Supreme': 'supreme',
+  'General Sans': 'general-sans',
+  'Zodiak': 'zodiak',
+  'Gambarino': 'gambarino',
+};
+
+/**
+ * Build one or two @import lines for a brand's display + body fonts.
+ * Emits separate imports when fonts come from different sources
+ * (Google Fonts vs Fontshare), dedupes when display === body.
+ * Returns the string ready to inline inside an SVG <style> block.
+ */
+function buildFontImports(fonts) {
+  const importOf = (name) => {
+    if (!name) return null;
+    const slug = FONTSHARE_FONTS[name];
+    if (slug) {
+      return `@import url('https://api.fontshare.com/v2/css?f[]=${slug}@400,500,700,900&amp;display=swap');`;
+    }
+    const googleSlug = String(name).replace(/\s+/g, '+');
+    return `@import url('https://fonts.googleapis.com/css2?family=${googleSlug}:wght@400;500;700;800&amp;display=swap');`;
+  };
+  const seen = new Set();
+  const lines = [];
+  for (const name of [fonts?.display, fonts?.body]) {
+    if (!name || seen.has(name)) continue;
+    seen.add(name);
+    const line = importOf(name);
+    if (line) lines.push(line);
+  }
+  return lines.join('\n      ');
+}
+
 // ---------------------------------------------------------------------------
 // Token value construction
 // ---------------------------------------------------------------------------
@@ -191,6 +231,7 @@ function buildTokenValues(brand, axes, slideNumber, slideTotal) {
     FONT_BODY_URL: fontUrl(fonts.body || ''),
     FONT_DISPLAY_STACK: fontStack(fonts.display || 'serif', 'serif'),
     FONT_BODY_STACK: fontStack(fonts.body || 'sans-serif', 'sans'),
+    FONT_IMPORTS: buildFontImports(fonts),
     BG_COLOR: brand.visual.background?.color ?? roles.SURFACE,
 
     // Brand meta
@@ -374,6 +415,7 @@ function renderPatternSlide({
     'NUMBERING',
     'FONT_DISPLAY_STACK',
     'FONT_BODY_STACK',
+    'FONT_IMPORTS',
     ...axisRawKeys,
   ];
   const escaped = escapeValues(finalValues, rawKeys);
