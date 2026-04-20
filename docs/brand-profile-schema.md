@@ -93,6 +93,9 @@ Controls how the slide background renders.
 | `"mesh"` | 3–5 blurred circle "blobs" over a base color. Modern/soft feel (Stripe, Vercel, Framer). Configured via `background.mesh.blobs`. |
 | `"radial"` | Radial gradient from `radial.center` (Apple keynote vignette feel). |
 | `"image"` | Background image from `imagePath` with automatic dark overlay for readability. |
+| `"dot-grid"` | Subtle SVG pattern of spaced dots over base color. Raycast / Stripe docs aesthetic. v0.4.1+. |
+| `"geometric-shapes"` | 3–5 floating circles at low opacity for compositional rhythm. v0.4.1+. |
+| `"glow-sphere"` | Radial gradient with off-canvas origin (e.g. `cy: -20%`) producing a half-glow. Apple-keynote hero vignette. v0.4.1+. |
 
 #### Core fields
 
@@ -128,6 +131,46 @@ Controls how the slide background renders.
 | `radial.from` | hex string | — | Color at center (stop 1). |
 | `radial.to` | hex string | — | Color at edge (stop 2). |
 | `radial.stops` | `[number, number]` | `[0, 1]` | Offset of each stop (0 = center, 1 = edge). `[0.2, 0.8]` creates a softer falloff. |
+
+#### `background.dotGrid` (used when `type === "dot-grid"`) — v0.4.1+
+
+Renders a dot pattern over the base color via SVG `<pattern>`. All fields optional — safe defaults ship a subtle accent-colored grid.
+
+| Field | Type | Default | Notes |
+|---|---|---|---|
+| `dotGrid.spacing` | number | `40` | Pixel distance between dot centers. Smaller = denser grid. |
+| `dotGrid.dotSize` | number | `1.5` | Circle radius in pixels. `1` = pixel-dot, `3` = tactile. |
+| `dotGrid.dotColor` | hex string | `visual.colors.accent` | Dot fill color. |
+| `dotGrid.opacity` | number 0–1 | `0.25` | Dot opacity. `0.1` = barely-there, `0.4` = prominent. |
+
+#### `background.shapes` (used when `type === "geometric-shapes"`) — v0.4.1+
+
+Array of 3–5 abstract shape objects (currently circles only — lines/rects are v0.5 scope). Shapes render at low opacity so they add rhythm without competing with text. Positions are author-specified — no randomness.
+
+| Field | Type | Default | Notes |
+|---|---|---|---|
+| `shapes[n].type` | string | `"circle"` | Currently only `"circle"` supported. Future: `"line"`, `"rect"`. |
+| `shapes[n].cx` / `cy` | number | — | Center in canvas pixels. 1080×1350 default canvas. |
+| `shapes[n].r` | number | — | Radius in pixels. |
+| `shapes[n].fill` | hex string or `"none"` | `"none"` | Fill color. Use `"none"` for outline-only shapes. |
+| `shapes[n].stroke` | hex string or `"none"` | `"none"` | Stroke color. |
+| `shapes[n].strokeWidth` | number | `0` | Stroke width in px. Set > 0 for outline shapes. |
+| `shapes[n].opacity` | number 0–1 | `0.4` | Per-shape opacity. Keep low (`0.15`–`0.5`) so text stays readable. |
+
+Unused slots (fewer than 5 shapes) render at `r=0, opacity=0` — invisible.
+
+#### `background.glow` (used when `type === "glow-sphere"`) — v0.4.1+
+
+Radial gradient over base color. Differs from `radial` in that the gradient **origin can sit outside the canvas** (e.g. `cy: "-20%"`), producing a partial / half-glow effect rather than a full centered vignette.
+
+| Field | Type | Default | Notes |
+|---|---|---|---|
+| `glow.cx` | string | `"50%"` | Horizontal center of glow (as viewBox percentage or pixel string). |
+| `glow.cy` | string | `"-20%"` | Vertical center. Use negative values (e.g. `"-20%"`) to place origin off-canvas top — you only see the bottom half of the glow. |
+| `glow.r` | string | `"80%"` | Gradient radius. Larger = softer falloff across the canvas. |
+| `glow.from` | hex string | `visual.colors.accent` | Color at gradient center. |
+| `glow.to` | hex string | `background.color` | Color at gradient edge (fades to 0 alpha). Usually matches base. |
+| `glow.opacity` | number 0–1 | `0.5` | Intensity at center. Keep ≤ `0.6` to avoid washing out text. |
 
 #### `background.grain` (optional — works on ALL background types)
 

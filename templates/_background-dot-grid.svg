@@ -1,0 +1,7 @@
+<defs>
+  <pattern id="bg-dotgrid" x="0" y="0" width="{{DOT_GRID_SPACING}}" height="{{DOT_GRID_SPACING}}" patternUnits="userSpaceOnUse">
+    <circle cx="{{DOT_GRID_HALF_SPACING}}" cy="{{DOT_GRID_HALF_SPACING}}" r="{{DOT_GRID_DOT_SIZE}}" fill="{{DOT_GRID_DOT_COLOR}}" opacity="{{DOT_GRID_DOT_OPACITY}}"/>
+  </pattern>
+</defs>
+<rect x="0" y="0" width="{{WIDTH}}" height="{{HEIGHT}}" fill="{{BG_COLOR}}"/>
+<rect x="0" y="0" width="{{WIDTH}}" height="{{HEIGHT}}" fill="url(#bg-dotgrid)"/>

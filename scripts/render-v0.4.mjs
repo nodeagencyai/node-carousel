@@ -10,7 +10,7 @@
 // CLI:
 //   node scripts/render-v0.4.mjs <brand-profile.json> <strategy.json> <output-dir>
 
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -31,7 +31,7 @@ import {
   escapeValues,
   fontUrl,
   buildBackgroundValues,
-  renderBackground,
+  renderBackground as renderBackgroundV03,
   renderDecorations,
   renderNumbering,
 } from './shared-render.mjs';
@@ -42,6 +42,176 @@ const MANIFEST = JSON.parse(
   readFileSync(join(PLUGIN_ROOT, 'patterns', 'manifest.json'), 'utf8'),
 );
 const PATTERN_BY_ID = Object.fromEntries(MANIFEST.patterns.map((p) => [p.id, p]));
+
+// v0.4 extends the v0.3 background enum with three additional types:
+//   dot-grid, geometric-shapes, glow-sphere
+// Shared-render.mjs still owns solid/gradient/mesh/radial/image so v0.3 stays
+// frozen. v0.4-only types are rendered by `renderBackgroundV04` below.
+const V04_BACKGROUND_TYPES = new Set(['dot-grid', 'geometric-shapes', 'glow-sphere']);
+const HEX_RE = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
+
+/**
+ * Validate a brand profile for v0.4-specific extensions.
+ *
+ * Only validates the 3 NEW background types + grain (which v0.3 also handles but
+ * we re-check defensively). Falls back to permissive "don't break existing
+ * profiles" on missing/optional fields — everything has a sensible default.
+ *
+ * For `solid/gradient/mesh/radial/image`: v0.3 render.mjs owns that validation;
+ * here we just skip — render-v0.4 may be called with v0.3-era brand profiles.
+ */
+export function validateBrand(brand) {
+  const schemaRef = 'See docs/brand-profile-schema.md for the full schema.';
+  const fail = (msg) => {
+    throw new Error(`Invalid brand-profile.json: ${msg}. ${schemaRef}`);
+  };
+  if (!brand || typeof brand !== 'object') fail('expected an object');
+  const bg = brand?.visual?.background;
+  if (!bg || typeof bg !== 'object') return;
+  const type = bg.type;
+  if (!V04_BACKGROUND_TYPES.has(type)) return; // v0.3 types handled elsewhere
+
+  if (type === 'dot-grid') {
+    // All optional. Validate shape if provided.
+    const dg = bg.dotGrid;
+    if (dg !== undefined && dg !== null) {
+      if (typeof dg !== 'object') fail('background.dotGrid must be an object if present');
+      if (dg.spacing !== undefined && (typeof dg.spacing !== 'number' || !Number.isFinite(dg.spacing) || dg.spacing <= 0)) {
+        fail('background.dotGrid.spacing must be a positive number');
+      }
+      if (dg.dotSize !== undefined && (typeof dg.dotSize !== 'number' || !Number.isFinite(dg.dotSize) || dg.dotSize <= 0)) {
+        fail('background.dotGrid.dotSize must be a positive number');
+      }
+      if (dg.dotColor !== undefined && (typeof dg.dotColor !== 'string' || !HEX_RE.test(dg.dotColor))) {
+        fail('background.dotGrid.dotColor must be a hex string like "#29F2FE"');
+      }
+      if (dg.opacity !== undefined && (typeof dg.opacity !== 'number' || !Number.isFinite(dg.opacity) || dg.opacity < 0 || dg.opacity > 1)) {
+        fail('background.dotGrid.opacity must be a number between 0 and 1');
+      }
+    }
+  } else if (type === 'geometric-shapes') {
+    // shapes is optional; when present must be array of shape objects.
+    if (bg.shapes !== undefined && bg.shapes !== null) {
+      if (!Array.isArray(bg.shapes)) fail('background.shapes must be an array if present');
+      bg.shapes.forEach((s, i) => {
+        if (!s || typeof s !== 'object') fail(`background.shapes[${i}] must be an object`);
+        // v0.4.1 supports circles only; skip type check but require cx/cy/r numeric
+        for (const key of ['cx', 'cy', 'r']) {
+          if (s[key] !== undefined && typeof s[key] !== 'number' && typeof s[key] !== 'string') {
+            fail(`background.shapes[${i}].${key} must be number or string`);
+          }
+        }
+        if (s.fill !== undefined && typeof s.fill !== 'string') {
+          fail(`background.shapes[${i}].fill must be a string`);
+        }
+      });
+    }
+  } else if (type === 'glow-sphere') {
+    if (bg.glow !== undefined && bg.glow !== null) {
+      if (typeof bg.glow !== 'object') fail('background.glow must be an object if present');
+      const g = bg.glow;
+      for (const key of ['from', 'to']) {
+        if (g[key] !== undefined && (typeof g[key] !== 'string' || !HEX_RE.test(g[key]))) {
+          fail(`background.glow.${key} must be a hex string`);
+        }
+      }
+      if (g.opacity !== undefined && (typeof g.opacity !== 'number' || g.opacity < 0 || g.opacity > 1)) {
+        fail('background.glow.opacity must be a number between 0 and 1');
+      }
+    }
+  }
+}
+
+/**
+ * Build v0.4-specific background values for the 3 new types.
+ * Returns token→value map to merge into baseValues before snippet fill.
+ */
+function buildV04BackgroundValues(brand, baseValues) {
+  const bg = brand.visual?.background || {};
+  const type = bg.type;
+  const values = {};
+
+  if (type === 'dot-grid') {
+    const dg = bg.dotGrid || {};
+    const spacing = dg.spacing ?? 40;
+    values.DOT_GRID_SPACING = spacing;
+    values.DOT_GRID_HALF_SPACING = spacing / 2;
+    values.DOT_GRID_DOT_SIZE = dg.dotSize ?? 1.5;
+    values.DOT_GRID_DOT_COLOR = dg.dotColor ?? baseValues.COLOR_ACCENT;
+    values.DOT_GRID_DOT_OPACITY = dg.opacity ?? 0.25;
+  } else if (type === 'geometric-shapes') {
+    const shapes = Array.isArray(bg.shapes) ? bg.shapes : [];
+    for (let i = 0; i < 5; i++) {
+      const n = i + 1;
+      const s = shapes[i];
+      if (s) {
+        values[`SHAPE_${n}_CX`] = s.cx ?? 0;
+        values[`SHAPE_${n}_CY`] = s.cy ?? 0;
+        values[`SHAPE_${n}_R`] = s.r ?? 0;
+        values[`SHAPE_${n}_FILL`] = s.fill ?? 'none';
+        values[`SHAPE_${n}_STROKE`] = s.stroke ?? 'none';
+        values[`SHAPE_${n}_STROKE_WIDTH`] = s.strokeWidth ?? 0;
+        values[`SHAPE_${n}_OPACITY`] = s.opacity ?? 0.4;
+      } else {
+        // Invisible defaults — shape renders but at opacity 0 / r=0
+        values[`SHAPE_${n}_CX`] = 0;
+        values[`SHAPE_${n}_CY`] = 0;
+        values[`SHAPE_${n}_R`] = 0;
+        values[`SHAPE_${n}_FILL`] = 'none';
+        values[`SHAPE_${n}_STROKE`] = 'none';
+        values[`SHAPE_${n}_STROKE_WIDTH`] = 0;
+        values[`SHAPE_${n}_OPACITY`] = 0;
+      }
+    }
+  } else if (type === 'glow-sphere') {
+    const g = bg.glow || {};
+    values.GLOW_CX = g.cx ?? '50%';
+    values.GLOW_CY = g.cy ?? '-20%';
+    values.GLOW_R = g.r ?? '80%';
+    values.GLOW_FROM = g.from ?? baseValues.COLOR_ACCENT;
+    values.GLOW_TO = g.to ?? bg.color ?? baseValues.SURFACE ?? '#000000';
+    values.GLOW_OPACITY = g.opacity ?? 0.5;
+  }
+
+  return values;
+}
+
+/**
+ * v0.4 background renderer.
+ * Routes v0.4-only types through new snippets; delegates others to v0.3 path
+ * in shared-render.mjs. Grain overlay is appended for both paths.
+ */
+function renderBackgroundV04({ brand, pluginRoot, baseValues }) {
+  const type = brand.visual?.background?.type || 'solid';
+  if (!V04_BACKGROUND_TYPES.has(type)) {
+    // Defer to v0.3 implementation for solid/gradient/mesh/radial/image
+    return renderBackgroundV03({ brand, pluginRoot, baseValues });
+  }
+
+  const fileMap = {
+    'dot-grid': '_background-dot-grid.svg',
+    'geometric-shapes': '_background-geometric-shapes.svg',
+    'glow-sphere': '_background-glow-sphere.svg',
+  };
+  const path = join(pluginRoot, 'templates', fileMap[type]);
+  const snippet = readFileSync(path, 'utf8');
+
+  // Merge v0.4 bg values into baseValues so snippet placeholders resolve.
+  const v04Values = buildV04BackgroundValues(brand, baseValues);
+  const merged = { ...baseValues, ...v04Values };
+  const escaped = escapeValues(merged);
+  let out = fillTemplate(snippet, escaped);
+
+  // Grain overlay — same as v0.3 path
+  const grain = brand.visual.background?.grain;
+  if (grain && grain.enabled === true) {
+    const grainPath = join(pluginRoot, 'templates', '_grain-filter.svg');
+    const grainSnippet = readFileSync(grainPath, 'utf8');
+    out += fillTemplate(grainSnippet, escaped);
+  }
+
+  return out;
+}
 
 // Fonts not available on Google Fonts — served by Fontshare instead.
 // Map family name → Fontshare slug.
@@ -379,7 +549,8 @@ function renderPatternSlide({
 
   // Background / decorations / numbering — shared-render expects v0.3-style
   // baseValues shape (has BOTTOM_Y, COLOR_ACCENT, etc. — see buildTokenValues).
-  const backgroundSvg = renderBackground({ brand, pluginRoot, baseValues: values });
+  // v0.4 wraps renderBackground to also handle dot-grid/geometric-shapes/glow-sphere.
+  const backgroundSvg = renderBackgroundV04({ brand, pluginRoot, baseValues: values });
   const decorationsSvg = renderDecorations({
     brand,
     slideData,
@@ -439,6 +610,9 @@ export function renderCarousel({ brand, strategy, outputDir, pluginRoot = PLUGIN
   if (!brand?.brand?.handle) {
     throw new Error('brand.brand.handle is required (used for deterministic seed)');
   }
+
+  // v0.4-specific validation (background.dotGrid / shapes / glow).
+  validateBrand(brand);
 
   const outAbs = resolve(outputDir);
   mkdirSync(outAbs, { recursive: true });

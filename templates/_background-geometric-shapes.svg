@@ -1,0 +1,8 @@
+<rect x="0" y="0" width="{{WIDTH}}" height="{{HEIGHT}}" fill="{{BG_COLOR}}"/>
+<g>
+  <circle cx="{{SHAPE_1_CX}}" cy="{{SHAPE_1_CY}}" r="{{SHAPE_1_R}}" fill="{{SHAPE_1_FILL}}" stroke="{{SHAPE_1_STROKE}}" stroke-width="{{SHAPE_1_STROKE_WIDTH}}" opacity="{{SHAPE_1_OPACITY}}"/>
+  <circle cx="{{SHAPE_2_CX}}" cy="{{SHAPE_2_CY}}" r="{{SHAPE_2_R}}" fill="{{SHAPE_2_FILL}}" stroke="{{SHAPE_2_STROKE}}" stroke-width="{{SHAPE_2_STROKE_WIDTH}}" opacity="{{SHAPE_2_OPACITY}}"/>
+  <circle cx="{{SHAPE_3_CX}}" cy="{{SHAPE_3_CY}}" r="{{SHAPE_3_R}}" fill="{{SHAPE_3_FILL}}" stroke="{{SHAPE_3_STROKE}}" stroke-width="{{SHAPE_3_STROKE_WIDTH}}" opacity="{{SHAPE_3_OPACITY}}"/>
+  <circle cx="{{SHAPE_4_CX}}" cy="{{SHAPE_4_CY}}" r="{{SHAPE_4_R}}" fill="{{SHAPE_4_FILL}}" stroke="{{SHAPE_4_STROKE}}" stroke-width="{{SHAPE_4_STROKE_WIDTH}}" opacity="{{SHAPE_4_OPACITY}}"/>
+  <circle cx="{{SHAPE_5_CX}}" cy="{{SHAPE_5_CY}}" r="{{SHAPE_5_R}}" fill="{{SHAPE_5_FILL}}" stroke="{{SHAPE_5_STROKE}}" stroke-width="{{SHAPE_5_STROKE_WIDTH}}" opacity="{{SHAPE_5_OPACITY}}"/>
+</g>

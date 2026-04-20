@@ -1,0 +1,8 @@
+<defs>
+  <radialGradient id="bg-glow" cx="{{GLOW_CX}}" cy="{{GLOW_CY}}" r="{{GLOW_R}}">
+    <stop offset="0%" stop-color="{{GLOW_FROM}}" stop-opacity="{{GLOW_OPACITY}}"/>
+    <stop offset="100%" stop-color="{{GLOW_TO}}" stop-opacity="0"/>
+  </radialGradient>
+</defs>
+<rect x="0" y="0" width="{{WIDTH}}" height="{{HEIGHT}}" fill="{{BG_COLOR}}"/>
+<rect x="0" y="0" width="{{WIDTH}}" height="{{HEIGHT}}" fill="url(#bg-glow)"/>
