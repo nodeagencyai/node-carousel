@@ -1,7 +1,7 @@
 {
   "slides": [
     {
-      "template": "title",
+      "template": "title-asymmetric",
       "data": {
         "KICKER": "5 SIGNS",
         "HEADLINE_LINE_1": "Your AI automation",

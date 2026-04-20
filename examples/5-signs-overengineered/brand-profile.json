@@ -6,22 +6,51 @@
   },
   "visual": {
     "colors": {
-      "background": "#0f0f0f",
+      "background": "#000000",
       "text": "#FFFFFF",
       "accent": "#29F2FE",
       "accentSecondary": "#0B8AEE",
-      "muted": "#888888"
+      "muted": "#555555"
     },
     "fonts": {
-      "display": "Playfair Display",
+      "display": "JetBrains Mono",
       "body": "Inter"
     },
     "background": {
-      "type": "gradient",
-      "color": "#0f0f0f",
-      "gradient": { "from": "#0f0f0f", "to": "#0B8AEE", "angle": 135 },
-      "imagePath": null
+      "type": "mesh",
+      "color": "#000000",
+      "gradient": {
+        "from": "#000000",
+        "to": "#29F2FE",
+        "angle": 135
+      },
+      "mesh": {
+        "blobs": [
+          { "cx": "15%", "cy": "25%", "r": "50%", "color": "#29F2FE", "opacity": 0.22 },
+          { "cx": "85%", "cy": "75%", "r": "55%", "color": "#0B8AEE", "opacity": 0.25 },
+          { "cx": "50%", "cy": "50%", "r": "30%", "color": "#6B3FA0", "opacity": 0.12 }
+        ]
+      },
+      "radial": {
+        "center": "50% 30%",
+        "from": "#29F2FE",
+        "to": "#000000",
+        "stops": [0.1, 0.85]
+      },
+      "imagePath": null,
+      "grain": {
+        "enabled": true,
+        "intensity": 0.08,
+        "baseFrequency": 0.9
+      }
     },
-    "dimensions": { "width": 1080, "height": 1350 }
+    "numbering": {
+      "style": "fraction-mono",
+      "position": "bottom-right"
+    },
+    "dimensions": {
+      "width": 1080,
+      "height": 1350
+    }
   }
 }
