@@ -1,26 +1,46 @@
 {
+  "topic": "Lead magnets that actually convert",
   "slides": [
     {
-      "template": "title-asymmetric",
+      "pattern": "cover-asymmetric",
+      "icon": { "library": "target" },
       "data": {
         "KICKER": "THE REAL REASON",
         "HEADLINE_LINE_1": "Your lead magnet",
-        "HEADLINE_LINE_2": "isn't the problem"
+        "HEADLINE_LINE_2": "isn't the problem",
+        "BRAND_HANDLE": "@liftstudio"
       }
     },
     {
-      "template": "bullet",
+      "pattern": "list-bullet",
       "data": {
-        "HEADLINE": "Why they don't convert",
-        "BULLET_1": "You gave away the what, not the how",
-        "BULLET_2": "It solves a problem they don't know they have",
-        "BULLET_3": "The follow-up treats them like a cold lead",
-        "BULLET_4": "No next step after the PDF lands",
-        "BULLET_5": "The offer has nothing to do with the magnet"
+        "HEADLINE": "Why they fail",
+        "ITEM_1": "You gave the what, not the how",
+        "ITEM_2": "It solves a problem nobody feels",
+        "ITEM_3": "The follow-up treats them like strangers",
+        "ITEM_4": "No next step after the PDF lands",
+        "ITEM_5": "The offer has nothing to do with the magnet"
       }
     },
     {
-      "template": "quote",
+      "pattern": "split-comparison",
+      "icon": {
+        "left": { "library": "x-mark" },
+        "right": { "library": "check" }
+      },
+      "data": {
+        "LEFT_LABEL": "Broken",
+        "LEFT_LINE_1": "Generic PDF",
+        "LEFT_LINE_2": "Cold nurture drip",
+        "LEFT_LINE_3": "Hope they buy",
+        "RIGHT_LABEL": "Working",
+        "RIGHT_LINE_1": "A used-once tool",
+        "RIGHT_LINE_2": "One direct email",
+        "RIGHT_LINE_3": "One obvious offer"
+      }
+    },
+    {
+      "pattern": "quote-pulled",
       "data": {
         "QUOTE_LINE_1": "The magnet isn't",
         "QUOTE_LINE_2": "the offer.",
@@ -30,22 +50,31 @@
       }
     },
     {
-      "template": "bullet",
+      "pattern": "stat-dominant",
+      "icon": { "library": "trending-up" },
       "data": {
-        "HEADLINE": "What actually converts",
-        "BULLET_1": "A tool they use once and want again",
-        "BULLET_2": "A checklist that exposes a real problem",
-        "BULLET_3": "A teardown of a specific live example",
-        "BULLET_4": "A single email with a direct offer"
+        "STAT_VALUE": "3%",
+        "STAT_LABEL": "of downloads ever become buyers",
+        "STAT_CONTEXT": "Unless the next 48 hours earn it"
       }
     },
     {
-      "template": "cta",
+      "pattern": "list-numbered",
       "data": {
-        "CTA_HOOK_LINE_1": "Want more",
-        "CTA_HOOK_LINE_2": "like this?",
-        "CTA_BUTTON": "Follow for more",
-        "CTA_SUBTEXT": "New breakdown every Tuesday"
+        "HEADLINE": "The 3-step fix",
+        "ITEM_1": "Ship a tool, not a PDF",
+        "ITEM_2": "One email, one direct offer",
+        "ITEM_3": "Make the next step obvious"
+      }
+    },
+    {
+      "pattern": "cta-stacked",
+      "data": {
+        "HOOK_LINE_1": "Want the",
+        "HOOK_LINE_2": "teardown?",
+        "BUTTON": "DM MAGNET",
+        "SUBTEXT": "I'll audit yours in under 10 minutes",
+        "BRAND_HANDLE": "@liftstudio"
       }
     }
   ]

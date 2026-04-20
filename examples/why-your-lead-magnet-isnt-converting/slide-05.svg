@@ -1,40 +1,46 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" width="1080" height="1350">
   <defs>
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:wght@700;800&amp;family=Inter:wght@400;500;600&amp;display=swap');
-      .hook { font-family: 'DM Serif Display', serif; font-weight: 800; font-size: 72px; fill: #FFFAF0; }
-      .button-text { font-family: 'Inter', sans-serif; font-weight: 600; font-size: 38px; fill: #1A0F2E; letter-spacing: 0.02em; }
-      .subtext { font-family: 'Inter', sans-serif; font-weight: 400; font-size: 28px; fill: #9A9A9A; }
-      .handle { font-family: 'Inter', sans-serif; font-weight: 500; font-size: 26px; fill: #FFFAF0; letter-spacing: 0.05em; }
+      @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:wght@400;500;700;800&amp;display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&amp;display=swap');
+      .stat-value { font-family: 'DM Serif Display', serif; font-weight: 800; font-size: 156px; fill: #FFD23F; letter-spacing: -0.04em; }
+      .stat-label { font-family: 'DM Serif Display', serif; font-weight: 700; font-size: 64px; fill: #FFFAF0; letter-spacing: -0.02em; }
+      .stat-context { font-family: 'Inter', sans-serif; font-weight: 400; font-size: 28px; fill: #9A9A9A; }
+      .handle { font-family: 'Inter', sans-serif; font-weight: 500; font-size: 26px; fill: #9A9A9A; letter-spacing: 0.05em; }
     </style>
   </defs>
   <defs>
-  <filter id="mesh-blur" x="-50%" y="-50%" width="200%" height="200%">
-    <feGaussianBlur stdDeviation="120" />
+  <linearGradient id="ng-grad" gradientTransform="rotate(135, 0.5, 0.5)">
+    <stop offset="0%" stop-color="#1A0F2E"/>
+    <stop offset="100%" stop-color="#6B2D7A"/>
+  </linearGradient>
+  <filter id="ng-noise-overlay" x="0%" y="0%" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.35" numOctaves="4" stitchTiles="stitch"/>
+    <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.22 0"/>
   </filter>
 </defs>
 <rect x="0" y="0" width="1080" height="1350" fill="#1A0F2E"/>
-<g filter="url(#mesh-blur)">
-  <circle cx="15%" cy="25%" r="50%" fill="#4A1D5C" opacity="0.5"/>
-  <circle cx="85%" cy="75%" r="55%" fill="#6B2D7A" opacity="0.45"/>
-  <circle cx="50%" cy="50%" r="30%" fill="#FFD23F" opacity="0.15"/>
-  <circle cx="0" cy="0" r="0" fill="#000" opacity="0"/>
-  <circle cx="0" cy="0" r="0" fill="#000" opacity="0"/>
-</g>
+<rect x="0" y="0" width="1080" height="1350" fill="url(#ng-grad)"/>
+<rect x="0" y="0" width="1080" height="1350" filter="url(#ng-noise-overlay)" style="mix-blend-mode: multiply;"/>
 <defs>
-  <filter id="grain-filter" x="0%" y="0%" width="100%" height="100%">
+  <filter id="noise-filter" x="0%" y="0%" width="100%" height="100%">
     <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/>
-    <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.1 0"/>
+    
+    <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.14 0"/>
   </filter>
 </defs>
-<rect x="0" y="0" width="1080" height="1350" filter="url(#grain-filter)" pointer-events="none"/>
+<rect x="0" y="0" width="1080" height="1350" filter="url(#noise-filter)" pointer-events="none"/>
 
-  <text x="540" y="480" class="hook" text-anchor="middle">
-    <tspan x="540" dy="0">Want more</tspan>
-    <tspan x="540" dy="86">like this?</tspan>
-  </text>
-  <rect x="180" y="700" width="720" height="120" rx="60" fill="#FFD23F"/>
-  <text x="540" y="778" class="button-text" text-anchor="middle">Follow for more</text>
-  <text x="540" y="900" class="subtext" text-anchor="middle">New breakdown every Tuesday</text>
-  <text x="540" y="1250" class="handle" text-anchor="middle">@liftstudio</text>
+  <line x1="100" y1="210" x2="220" y2="210" stroke="#FFD23F" stroke-width="3"/>
+
+<text x="980" y="380" text-anchor="end" font-family="'DM Serif Display', serif" font-weight="800" font-size="420" fill="#FFD23F" opacity="0.15">&quot;</text>
+
+  <rect x="100" y="1250" width="880" height="4" rx="2" fill="#9A9A9A" opacity="0.3"/>
+<rect x="100" y="1250" width="629" height="4" rx="2" fill="#FFD23F"/>
+
+  <g color="#FFD23F" transform="translate(520 380) scale(1.67)" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></g>
+  <text x="540" y="600" class="stat-value" text-anchor="middle">3%</text>
+  <text x="540" y="704" class="stat-label" text-anchor="middle">of downloads ever become buyers</text>
+  <text x="540" y="776" class="stat-context" text-anchor="middle">Unless the next 48 hours earn it</text>
+  <text x="540" y="1224" class="handle" text-anchor="middle">@liftstudio</text>
 </svg>

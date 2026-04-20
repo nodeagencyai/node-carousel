@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" width="1080" height="1350">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:wght@400;500;700;800&amp;display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&amp;display=swap');
+      .hook { font-family: 'DM Serif Display', serif; font-weight: 800; font-size: 88px; fill: #FFFAF0; letter-spacing: -0.03em; }
+      .button-label { font-family: 'Inter', sans-serif; font-weight: 600; font-size: 36px; fill: #1A0F2E; letter-spacing: 0.02em; }
+      .subtext { font-family: 'Inter', sans-serif; font-weight: 400; font-size: 28px; fill: #9A9A9A; }
+      .handle { font-family: 'Inter', sans-serif; font-weight: 500; font-size: 28px; fill: #FFFAF0; letter-spacing: 0.05em; }
+    </style>
+  </defs>
+  <defs>
+  <linearGradient id="ng-grad" gradientTransform="rotate(135, 0.5, 0.5)">
+    <stop offset="0%" stop-color="#1A0F2E"/>
+    <stop offset="100%" stop-color="#6B2D7A"/>
+  </linearGradient>
+  <filter id="ng-noise-overlay" x="0%" y="0%" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.35" numOctaves="4" stitchTiles="stitch"/>
+    <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.22 0"/>
+  </filter>
+</defs>
+<rect x="0" y="0" width="1080" height="1350" fill="#1A0F2E"/>
+<rect x="0" y="0" width="1080" height="1350" fill="url(#ng-grad)"/>
+<rect x="0" y="0" width="1080" height="1350" filter="url(#ng-noise-overlay)" style="mix-blend-mode: multiply;"/>
+<defs>
+  <filter id="noise-filter" x="0%" y="0%" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/>
+    
+    <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.14 0"/>
+  </filter>
+</defs>
+<rect x="0" y="0" width="1080" height="1350" filter="url(#noise-filter)" pointer-events="none"/>
+
+  <line x1="100" y1="210" x2="220" y2="210" stroke="#FFD23F" stroke-width="3"/>
+
+<text x="980" y="380" text-anchor="end" font-family="'DM Serif Display', serif" font-weight="800" font-size="420" fill="#FFD23F" opacity="0.15">&quot;</text>
+
+  
+  <rect x="100" y="1250" width="880" height="4" rx="2" fill="#9A9A9A" opacity="0.3"/>
+<rect x="100" y="1250" width="880" height="4" rx="2" fill="#FFD23F"/>
+
+  <text x="540" y="520" class="hook" text-anchor="middle">
+    <tspan x="540" dy="0"><tspan fill="#FFD23F">Want</tspan> the</tspan>
+    <tspan x="540" dy="104">teardown?</tspan>
+  </text>
+  <rect x="260" y="816" width="560" height="112" rx="56" fill="#FFD23F"/>
+  <text x="540" y="888" class="button-label" text-anchor="middle">DM MAGNET</text>
+  <text x="540" y="992" class="subtext" text-anchor="middle">I&apos;ll audit yours in under 10 minutes</text>
+  <text x="540" y="1224" class="handle" text-anchor="middle">@liftstudio</text>
+</svg>

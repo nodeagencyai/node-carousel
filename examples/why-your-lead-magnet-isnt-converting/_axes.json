@@ -1,0 +1,21 @@
+{
+  "seed": "v0.4::@liftstudio::Lead magnets that actually convert",
+  "axes": {
+    "density": {
+      "name": "airy",
+      "bodyColumns": 4,
+      "padding": "SECTION"
+    },
+    "composition": "centered",
+    "emphasis": "first-word",
+    "hierarchy": {
+      "name": "pair",
+      "maxFocal": 2
+    },
+    "accentPlacement": "tint-surface",
+    "decorationMix": [
+      "accentRule",
+      "numberBadges"
+    ]
+  }
+}

@@ -1,39 +1,50 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" width="1080" height="1350">
   <defs>
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:wght@700;800&amp;family=Inter:wght@400;500&amp;display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:wght@400;500;700;800&amp;display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&amp;display=swap');
       .kicker { font-family: 'Inter', sans-serif; font-weight: 500; font-size: 26px; letter-spacing: 0.22em; text-transform: uppercase; fill: #FFD23F; }
-      .headline-asym { font-family: 'DM Serif Display', serif; font-weight: 800; font-size: 92px; fill: #FFFAF0; line-height: 0.95; letter-spacing: -0.02em; }
+      .headline { font-family: 'DM Serif Display', serif; font-weight: 800; font-size: 116px; fill: #FFFAF0; letter-spacing: -0.03em; }
       .handle { font-family: 'Inter', sans-serif; font-weight: 500; font-size: 26px; fill: #9A9A9A; letter-spacing: 0.05em; }
-      .rule { stroke: #FFD23F; stroke-width: 3; }
+      .accent-rule { stroke: #FFD23F; stroke-width: 3; }
     </style>
   </defs>
   <defs>
-  <filter id="mesh-blur" x="-50%" y="-50%" width="200%" height="200%">
-    <feGaussianBlur stdDeviation="120" />
+  <linearGradient id="ng-grad" gradientTransform="rotate(135, 0.5, 0.5)">
+    <stop offset="0%" stop-color="#1A0F2E"/>
+    <stop offset="100%" stop-color="#6B2D7A"/>
+  </linearGradient>
+  <filter id="ng-noise-overlay" x="0%" y="0%" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.35" numOctaves="4" stitchTiles="stitch"/>
+    <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.22 0"/>
   </filter>
 </defs>
 <rect x="0" y="0" width="1080" height="1350" fill="#1A0F2E"/>
-<g filter="url(#mesh-blur)">
-  <circle cx="15%" cy="25%" r="50%" fill="#4A1D5C" opacity="0.5"/>
-  <circle cx="85%" cy="75%" r="55%" fill="#6B2D7A" opacity="0.45"/>
-  <circle cx="50%" cy="50%" r="30%" fill="#FFD23F" opacity="0.15"/>
-  <circle cx="0" cy="0" r="0" fill="#000" opacity="0"/>
-  <circle cx="0" cy="0" r="0" fill="#000" opacity="0"/>
-</g>
+<rect x="0" y="0" width="1080" height="1350" fill="url(#ng-grad)"/>
+<rect x="0" y="0" width="1080" height="1350" filter="url(#ng-noise-overlay)" style="mix-blend-mode: multiply;"/>
 <defs>
-  <filter id="grain-filter" x="0%" y="0%" width="100%" height="100%">
+  <filter id="noise-filter" x="0%" y="0%" width="100%" height="100%">
     <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/>
-    <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.1 0"/>
+    
+    <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.14 0"/>
   </filter>
 </defs>
-<rect x="0" y="0" width="1080" height="1350" filter="url(#grain-filter)" pointer-events="none"/>
+<rect x="0" y="0" width="1080" height="1350" filter="url(#noise-filter)" pointer-events="none"/>
 
-  <text x="100" y="180" class="kicker">THE REAL REASON</text>
-  <line x1="100" y1="210" x2="220" y2="210" class="rule"/>
-  <text x="100" y="839" class="headline-asym">
-    <tspan x="100" dy="0">Your lead magnet</tspan>
-    <tspan x="100" dy="96">isn&apos;t the problem</tspan>
+  <line x1="100" y1="210" x2="220" y2="210" stroke="#FFD23F" stroke-width="3"/>
+
+<text x="980" y="380" text-anchor="end" font-family="'DM Serif Display', serif" font-weight="800" font-size="420" fill="#FFD23F" opacity="0.15">&quot;</text>
+
+  
+  <rect x="100" y="1250" width="880" height="4" rx="2" fill="#9A9A9A" opacity="0.3"/>
+<rect x="100" y="1250" width="126" height="4" rx="2" fill="#FFD23F"/>
+
+  <text x="72" y="96" class="kicker">THE REAL REASON</text>
+  <g color="#FFD23F" transform="translate(72 24) scale(1.5)" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></g>
+  <line x1="72" y1="120" x2="192" y2="120" class="accent-rule"/>
+  <text x="72" y="820" class="headline">
+    <tspan x="72" dy="0"><tspan fill="#FFD23F">Your</tspan> lead magnet</tspan>
+    <tspan x="72" dy="122">isn&apos;t the problem</tspan>
   </text>
-  <text x="980" y="1250" class="handle" text-anchor="end">@liftstudio</text>
+  <text x="1008" y="1224" class="handle" text-anchor="end">@liftstudio</text>
 </svg>

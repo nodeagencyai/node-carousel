@@ -1,42 +1,55 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" width="1080" height="1350">
   <defs>
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:wght@700&amp;family=Inter:wght@400;500;600&amp;display=swap');
-      .headline { font-family: 'DM Serif Display', serif; font-weight: 700; font-size: 64px; fill: #FFFAF0; }
-      .bullet { font-family: 'Inter', sans-serif; font-weight: 500; font-size: 38px; fill: #FFFAF0; }
-      .arrow { font-family: 'Inter', sans-serif; font-weight: 600; font-size: 38px; fill: #FFD23F; }
+      @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:wght@400;500;700;800&amp;display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&amp;display=swap');
+      .headline { font-family: 'DM Serif Display', serif; font-weight: 700; font-size: 64px; fill: #FFFAF0; letter-spacing: -0.02em; }
+      .arrow { font-family: 'Inter', sans-serif; font-weight: 600; font-size: 36px; fill: #FFD23F; }
+      .item { font-family: 'Inter', sans-serif; font-weight: 500; font-size: 36px; fill: #FFFAF0; }
+      .handle { font-family: 'Inter', sans-serif; font-weight: 500; font-size: 26px; fill: #9A9A9A; letter-spacing: 0.05em; }
     </style>
   </defs>
   <defs>
-  <filter id="mesh-blur" x="-50%" y="-50%" width="200%" height="200%">
-    <feGaussianBlur stdDeviation="120" />
+  <linearGradient id="ng-grad" gradientTransform="rotate(135, 0.5, 0.5)">
+    <stop offset="0%" stop-color="#1A0F2E"/>
+    <stop offset="100%" stop-color="#6B2D7A"/>
+  </linearGradient>
+  <filter id="ng-noise-overlay" x="0%" y="0%" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.35" numOctaves="4" stitchTiles="stitch"/>
+    <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.22 0"/>
   </filter>
 </defs>
 <rect x="0" y="0" width="1080" height="1350" fill="#1A0F2E"/>
-<g filter="url(#mesh-blur)">
-  <circle cx="15%" cy="25%" r="50%" fill="#4A1D5C" opacity="0.5"/>
-  <circle cx="85%" cy="75%" r="55%" fill="#6B2D7A" opacity="0.45"/>
-  <circle cx="50%" cy="50%" r="30%" fill="#FFD23F" opacity="0.15"/>
-  <circle cx="0" cy="0" r="0" fill="#000" opacity="0"/>
-  <circle cx="0" cy="0" r="0" fill="#000" opacity="0"/>
-</g>
+<rect x="0" y="0" width="1080" height="1350" fill="url(#ng-grad)"/>
+<rect x="0" y="0" width="1080" height="1350" filter="url(#ng-noise-overlay)" style="mix-blend-mode: multiply;"/>
 <defs>
-  <filter id="grain-filter" x="0%" y="0%" width="100%" height="100%">
+  <filter id="noise-filter" x="0%" y="0%" width="100%" height="100%">
     <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/>
-    <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.1 0"/>
+    
+    <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.14 0"/>
   </filter>
 </defs>
-<rect x="0" y="0" width="1080" height="1350" filter="url(#grain-filter)" pointer-events="none"/>
+<rect x="0" y="0" width="1080" height="1350" filter="url(#noise-filter)" pointer-events="none"/>
 
-  <text x="100" y="240" class="headline">Why they don&apos;t convert</text>
-  <g transform="translate(100, 430)">
-    <text x="0" y="0" class="arrow">→</text><text x="50" y="0" class="bullet">You gave away the what, not the how</text>
-    <text x="0" y="90" class="arrow">→</text><text x="50" y="90" class="bullet">It solves a problem they don&apos;t know they have</text>
-    <text x="0" y="180" class="arrow">→</text><text x="50" y="180" class="bullet">The follow-up treats them like a cold lead</text>
-    <text x="0" y="270" class="arrow">→</text><text x="50" y="270" class="bullet">No next step after the PDF lands</text>
-    <text x="0" y="360" class="arrow">→</text><text x="50" y="360" class="bullet">The offer has nothing to do with the magnet</text>
-  </g>
+  <line x1="100" y1="210" x2="220" y2="210" stroke="#FFD23F" stroke-width="3"/>
+
+<text x="980" y="380" text-anchor="end" font-family="'DM Serif Display', serif" font-weight="800" font-size="420" fill="#FFD23F" opacity="0.15">&quot;</text>
+
   <rect x="100" y="1250" width="880" height="4" rx="2" fill="#9A9A9A" opacity="0.3"/>
-<rect x="100" y="1250" width="352" height="4" rx="2" fill="#FFD23F"/>
+<rect x="100" y="1250" width="251" height="4" rx="2" fill="#FFD23F"/>
 
+  <text x="72" y="360" class="headline"><tspan fill="#FFD23F">Why</tspan> they fail</text>
+  <g transform="translate(72, 552)">
+    <text x="0" y="0" class="arrow">→</text>
+    <text x="64" y="0" class="item">You gave the what, not the how</text>
+    <text x="0" y="88" class="arrow">→</text>
+    <text x="64" y="88" class="item">It solves a problem nobody feels</text>
+    <text x="0" y="176" class="arrow">→</text>
+    <text x="64" y="176" class="item">The follow-up treats them like strangers</text>
+    <text x="0" y="264" class="arrow">→</text>
+    <text x="64" y="264" class="item">No next step after the PDF lands</text>
+    <text x="0" y="352" class="arrow">→</text>
+    <text x="64" y="352" class="item">The offer has nothing to do with the magnet</text>
+  </g>
+  <text x="1008" y="1224" class="handle" text-anchor="end">@liftstudio</text>
 </svg>
