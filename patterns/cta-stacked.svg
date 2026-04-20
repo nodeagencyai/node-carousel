@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {{WIDTH}} {{HEIGHT}}" width="{{WIDTH}}" height="{{HEIGHT}}">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family={{FONT_DISPLAY_URL}}:wght@700;800&amp;family={{FONT_BODY_URL}}:wght@400;500;600&amp;display=swap');
+      .hook { font-family: {{FONT_DISPLAY_STACK}}; font-weight: 800; font-size: {{TYPE_HEADLINE}}px; fill: {{ON_SURFACE}}; letter-spacing: {{CTA_HOOK_LETTERSPACE}}; }
+      .button-label { font-family: {{FONT_BODY_STACK}}; font-weight: 600; font-size: {{TYPE_BODY_LARGE}}px; fill: {{ON_ACCENT}}; letter-spacing: 0.02em; }
+      .subtext { font-family: {{FONT_BODY_STACK}}; font-weight: 400; font-size: {{TYPE_BODY}}px; fill: {{SURFACE_MUTED}}; }
+      .handle { font-family: {{FONT_BODY_STACK}}; font-weight: 500; font-size: {{TYPE_BODY}}px; fill: {{ON_SURFACE}}; letter-spacing: 0.05em; }
+    </style>
+  </defs>
+  {{BACKGROUND}}
+  {{DECORATIONS}}
+  {{NUMBERING}}
+  <text x="{{CENTER_X}}" y="{{ANCHOR_CTA_HOOK_Y}}" class="hook" text-anchor="middle">
+    <tspan x="{{CENTER_X}}" dy="0">{{HOOK_LINE_1}}</tspan>
+    <tspan x="{{CENTER_X}}" dy="{{HOOK_DY}}">{{HOOK_LINE_2}}</tspan>
+  </text>
+  <rect x="{{BUTTON_X}}" y="{{BUTTON_Y}}" width="{{BUTTON_WIDTH}}" height="{{BUTTON_HEIGHT}}" rx="{{BUTTON_RX}}" fill="{{ACCENT}}"/>
+  <text x="{{CENTER_X}}" y="{{ANCHOR_BUTTON_TEXT_Y}}" class="button-label" text-anchor="middle">{{BUTTON}}</text>
+  <text x="{{CENTER_X}}" y="{{ANCHOR_SUBTEXT_Y}}" class="subtext" text-anchor="middle">{{SUBTEXT}}</text>
+  <text x="{{CENTER_X}}" y="{{ANCHOR_FOOTER_CENTER}}" class="handle" text-anchor="middle">{{BRAND_HANDLE}}</text>
+</svg>
