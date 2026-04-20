@@ -1,0 +1,56 @@
+{
+  "brand": {
+    "name": "",
+    "handle": "",
+    "tone": ""
+  },
+  "visual": {
+    "colors": {
+      "background": "#0A0A0A",
+      "text": "#FFFFFF",
+      "accent": "#7C3AED",
+      "accentSecondary": "#5B21B6",
+      "muted": "#A0A0A0"
+    },
+    "fonts": {
+      "display": "Geist",
+      "body": "Geist"
+    },
+    "background": {
+      "type": "radial",
+      "color": "#0A0A0A",
+      "gradient": {
+        "from": "#0A0A0A",
+        "to": "#7C3AED",
+        "angle": 135
+      },
+      "mesh": {
+        "blobs": [
+          { "cx": "20%", "cy": "30%", "r": "45%", "color": "#7C3AED", "opacity": 0.3 },
+          { "cx": "80%", "cy": "70%", "r": "55%", "color": "#5B21B6", "opacity": 0.25 },
+          { "cx": "50%", "cy": "50%", "r": "35%", "color": "#0A0A0A", "opacity": 0.2 }
+        ]
+      },
+      "radial": {
+        "center": "50% 30%",
+        "from": "#7C3AED",
+        "to": "#0A0A0A",
+        "stops": [0.15, 0.85]
+      },
+      "imagePath": null,
+      "grain": {
+        "enabled": true,
+        "intensity": 0.06,
+        "baseFrequency": 0.9
+      }
+    },
+    "numbering": {
+      "style": "fraction-mono",
+      "position": "bottom-right"
+    },
+    "dimensions": {
+      "width": 1080,
+      "height": 1350
+    }
+  }
+}

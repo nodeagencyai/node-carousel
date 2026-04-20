@@ -1,0 +1,56 @@
+{
+  "brand": {
+    "name": "",
+    "handle": "",
+    "tone": ""
+  },
+  "visual": {
+    "colors": {
+      "background": "#FFFFFF",
+      "text": "#000000",
+      "accent": "#FF4800",
+      "accentSecondary": "#C23800",
+      "muted": "#999999"
+    },
+    "fonts": {
+      "display": "Archivo Black",
+      "body": "Archivo"
+    },
+    "background": {
+      "type": "solid",
+      "color": "#FFFFFF",
+      "gradient": {
+        "from": "#FFFFFF",
+        "to": "#FF4800",
+        "angle": 135
+      },
+      "mesh": {
+        "blobs": [
+          { "cx": "20%", "cy": "30%", "r": "45%", "color": "#FF4800", "opacity": 0.15 },
+          { "cx": "80%", "cy": "70%", "r": "55%", "color": "#C23800", "opacity": 0.12 },
+          { "cx": "50%", "cy": "50%", "r": "35%", "color": "#FFFFFF", "opacity": 0.1 }
+        ]
+      },
+      "radial": {
+        "center": "50% 30%",
+        "from": "#FF4800",
+        "to": "#FFFFFF",
+        "stops": [0.1, 0.85]
+      },
+      "imagePath": null,
+      "grain": {
+        "enabled": false,
+        "intensity": 0.05,
+        "baseFrequency": 0.9
+      }
+    },
+    "numbering": {
+      "style": "dot",
+      "position": "bottom-center"
+    },
+    "dimensions": {
+      "width": 1080,
+      "height": 1350
+    }
+  }
+}

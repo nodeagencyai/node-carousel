@@ -1,0 +1,56 @@
+{
+  "brand": {
+    "name": "",
+    "handle": "",
+    "tone": ""
+  },
+  "visual": {
+    "colors": {
+      "background": "#000000",
+      "text": "#FFFFFF",
+      "accent": "#00E5FF",
+      "accentSecondary": "#00A3B8",
+      "muted": "#555555"
+    },
+    "fonts": {
+      "display": "JetBrains Mono",
+      "body": "Inter"
+    },
+    "background": {
+      "type": "solid",
+      "color": "#000000",
+      "gradient": {
+        "from": "#000000",
+        "to": "#00E5FF",
+        "angle": 135
+      },
+      "mesh": {
+        "blobs": [
+          { "cx": "20%", "cy": "30%", "r": "45%", "color": "#00E5FF", "opacity": 0.2 },
+          { "cx": "80%", "cy": "70%", "r": "55%", "color": "#00A3B8", "opacity": 0.25 },
+          { "cx": "50%", "cy": "50%", "r": "35%", "color": "#000000", "opacity": 0.15 }
+        ]
+      },
+      "radial": {
+        "center": "50% 30%",
+        "from": "#00E5FF",
+        "to": "#000000",
+        "stops": [0.1, 0.85]
+      },
+      "imagePath": null,
+      "grain": {
+        "enabled": true,
+        "intensity": 0.05,
+        "baseFrequency": 0.9
+      }
+    },
+    "numbering": {
+      "style": "fraction-mono",
+      "position": "bottom-right"
+    },
+    "dimensions": {
+      "width": 1080,
+      "height": 1350
+    }
+  }
+}
