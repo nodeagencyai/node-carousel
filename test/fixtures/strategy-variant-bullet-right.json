@@ -1,0 +1,12 @@
+{
+  "slides": [
+    { "template": "bullet-right", "data": {
+      "HEADLINE": "The five tells",
+      "BULLET_1": "Stack grew beyond your team",
+      "BULLET_2": "Features no one uses ship anyway",
+      "BULLET_3": "Onboarding takes a week to explain",
+      "BULLET_4": "Every integration feels custom",
+      "BULLET_5": "Fixing one thing breaks two others"
+    }}
+  ]
+}

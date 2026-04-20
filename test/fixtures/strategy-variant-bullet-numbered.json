@@ -1,0 +1,12 @@
+{
+  "slides": [
+    { "template": "bullet-numbered", "data": {
+      "HEADLINE": "The five-step flow",
+      "BULLET_1": "Pick one output that pays rent",
+      "BULLET_2": "Write the brief in under 200 words",
+      "BULLET_3": "Ship the rough draft by Tuesday",
+      "BULLET_4": "Ask one person, not a committee",
+      "BULLET_5": "Publish even when it feels unfinished"
+    }}
+  ]
+}

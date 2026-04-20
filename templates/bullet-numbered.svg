@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {{WIDTH}} {{HEIGHT}}" width="{{WIDTH}}" height="{{HEIGHT}}">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family={{FONT_DISPLAY_URL}}:wght@700;800&amp;family={{FONT_BODY_URL}}:wght@400;500;600&amp;display=swap');
+      .headline { font-family: '{{FONT_DISPLAY}}', serif; font-weight: 700; font-size: 64px; fill: {{COLOR_TEXT}}; }
+      .bullet { font-family: '{{FONT_BODY}}', sans-serif; font-weight: 500; font-size: 38px; fill: {{COLOR_TEXT}}; }
+      .bullet-num { font-family: '{{FONT_DISPLAY}}', serif; font-weight: 800; font-size: 56px; fill: {{COLOR_ACCENT}}; letter-spacing: -0.02em; }
+    </style>
+  </defs>
+  {{BACKGROUND}}
+  {{DECORATIONS}}
+  <text x="100" y="240" class="headline">{{HEADLINE}}</text>
+  <g transform="translate(100, 430)">
+    <text x="0" y="0" class="bullet-num">{{BULLET_NUMBER_1}}</text><text x="90" y="0" class="bullet">{{BULLET_1}}</text>
+    <text x="0" y="100" class="bullet-num">{{BULLET_NUMBER_2}}</text><text x="90" y="100" class="bullet">{{BULLET_2}}</text>
+    <text x="0" y="200" class="bullet-num">{{BULLET_NUMBER_3}}</text><text x="90" y="200" class="bullet">{{BULLET_3}}</text>
+    <text x="0" y="300" class="bullet-num">{{BULLET_NUMBER_4}}</text><text x="90" y="300" class="bullet">{{BULLET_4}}</text>
+    <text x="0" y="400" class="bullet-num">{{BULLET_NUMBER_5}}</text><text x="90" y="400" class="bullet">{{BULLET_5}}</text>
+  </g>
+  {{NUMBERING}}
+</svg>

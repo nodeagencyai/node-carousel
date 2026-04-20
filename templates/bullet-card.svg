@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {{WIDTH}} {{HEIGHT}}" width="{{WIDTH}}" height="{{HEIGHT}}">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family={{FONT_DISPLAY_URL}}:wght@700;800&amp;family={{FONT_BODY_URL}}:wght@400;500;600&amp;display=swap');
+      .headline-dominant { font-family: '{{FONT_DISPLAY}}', serif; font-weight: 700; font-size: 88px; fill: {{COLOR_TEXT}}; letter-spacing: -0.02em; }
+      .bullet { font-family: '{{FONT_BODY}}', sans-serif; font-weight: 500; font-size: 38px; fill: {{COLOR_TEXT}}; }
+      .arrow { font-family: '{{FONT_BODY}}', sans-serif; font-weight: 600; font-size: 38px; fill: {{COLOR_ACCENT}}; }
+    </style>
+  </defs>
+  {{BACKGROUND}}
+  {{DECORATIONS}}
+  <text x="{{CENTER_X}}" y="280" class="headline-dominant" text-anchor="middle">{{HEADLINE}}</text>
+  <rect x="80" y="550" width="920" height="700" rx="24" fill="{{COLOR_ACCENT}}" opacity="0.12"/>
+  <g transform="translate(160, 650)">
+    <text x="0" y="0" class="arrow">{{ARROW_1}}</text><text x="50" y="0" class="bullet">{{BULLET_1}}</text>
+    <text x="0" y="90" class="arrow">{{ARROW_2}}</text><text x="50" y="90" class="bullet">{{BULLET_2}}</text>
+    <text x="0" y="180" class="arrow">{{ARROW_3}}</text><text x="50" y="180" class="bullet">{{BULLET_3}}</text>
+    <text x="0" y="270" class="arrow">{{ARROW_4}}</text><text x="50" y="270" class="bullet">{{BULLET_4}}</text>
+    <text x="0" y="360" class="arrow">{{ARROW_5}}</text><text x="50" y="360" class="bullet">{{BULLET_5}}</text>
+  </g>
+  {{NUMBERING}}
+</svg>

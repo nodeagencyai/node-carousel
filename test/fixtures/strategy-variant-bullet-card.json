@@ -1,0 +1,12 @@
+{
+  "slides": [
+    { "template": "bullet-card", "data": {
+      "HEADLINE": "Ship rules",
+      "BULLET_1": "Ugly and shipped beats pretty and waiting",
+      "BULLET_2": "One feature, done, beats five in flight",
+      "BULLET_3": "The customer is not your design critic",
+      "BULLET_4": "Kill the meeting, write the memo",
+      "BULLET_5": "Ship Friday so Monday is quiet"
+    }}
+  ]
+}

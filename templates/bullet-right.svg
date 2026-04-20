@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {{WIDTH}} {{HEIGHT}}" width="{{WIDTH}}" height="{{HEIGHT}}">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family={{FONT_DISPLAY_URL}}:wght@700&amp;family={{FONT_BODY_URL}}:wght@400;500;600&amp;display=swap');
+      .headline { font-family: '{{FONT_DISPLAY}}', serif; font-weight: 700; font-size: 64px; fill: {{COLOR_TEXT}}; }
+      .bullet { font-family: '{{FONT_BODY}}', sans-serif; font-weight: 500; font-size: 38px; fill: {{COLOR_TEXT}}; }
+      .arrow { font-family: '{{FONT_BODY}}', sans-serif; font-weight: 600; font-size: 38px; fill: {{COLOR_ACCENT}}; }
+    </style>
+  </defs>
+  {{BACKGROUND}}
+  {{DECORATIONS}}
+  <text x="{{WIDTH_MINUS_100}}" y="240" class="headline" text-anchor="end">{{HEADLINE}}</text>
+  <g transform="translate({{WIDTH_MINUS_100}}, 430)">
+    <text x="-50" y="0" class="bullet" text-anchor="end">{{BULLET_1}}</text><text x="0" y="0" class="arrow" text-anchor="end">{{ARROW_1}}</text>
+    <text x="-50" y="90" class="bullet" text-anchor="end">{{BULLET_2}}</text><text x="0" y="90" class="arrow" text-anchor="end">{{ARROW_2}}</text>
+    <text x="-50" y="180" class="bullet" text-anchor="end">{{BULLET_3}}</text><text x="0" y="180" class="arrow" text-anchor="end">{{ARROW_3}}</text>
+    <text x="-50" y="270" class="bullet" text-anchor="end">{{BULLET_4}}</text><text x="0" y="270" class="arrow" text-anchor="end">{{ARROW_4}}</text>
+    <text x="-50" y="360" class="bullet" text-anchor="end">{{BULLET_5}}</text><text x="0" y="360" class="arrow" text-anchor="end">{{ARROW_5}}</text>
+  </g>
+  {{NUMBERING}}
+</svg>
