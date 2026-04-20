@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {{WIDTH}} {{HEIGHT}}" width="{{WIDTH}}" height="{{HEIGHT}}">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family={{FONT_DISPLAY_URL}}:wght@700;800&amp;family={{FONT_BODY_URL}}:wght@400;500&amp;display=swap');
+      .kicker { font-family: {{FONT_BODY_STACK}}; font-weight: 500; font-size: 26px; letter-spacing: 0.22em; text-transform: uppercase; fill: {{ACCENT}}; }
+      .headline { font-family: {{FONT_DISPLAY_STACK}}; font-weight: 800; font-size: {{TYPE_HERO}}px; fill: {{ON_SURFACE}}; letter-spacing: {{TITLE_LETTER_SPACING}}; }
+      .handle { font-family: {{FONT_BODY_STACK}}; font-weight: 500; font-size: 26px; fill: {{SURFACE_MUTED}}; letter-spacing: 0.05em; }
+    </style>
+  </defs>
+  {{BACKGROUND}}
+  {{DECORATIONS}}
+  {{NUMBERING}}
+  <text x="{{CENTER_X}}" y="{{KICKER_CENTERED_Y}}" class="kicker" text-anchor="middle">{{KICKER}}</text>
+  <text x="{{CENTER_X}}" y="{{ANCHOR_OPTICAL_CENTER}}" class="headline" text-anchor="middle">
+    <tspan x="{{CENTER_X}}" dy="0">{{HEADLINE_LINE_1}}</tspan>
+    <tspan x="{{CENTER_X}}" dy="{{HEADLINE_DY}}">{{HEADLINE_LINE_2}}</tspan>
+  </text>
+  <text x="{{CENTER_X}}" y="{{ANCHOR_FOOTER_CENTER}}" class="handle" text-anchor="middle">{{BRAND_HANDLE}}</text>
+</svg>
