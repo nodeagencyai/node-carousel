@@ -1,0 +1,72 @@
+{
+  "$schema": "./manifest.schema.json",
+  "version": "v0.4",
+  "patterns": [
+    {
+      "id": "cover-asymmetric",
+      "role": "cover",
+      "description": "Hero cover, ragged-left. Kicker + accent rule top-left, massive headline bottom-left, handle bottom-right.",
+      "slots": ["KICKER", "HEADLINE_LINE_1", "HEADLINE_LINE_2", "BRAND_HANDLE"],
+      "supportsAxes": ["emphasis", "accentPlacement", "decorationMix"],
+      "template": "cover-asymmetric.svg"
+    },
+    {
+      "id": "cover-centered",
+      "role": "cover",
+      "description": "Hero cover, symmetric. Kicker / headline / handle all center-aligned on vertical axis.",
+      "slots": ["KICKER", "HEADLINE_LINE_1", "HEADLINE_LINE_2", "BRAND_HANDLE"],
+      "supportsAxes": ["emphasis", "accentPlacement", "decorationMix"],
+      "template": "cover-centered.svg"
+    },
+    {
+      "id": "list-bullet",
+      "role": "body",
+      "description": "Headline + 3-5 arrow-prefixed bullets. Default body pattern.",
+      "slots": ["HEADLINE", "ITEM_1", "ITEM_2", "ITEM_3", "ITEM_4", "ITEM_5"],
+      "computedSlots": ["ARROW_1", "ARROW_2", "ARROW_3", "ARROW_4", "ARROW_5"],
+      "supportsAxes": ["density", "composition", "accentPlacement", "decorationMix"],
+      "template": "list-bullet.svg"
+    },
+    {
+      "id": "list-numbered",
+      "role": "body",
+      "description": "Headline + 3-5 items with oversized accent-colored numerals (01, 02, 03).",
+      "slots": ["HEADLINE", "ITEM_1", "ITEM_2", "ITEM_3", "ITEM_4", "ITEM_5"],
+      "computedSlots": ["ITEM_NUMBER_1", "ITEM_NUMBER_2", "ITEM_NUMBER_3", "ITEM_NUMBER_4", "ITEM_NUMBER_5"],
+      "supportsAxes": ["density", "composition", "accentPlacement", "decorationMix"],
+      "template": "list-numbered.svg"
+    },
+    {
+      "id": "stat-dominant",
+      "role": "body",
+      "description": "One dominant stat (156px) + label (64px) + context. Enforces 2.4:1 ratio per research.",
+      "slots": ["STAT_VALUE", "STAT_LABEL", "STAT_CONTEXT"],
+      "supportsAxes": ["composition", "accentPlacement"],
+      "template": "stat-dominant.svg"
+    },
+    {
+      "id": "quote-pulled",
+      "role": "body",
+      "description": "Accent-colored italic pull quote. No quote marks — typography does the work.",
+      "slots": ["QUOTE_LINE_1", "QUOTE_LINE_2", "QUOTE_LINE_3", "QUOTE_LINE_4", "QUOTE_ATTRIBUTION"],
+      "supportsAxes": ["composition", "accentPlacement", "decorationMix"],
+      "template": "quote-pulled.svg"
+    },
+    {
+      "id": "split-comparison",
+      "role": "body",
+      "description": "Two zones side-by-side with muted divider. Before/after, us/them, problem/solution.",
+      "slots": ["LEFT_LABEL", "LEFT_LINE_1", "LEFT_LINE_2", "LEFT_LINE_3", "RIGHT_LABEL", "RIGHT_LINE_1", "RIGHT_LINE_2", "RIGHT_LINE_3"],
+      "supportsAxes": ["emphasis", "accentPlacement"],
+      "template": "split-comparison.svg"
+    },
+    {
+      "id": "cta-stacked",
+      "role": "cta",
+      "description": "Terminal slide. Hook + pill CTA + subtext + handle. Closes the deck.",
+      "slots": ["HOOK_LINE_1", "HOOK_LINE_2", "BUTTON", "SUBTEXT", "BRAND_HANDLE"],
+      "supportsAxes": ["accentPlacement", "decorationMix"],
+      "template": "cta-stacked.svg"
+    }
+  ]
+}
