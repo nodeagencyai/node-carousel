@@ -427,8 +427,11 @@ function buildDerivedDimensions(brand) {
     BOTTOM_Y_MINUS_40: height - 140,
     WIDTH_MINUS_100: width - 100,
     CENTER_Y_MINUS_120: centerY - 120,
+    CENTER_Y_MINUS_60: centerY - 60,
+    CENTER_Y_MINUS_40: centerY - 40,
     CENTER_Y_PLUS_60: centerY + 60,
     CENTER_Y_PLUS_140: centerY + 140,
+    CENTER_Y_PLUS_160: centerY + 160,
     // CTA-specific layout
     CTA_HOOK_Y: 480,
     BUTTON_WIDTH: buttonWidth,
@@ -622,11 +625,14 @@ export function renderSlide({
 
   // For bullet slides, show an arrow only when the corresponding bullet
   // content is present. Harmless no-op for templates that don't use ARROW_N.
+  // Also compute BULLET_NUMBER_N for bullet-numbered template — zero-padded
+  // "01".."05" when a bullet has content, empty string otherwise.
   for (let i = 1; i <= 5; i++) {
     const bullet = values[`BULLET_${i}`];
     const hasContent =
       bullet !== undefined && bullet !== null && String(bullet).trim() !== '';
     values[`ARROW_${i}`] = hasContent ? '\u2192' : '';
+    values[`BULLET_NUMBER_${i}`] = hasContent ? String(i).padStart(2, '0') : '';
   }
 
   // Responsive headline sizing for title/title-asymmetric templates.

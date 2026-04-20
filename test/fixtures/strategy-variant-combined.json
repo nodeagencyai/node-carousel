@@ -1,0 +1,43 @@
+{
+  "slides": [
+    { "template": "bullet", "data": {
+      "HEADLINE": "Three failure modes",
+      "BULLET_1": "Automating a broken process, faster",
+      "BULLET_2": "Hiding the decision, not removing it",
+      "BULLET_3": "Scoping to demo, not to day 90"
+    }},
+    { "template": "stat-side-label", "data": {
+      "STAT_VALUE": "73%",
+      "STAT_LABEL": "of AI projects never ship",
+      "STAT_CONTEXT": "Gartner, 2024"
+    }},
+    { "template": "bullet-numbered", "data": {
+      "HEADLINE": "The fix order",
+      "BULLET_1": "Find the decision, not the task",
+      "BULLET_2": "Write the rule in plain English",
+      "BULLET_3": "Ship the rule before the model",
+      "BULLET_4": "Measure the override rate weekly"
+    }},
+    { "template": "quote-minimal", "data": {
+      "QUOTE_LINE_1": "Replace a",
+      "QUOTE_LINE_2": "decision,",
+      "QUOTE_LINE_3": "not a task.",
+      "QUOTE_LINE_4": "",
+      "QUOTE_ATTRIBUTION": "Hard-won advice"
+    }},
+    { "template": "cta-double", "data": {
+      "CTA_HOOK_LINE_1": "Want the",
+      "CTA_HOOK_LINE_2": "full playbook?",
+      "CTA_BUTTON": "Follow",
+      "CTA_BUTTON_2": "DM PLAY",
+      "CTA_SUBTEXT": "Must be following so I can reply"
+    }},
+    { "template": "bullet-card", "data": {
+      "HEADLINE": "Ship rules",
+      "BULLET_1": "Ugly and shipped beats pretty and waiting",
+      "BULLET_2": "One feature, done, beats five in flight",
+      "BULLET_3": "Kill the meeting, write the memo",
+      "BULLET_4": "Ship Friday so Monday is quiet"
+    }}
+  ]
+}

@@ -43,6 +43,35 @@ If two ideas fight for space, split into two slides. A bullet slide with 5 unrel
   - **`quote`** — a line that earns being isolated. Your own words counted as quote if they're quotable. Or a real attributed quote from research.
   - **Another `title`** or second `bullet` — if the carousel has two phases (e.g. "Problem" then "Solution"), use a mid-carousel title slide as a divider
 
+### Composition variants (use for visual variety)
+
+When the same template family repeats in a carousel, pick different variants so consecutive slides don't look identical.
+
+**Bullet family** (all use same data: `HEADLINE`, `BULLET_1..5`):
+- `bullet` — classic left-aligned with arrow markers. Default.
+- `bullet-right` — right-aligned mirror. Use at most once per deck. Feels editorial.
+- `bullet-numbered` — oversized accent numbers (01, 02, 03) instead of arrows. Use when sequence/order matters.
+- `bullet-card` — headline on top, bullets inside tinted card. Use for contained feel (rules, principles, manifestos).
+
+**Stat family** (all use same data: `STAT_VALUE`, `STAT_LABEL`, `STAT_CONTEXT`):
+- `stat` — classic centered huge number. Default.
+- `stat-side-label` — number on left, label/context on right. Horizontal composition.
+- `stat-oversized-context` — smaller number, bigger context. Use when context matters more than the number. Keep `STAT_CONTEXT` under ~50 chars for this variant.
+
+**Quote family** (all use same data: `QUOTE_LINE_1..4`, `QUOTE_ATTRIBUTION`):
+- `quote` — classic with oversized quote mark. Default.
+- `quote-centered` — centered, subtle mark below. Intimate, reflective.
+- `quote-minimal` — no quote marks, accent-colored typography. The quote itself IS the visual.
+
+**CTA family** (data: `CTA_HOOK_LINE_1/2`, `CTA_BUTTON`, `CTA_SUBTEXT`; `cta-double` also needs `CTA_BUTTON_2`):
+- `cta` — classic hook + button + subtext. Default.
+- `cta-minimal` — no button, just hook + subtext. Use for passive asks ("follow for more").
+- `cta-double` — two side-by-side buttons. Use when offering two actions (e.g. "Follow" + "Save").
+
+### Variety rule (hard)
+
+Never use the same template variant in 3 consecutive slides. If slide 2 is `bullet`, slide 3 must break the chain with a different family (`stat`, `quote`, etc.). Slide 4 may return to `bullet` but prefer a different variant (`bullet-numbered` or `bullet-card`).
+
 ### Voice
 Match `brand.tone` exactly. If the brand says "direct, no fluff, builder-voice" you do not write "unlock your business potential." You write "stop doing the thing."
 
