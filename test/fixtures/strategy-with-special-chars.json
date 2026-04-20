@@ -1,0 +1,6 @@
+{
+  "slides": [
+    { "template": "title", "data": { "KICKER": "TEST", "HEADLINE_LINE_1": "Rock & Roll", "HEADLINE_LINE_2": "Is < better >" } },
+    { "template": "quote", "data": { "QUOTE_LINE_1": "She said \"hello\"", "QUOTE_ATTRIBUTION": "A & B" } }
+  ]
+}
