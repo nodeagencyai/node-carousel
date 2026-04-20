@@ -22,7 +22,7 @@
     <text x="0" y="90" class="arrow">→</text><text x="50" y="90" class="bullet">A checklist that exposes a real problem</text>
     <text x="0" y="180" class="arrow">→</text><text x="50" y="180" class="bullet">A teardown of a specific live example</text>
     <text x="0" y="270" class="arrow">→</text><text x="50" y="270" class="bullet">A single email with a direct offer</text>
-    <text x="0" y="360" class="arrow">→</text><text x="50" y="360" class="bullet">A calendar link the magnet earned them</text>
+    <text x="0" y="360" class="arrow"></text><text x="50" y="360" class="bullet"></text>
   </g>
   <text x="980" y="1250" class="counter" text-anchor="end">04 / 05</text>
 </svg>

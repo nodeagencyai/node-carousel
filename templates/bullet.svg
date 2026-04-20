@@ -11,11 +11,11 @@
   {{BACKGROUND}}
   <text x="100" y="240" class="headline">{{HEADLINE}}</text>
   <g transform="translate(100, 430)">
-    <text x="0" y="0" class="arrow">→</text><text x="50" y="0" class="bullet">{{BULLET_1}}</text>
-    <text x="0" y="90" class="arrow">→</text><text x="50" y="90" class="bullet">{{BULLET_2}}</text>
-    <text x="0" y="180" class="arrow">→</text><text x="50" y="180" class="bullet">{{BULLET_3}}</text>
-    <text x="0" y="270" class="arrow">→</text><text x="50" y="270" class="bullet">{{BULLET_4}}</text>
-    <text x="0" y="360" class="arrow">→</text><text x="50" y="360" class="bullet">{{BULLET_5}}</text>
+    <text x="0" y="0" class="arrow">{{ARROW_1}}</text><text x="50" y="0" class="bullet">{{BULLET_1}}</text>
+    <text x="0" y="90" class="arrow">{{ARROW_2}}</text><text x="50" y="90" class="bullet">{{BULLET_2}}</text>
+    <text x="0" y="180" class="arrow">{{ARROW_3}}</text><text x="50" y="180" class="bullet">{{BULLET_3}}</text>
+    <text x="0" y="270" class="arrow">{{ARROW_4}}</text><text x="50" y="270" class="bullet">{{BULLET_4}}</text>
+    <text x="0" y="360" class="arrow">{{ARROW_5}}</text><text x="50" y="360" class="bullet">{{BULLET_5}}</text>
   </g>
   <text x="{{WIDTH_MINUS_100}}" y="{{BOTTOM_Y}}" class="counter" text-anchor="end">{{SLIDE_NUMBER}} / {{SLIDE_TOTAL}}</text>
 </svg>

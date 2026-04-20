@@ -277,6 +277,15 @@ export function renderSlide({
     ...(slideData || {}),
   };
 
+  // For bullet slides, show an arrow only when the corresponding bullet
+  // content is present. Harmless no-op for templates that don't use ARROW_N.
+  for (let i = 1; i <= 5; i++) {
+    const bullet = values[`BULLET_${i}`];
+    const hasContent =
+      bullet !== undefined && bullet !== null && String(bullet).trim() !== '';
+    values[`ARROW_${i}`] = hasContent ? '\u2192' : '';
+  }
+
   // Pass 2: fill the main template. Escape every string EXCEPT BACKGROUND
   // (which is already SVG markup — escaping would turn <rect> into &lt;rect&gt;).
   const escaped = escapeValues(values, ['BACKGROUND']);
