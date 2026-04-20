@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {{WIDTH}} {{HEIGHT}}" width="{{WIDTH}}" height="{{HEIGHT}}">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family={{FONT_DISPLAY_URL}}:wght@700;800&amp;family={{FONT_BODY_URL}}:wght@400;500;600&amp;display=swap');
+      .headline { font-family: {{FONT_DISPLAY_STACK}}; font-weight: 700; font-size: {{TYPE_SUBHEAD}}px; fill: {{ON_SURFACE}}; letter-spacing: {{SUBHEAD_LETTER_SPACING}}; }
+      .number { font-family: {{FONT_DISPLAY_STACK}}; font-weight: 800; font-size: {{TYPE_LABEL}}px; fill: {{ACCENT}}; letter-spacing: -0.02em; }
+      .item { font-family: {{FONT_BODY_STACK}}; font-weight: 500; font-size: {{TYPE_BODY_LARGE}}px; fill: {{ON_SURFACE}}; }
+      .handle { font-family: {{FONT_BODY_STACK}}; font-weight: 500; font-size: 26px; fill: {{SURFACE_MUTED}}; letter-spacing: 0.05em; }
+    </style>
+  </defs>
+  {{BACKGROUND}}
+  {{DECORATIONS}}
+  {{NUMBERING}}
+  <text x="{{COL_1_X}}" y="{{ANCHOR_BODY_TOP}}" class="headline">{{HEADLINE}}</text>
+  <g transform="translate({{COL_1_X}}, {{LIST_GROUP_Y}})">
+    <text x="0" y="0" class="number">{{ITEM_NUMBER_1}}</text>
+    <text x="104" y="0" class="item">{{ITEM_1}}</text>
+    <text x="0" y="{{ROW_SPACING_NUMBERED}}" class="number">{{ITEM_NUMBER_2}}</text>
+    <text x="104" y="{{ROW_SPACING_NUMBERED}}" class="item">{{ITEM_2}}</text>
+    <text x="0" y="{{ROW_SPACING_NUMBERED_2}}" class="number">{{ITEM_NUMBER_3}}</text>
+    <text x="104" y="{{ROW_SPACING_NUMBERED_2}}" class="item">{{ITEM_3}}</text>
+    <text x="0" y="{{ROW_SPACING_NUMBERED_3}}" class="number">{{ITEM_NUMBER_4}}</text>
+    <text x="104" y="{{ROW_SPACING_NUMBERED_3}}" class="item">{{ITEM_4}}</text>
+    <text x="0" y="{{ROW_SPACING_NUMBERED_4}}" class="number">{{ITEM_NUMBER_5}}</text>
+    <text x="104" y="{{ROW_SPACING_NUMBERED_4}}" class="item">{{ITEM_5}}</text>
+  </g>
+  <text x="{{WIDTH_MINUS_MARGIN}}" y="{{ANCHOR_FOOTER_CENTER}}" class="handle" text-anchor="end">{{BRAND_HANDLE}}</text>
+</svg>
