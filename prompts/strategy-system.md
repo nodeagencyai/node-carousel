@@ -35,7 +35,7 @@ The reader who made it this far is the warmest audience you'll ever have. Ask fo
 If two ideas fight for space, split into two slides. A bullet slide with 5 unrelated bullets is five slides pretending to be one.
 
 ### Template selection rules
-- Slide 1 → `title` (hook)
+- Slide 1 → `title` (centered, classic) OR `title-asymmetric` (ragged-left, editorial). Prefer `title-asymmetric` when `brand.visual.fonts.display` is a serif (Instrument Serif, DM Serif Display, Playfair Display) OR when `brand.tone` is editorial/premium/bold. Use plain `title` for technical-mono and neo-grotesk voices where symmetry fits better.
 - Slide N (last) → `cta` (ask)
 - Middle slides → pick the template that fits the content:
   - **`bullet`** — 3 to 5 parallel items (checklist, steps, traits, mistakes)
