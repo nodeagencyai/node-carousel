@@ -1,0 +1,7 @@
+{
+  "slides": [
+    { "template": "title", "data": { "KICKER": "A GUIDE", "HEADLINE_LINE_1": "Test", "HEADLINE_LINE_2": "Carousel" } },
+    { "template": "bullet", "data": { "HEADLINE": "Three things", "BULLET_1": "First point", "BULLET_2": "Second point", "BULLET_3": "Third point" } },
+    { "template": "stat", "data": { "STAT_VALUE": "87%", "STAT_LABEL": "of people skip this", "STAT_CONTEXT": "based on a study we're making up" } }
+  ]
+}
