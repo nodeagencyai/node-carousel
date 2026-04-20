@@ -182,6 +182,20 @@ Film-grain texture overlay. Single biggest premium upgrade. Works on any `type` 
 | `grain.intensity` | number 0–1 | `0.12` | Opacity of the grain overlay. `0.05` = barely visible, `0.15` = obviously textured. Stay under `0.2` or text becomes hard to read. |
 | `grain.baseFrequency` | number 0.3–2.0 | `0.9` | Frequency of `feTurbulence`. Higher = finer grain. `0.6` = chunky film grain, `1.2` = tight digital noise. |
 
+### `visual.logo` (object, optional — v0.4.2+)
+
+Brand-wide logo rendered on cover + CTA patterns (`cover-asymmetric`, `cover-centered`, `cta-stacked`). Body patterns (list, stat, quote, split) intentionally skip the logo — they're too busy visually.
+
+Missing field or missing `logo.file` → no logo rendered (backward compatible with v0.4.1 brand profiles).
+
+| Field | Type | Default | Notes |
+|---|---|---|---|
+| `logo.file` | string | — | Path to an SVG file, resolved relative to the `strategy.json` directory (not the plugin install dir). File must be a 24×24 viewBox SVG using `stroke="currentColor"`. Passes the same safe-bounds validation as icons — no `<script>`, no hardcoded hex, ≤ 8KB. |
+| `logo.position` | `"top-left"` \| `"top-right"` \| `"bottom-left"` \| `"bottom-right"` | `"top-left"` | Which corner. 72px inset from both edges (matches cover-asymmetric kicker inset). |
+| `logo.size` | number | `48` | Logo height/width in pixels. Source SVG is assumed to use a 24×24 viewBox (Lucide convention) — scale factor is `size / 24`. |
+
+Logo color defaults to `visual.colors.text` (via the `ON_SURFACE` role) so it reads on both light and dark brand surfaces.
+
 ### `visual.numbering` (object, optional)
 
 Slide counter style on mid-deck slides (not shown on title or CTA slides).

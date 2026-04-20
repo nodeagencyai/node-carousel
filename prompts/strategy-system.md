@@ -158,6 +158,12 @@ Split the quote manually across 2–4 lines for visual balance. Aim for similar 
 **CTA_BUTTON**: verb-first, 2–5 words. "Follow for more", "DM me SKILL", "Repost to save it".
 **CTA_SUBTEXT**: optional. "Must be following so I can DM", "New drops every Tuesday".
 
+## Brand logo (optional, v0.4.2+)
+
+If the brand profile specifies `visual.logo.file`, the logo automatically appears on cover + CTA slides (`cover-asymmetric`, `cover-centered`, `cta-stacked`). You don't need to specify anything in strategy.json — it's a brand-wide decoration configured in `brand-profile.json`.
+
+Position defaults to `top-left`. Users configure it in their brand profile. Body slides (list, stat, quote, split) skip the logo on purpose — they're too busy.
+
 ## Icon slots (optional, v0.4.1+)
 
 `stat-dominant`, `cover-asymmetric`, and `split-comparison` patterns support an optional `icon` field per slide. Icons ADD meaning; they are punctuation, not grammar. Never use more than 2 icons per carousel.

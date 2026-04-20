@@ -306,6 +306,81 @@ function loadIconFromFile(filePath, strategyDir) {
   return validateIconSvg(inner, 8000);
 }
 
+// ---------------------------------------------------------------------------
+// Logo slot (v0.4.2) — brand-wide logo on cover + CTA patterns
+// ---------------------------------------------------------------------------
+
+/**
+ * Compute translate(x, y) + scale(s) for a 24x24 source SVG placed in one of
+ * 4 canvas corners, sized to `size` px, inset by GRID.sideMargin from both
+ * edges (matches cover-asymmetric kicker inset).
+ *
+ * Source viewBox is assumed 24x24 (Lucide convention + common custom logo
+ * size). Non-24-viewBox logos will scale incorrectly — document in schema.
+ */
+function logoTransform(position, size, canvasWidth, canvasHeight) {
+  const margin = GRID.sideMargin; // 72 by default
+  const scale = size / 24;
+  let x, y;
+  switch (position) {
+    case 'top-right':
+      x = canvasWidth - margin - size;
+      y = margin;
+      break;
+    case 'bottom-left':
+      x = margin;
+      y = canvasHeight - margin - size;
+      break;
+    case 'bottom-right':
+      x = canvasWidth - margin - size;
+      y = canvasHeight - margin - size;
+      break;
+    case 'top-left':
+    default:
+      x = margin;
+      y = margin;
+      break;
+  }
+  return { x, y, scale };
+}
+
+const LOGO_POSITIONS = new Set(['top-left', 'top-right', 'bottom-left', 'bottom-right']);
+
+/**
+ * Resolve the brand logo into a raw SVG `<g>` element, positioned per
+ * brand.visual.logo.position and sized per brand.visual.logo.size.
+ *
+ * Returns '' if:
+ *   - no logo configured (backward compat with v0.4.1 brand profiles)
+ *   - file missing / unreadable
+ *   - validation fails (same safe-bounds as icons — no hex, no script, ≤8KB)
+ *
+ * `strategyDir` is the base dir for relative file paths (same as icons).
+ */
+function resolveLogo(brand, strategyDir) {
+  const logo = brand?.visual?.logo;
+  if (!logo || typeof logo !== 'object' || !logo.file) return '';
+
+  const inner = loadIconFromFile(logo.file, strategyDir);
+  if (!inner) return ''; // warning already logged
+
+  const rawPosition = typeof logo.position === 'string' ? logo.position : 'top-left';
+  const position = LOGO_POSITIONS.has(rawPosition) ? rawPosition : 'top-left';
+  if (!LOGO_POSITIONS.has(rawPosition)) {
+    console.warn(`\u26a0  Logo: unknown position "${rawPosition}" — falling back to "top-left"`);
+  }
+
+  const rawSize = typeof logo.size === 'number' && logo.size > 0 ? logo.size : 48;
+  const geo = logoTransform(position, rawSize, CANVAS.width, CANVAS.height);
+
+  // Logo uses ON_SURFACE color so it reads on both light and dark brand
+  // surfaces. Authors can override at CSS level by embedding fill/stroke in
+  // their source SVG — but hardcoded hex is banned by validateIconSvg, so the
+  // source must use currentColor like the icon library.
+  const roles = buildColorRoles(brand.visual?.colors || {});
+  return `<g aria-label="logo" color="${roles.ON_SURFACE}" transform="translate(${geo.x} ${geo.y}) scale(${geo.scale})" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${inner}</g>`;
+}
+
 /**
  * Resolve a single icon specifier to raw SVG primitives (or empty on miss).
  * Accepts `{ library: "shield" }`, `{ svg: "<path…/>" }`, `{ file: "./icon.svg" }`,
@@ -746,16 +821,22 @@ function renderPatternSlide({
   // Empty if absent.
   const iconSlots = resolveIconSlots(slide, strategyDir);
 
+  // Logo slot (v0.4.2) — brand-wide, rendered only on patterns that carry
+  // a {{LOGO}} slot (cover-asymmetric, cover-centered, cta-stacked). Body
+  // patterns have no {{LOGO}} placeholder so the value is simply ignored.
+  const logoSvg = resolveLogo(brand, strategyDir);
+
   const finalValues = {
     ...values,
     BACKGROUND: backgroundSvg,
     DECORATIONS: decorationsSvg,
     NUMBERING: numberingSvg,
+    LOGO: logoSvg,
     ...iconSlots,
   };
 
   // Escape everything EXCEPT raw-SVG / raw-CSS slots:
-  //   BACKGROUND / DECORATIONS / NUMBERING / ICON*: raw SVG markup.
+  //   BACKGROUND / DECORATIONS / NUMBERING / LOGO / ICON*: raw SVG markup.
   //   FONT_*_STACK: CSS font-family value with single quotes around the name
   //     (e.g. `'Instrument Serif', serif`). Escaping turns the quotes into
   //     `&apos;` which breaks CSS. Font names come from brand.visual.fonts
@@ -765,6 +846,7 @@ function renderPatternSlide({
     'BACKGROUND',
     'DECORATIONS',
     'NUMBERING',
+    'LOGO',
     'ICON',
     'ICON_LEFT',
     'ICON_RIGHT',

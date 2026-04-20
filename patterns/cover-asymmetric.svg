@@ -10,6 +10,7 @@
   </defs>
   {{BACKGROUND}}
   {{DECORATIONS}}
+  {{LOGO}}
   {{NUMBERING}}
   <text x="{{COL_1_X}}" y="{{ANCHOR_FLAG_TOP}}" class="kicker">{{KICKER}}</text>
   <g color="{{ACCENT}}" transform="translate({{ICON_KICKER_X}} {{ICON_KICKER_Y}}) scale(1.5)" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{{ICON}}</g>
