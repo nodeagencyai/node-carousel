@@ -13,15 +13,44 @@
       "muted": "#6B6B6B"
     },
     "fonts": {
-      "display": "DM Serif Display",
-      "body": "Manrope"
+      "display": "Instrument Serif",
+      "body": "Inter"
     },
     "background": {
       "type": "solid",
       "color": "#F8F5F0",
-      "gradient": { "from": "#F8F5F0", "to": "#E8E0D4", "angle": 135 },
-      "imagePath": null
+      "gradient": {
+        "from": "#F8F5F0",
+        "to": "#C84B31",
+        "angle": 135
+      },
+      "mesh": {
+        "blobs": [
+          { "cx": "20%", "cy": "30%", "r": "45%", "color": "#C84B31", "opacity": 0.15 },
+          { "cx": "80%", "cy": "70%", "r": "55%", "color": "#9B3D27", "opacity": 0.12 },
+          { "cx": "50%", "cy": "50%", "r": "35%", "color": "#F8F5F0", "opacity": 0.1 }
+        ]
+      },
+      "radial": {
+        "center": "50% 30%",
+        "from": "#C84B31",
+        "to": "#F8F5F0",
+        "stops": [0.15, 0.85]
+      },
+      "imagePath": null,
+      "grain": {
+        "enabled": true,
+        "intensity": 0.08,
+        "baseFrequency": 0.9
+      }
     },
-    "dimensions": { "width": 1080, "height": 1350 }
+    "numbering": {
+      "style": "fraction-mono",
+      "position": "bottom-right"
+    },
+    "dimensions": {
+      "width": 1080,
+      "height": 1350
+    }
   }
 }

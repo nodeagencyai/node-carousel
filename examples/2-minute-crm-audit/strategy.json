@@ -1,7 +1,7 @@
 {
   "slides": [
     {
-      "template": "title",
+      "template": "title-asymmetric",
       "data": {
         "KICKER": "A 2-MIN AUDIT",
         "HEADLINE_LINE_1": "Your CRM is leaking",
