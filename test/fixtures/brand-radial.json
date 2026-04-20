@@ -1,0 +1,34 @@
+{
+  "brand": {
+    "name": "Radial Brand",
+    "handle": "@radialbrand",
+    "tone": "atmospheric"
+  },
+  "visual": {
+    "colors": {
+      "background": "#0f0f0f",
+      "text": "#FFFFFF",
+      "accent": "#29F2FE",
+      "accentSecondary": "#0B8AEE",
+      "muted": "#999999"
+    },
+    "fonts": {
+      "display": "Playfair Display",
+      "body": "Inter"
+    },
+    "background": {
+      "type": "radial",
+      "color": "#0f0f0f",
+      "radial": {
+        "center": "50% 30%",
+        "from": "#29F2FE",
+        "to": "#0f0f0f",
+        "stops": [0.2, 0.85]
+      }
+    },
+    "dimensions": {
+      "width": 1080,
+      "height": 1350
+    }
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "brand": {
+    "name": "Mesh Brand",
+    "handle": "@meshbrand",
+    "tone": "vibrant, modern"
+  },
+  "visual": {
+    "colors": {
+      "background": "#0f0f0f",
+      "text": "#FFFFFF",
+      "accent": "#29F2FE",
+      "accentSecondary": "#0B8AEE",
+      "muted": "#999999"
+    },
+    "fonts": {
+      "display": "Playfair Display",
+      "body": "Inter"
+    },
+    "background": {
+      "type": "mesh",
+      "color": "#0f0f0f",
+      "mesh": {
+        "blobs": [
+          { "cx": "20%", "cy": "30%", "r": "45%", "color": "#29F2FE", "opacity": 0.35 },
+          { "cx": "80%", "cy": "70%", "r": "55%", "color": "#0B8AEE", "opacity": 0.4 },
+          { "cx": "50%", "cy": "50%", "r": "35%", "color": "#6B3FA0", "opacity": 0.25 }
+        ]
+      }
+    },
+    "dimensions": {
+      "width": 1080,
+      "height": 1350
+    }
+  }
+}
