@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {{WIDTH}} {{HEIGHT}}" width="{{WIDTH}}" height="{{HEIGHT}}">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family={{FONT_DISPLAY_URL}}:wght@700;800&amp;family={{FONT_BODY_URL}}:wght@400;500&amp;display=swap');
+      .stat-side { font-family: '{{FONT_DISPLAY}}', serif; font-weight: 800; font-size: 220px; fill: {{COLOR_ACCENT}}; letter-spacing: -0.03em; }
+      .label-side { font-family: '{{FONT_DISPLAY}}', serif; font-weight: 700; font-size: 42px; fill: {{COLOR_TEXT}}; }
+      .context-side { font-family: '{{FONT_BODY}}', sans-serif; font-weight: 400; font-size: 26px; fill: {{COLOR_MUTED}}; }
+    </style>
+  </defs>
+  {{BACKGROUND}}
+  {{DECORATIONS}}
+  <text x="100" y="{{CENTER_Y}}" class="stat-side" dominant-baseline="middle">{{STAT_VALUE}}</text>
+  <text x="600" y="{{CENTER_Y_MINUS_40}}" class="label-side">{{STAT_LABEL}}</text>
+  <text x="600" y="{{CENTER_Y_PLUS_60}}" class="context-side">{{STAT_CONTEXT}}</text>
+  {{NUMBERING}}
+</svg>

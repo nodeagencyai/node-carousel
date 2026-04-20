@@ -1,0 +1,9 @@
+{
+  "slides": [
+    { "template": "stat-oversized-context", "data": {
+      "STAT_VALUE": "$47k",
+      "STAT_LABEL": "Average CRM leak per audit",
+      "STAT_CONTEXT": "Money hiding in stuck deals"
+    }}
+  ]
+}

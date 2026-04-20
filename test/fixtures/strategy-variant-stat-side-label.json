@@ -1,0 +1,9 @@
+{
+  "slides": [
+    { "template": "stat-side-label", "data": {
+      "STAT_VALUE": "73%",
+      "STAT_LABEL": "of AI projects never ship",
+      "STAT_CONTEXT": "Gartner, 2024"
+    }}
+  ]
+}
