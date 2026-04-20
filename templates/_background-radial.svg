@@ -1,0 +1,7 @@
+<defs>
+  <radialGradient id="bg-radial" cx="{{RADIAL_CX}}" cy="{{RADIAL_CY}}" r="{{RADIAL_R}}">
+    <stop offset="{{RADIAL_STOP_FROM}}" stop-color="{{RADIAL_FROM}}"/>
+    <stop offset="{{RADIAL_STOP_TO}}" stop-color="{{RADIAL_TO}}"/>
+  </radialGradient>
+</defs>
+<rect x="0" y="0" width="{{WIDTH}}" height="{{HEIGHT}}" fill="url(#bg-radial)"/>
