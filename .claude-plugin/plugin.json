@@ -1,0 +1,8 @@
+{
+  "name": "node-carousel",
+  "version": "0.1.0",
+  "description": "Free Instagram carousel SVG generator for Claude Code. Template-first, brand-aware, no paid APIs.",
+  "author": "Niek Huggers (Node — nodeagency.ai)",
+  "license": "MIT",
+  "homepage": "https://github.com/nodeagencyai/node-carousel"
+}
