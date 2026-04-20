@@ -740,9 +740,11 @@ function buildTokenValues(brand, axes, slideNumber, slideTotal) {
     ANCHOR_SUBTEXT_Y: subtextY,
 
     // Icon slot positions (v0.4.1). 24x24 viewBox at scale 1.5 = 36px, scale 1.67 = 40px.
-    // Cover-asymmetric: top-right balance, opposite kicker
-    ICON_KICKER_X: CANVAS.width - GRID.sideMargin - 40, // 968
-    ICON_KICKER_Y: ANCHORS.FLAG_TOP - 24,               //  72
+    // Cover-asymmetric: inline with kicker (content-integrated). Was previously
+    // top-right corner which read as chrome/branding rather than content. Now
+    // the icon lives beside the kicker so it anchors the topic visually.
+    ICON_KICKER_X: COLS[0],                             // 72  — aligned to kicker
+    ICON_KICKER_Y: ANCHORS.FLAG_TOP - 72,               //  24 — 48px above kicker text
     // Stat-dominant: centered above stat-value. Stat baseline=600 (156px font →
     // text top ~y=475), so icon needs to clear that. y=380 gives a 90px gap
     // between icon-bottom (y=420) and stat-top.
