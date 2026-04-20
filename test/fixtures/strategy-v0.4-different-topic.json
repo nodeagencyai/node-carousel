@@ -1,0 +1,13 @@
+{
+  "topic": "CRM audit",
+  "slides": [
+    { "pattern": "cover-asymmetric", "data": { "KICKER": "4 RED FLAGS", "HEADLINE_LINE_1": "Your CRM is", "HEADLINE_LINE_2": "a graveyard" } },
+    { "pattern": "list-numbered", "data": { "HEADLINE": "Signs you need an audit", "ITEM_1": "Deals with no last-touch date", "ITEM_2": "Two reps, same contact, different stages", "ITEM_3": "Stale pipelines no one closes" } },
+    { "pattern": "stat-dominant", "data": { "STAT_VALUE": "62%", "STAT_LABEL": "of CRM data goes stale in 90 days", "STAT_CONTEXT": "Internal benchmark" } },
+    { "pattern": "quote-pulled", "data": { "QUOTE_LINE_1": "Clean CRM data", "QUOTE_LINE_2": "beats any", "QUOTE_LINE_3": "new feature.", "QUOTE_ATTRIBUTION": "Every RevOps lead ever" } },
+    { "pattern": "split-comparison", "data": { "LEFT_LABEL": "BEFORE", "LEFT_LINE_1": "Stale pipelines", "LEFT_LINE_2": "Duplicate contacts", "LEFT_LINE_3": "No reporting", "RIGHT_LABEL": "AFTER", "RIGHT_LINE_1": "Weekly hygiene jobs", "RIGHT_LINE_2": "Single source of truth", "RIGHT_LINE_3": "Pipeline velocity tracked" } },
+    { "pattern": "list-bullet", "data": { "HEADLINE": "What an audit covers", "ITEM_1": "Field hygiene + required defaults", "ITEM_2": "Stage definitions with exit criteria", "ITEM_3": "Automations that move deals, not email", "ITEM_4": "Reporting the team actually opens" } },
+    { "pattern": "cover-centered", "data": { "KICKER": "THE TAKEAWAY", "HEADLINE_LINE_1": "Fix the data,", "HEADLINE_LINE_2": "then the stack." } },
+    { "pattern": "cta-stacked", "data": { "HOOK_LINE_1": "CRM looking", "HOOK_LINE_2": "rough?", "BUTTON": "DM CRM", "SUBTEXT": "I'll review it in 24 hours" } }
+  ]
+}
