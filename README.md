@@ -1,172 +1,174 @@
 # node-carousel
 
-Free Instagram carousel generator for Claude Code. Runs on your own Claude plan. No API keys, no Figma, no Canva.
+**Free Instagram carousel generator for Claude Code. Procedurally varied, quality-locked, zero paid APIs.**
+
+Turn a topic into a branded 5–8 slide SVG carousel in one command. Runs entirely on your Claude Code plan — no OpenRouter, no Gemini, no Canva, no subscriptions.
 
 <p align="center">
-  <img src="examples/why-your-lead-magnet-isnt-converting/slide-01.svg" width="30%" alt="Why your lead magnet isn't converting" />
-  <img src="examples/5-signs-overengineered/slide-01.svg" width="30%" alt="5 signs your AI automation is over-engineered" />
-  <img src="examples/2-minute-crm-audit/slide-01.svg" width="30%" alt="The 2-minute CRM audit" />
+  <img src="examples/5-signs-overengineered/slide-01.svg" width="32%" alt="5 signs your AI is overbuilt — technical-mono preset, noise-gradient background" />
+  <img src="examples/2-minute-crm-audit/slide-01.svg" width="32%" alt="The 2-minute CRM audit — editorial-serif preset, warm paper background" />
+  <img src="examples/why-your-lead-magnet-isnt-converting/slide-01.svg" width="32%" alt="Why your lead magnet isn't converting — satoshi-tech preset, dark noise gradient" />
 </p>
 
 ---
 
-## What this is
+## What makes v0.4 different
 
-A Claude Code plugin that turns a topic into a 5–8 slide branded Instagram carousel. You tell it what to post about, it produces the strategy, renders SVG slides from your brand config, and writes the caption.
+Most AI carousel tools are one of two things: dumb text templates that all look the same, or "AI generates the whole SVG" products that look gorgeous in the demo and break in week two.
 
-- `/node-carousel:setup` — one-time wizard that writes your `brand-profile.json`
-- `/node-carousel:generate <topic>` — topic in, carousel + caption out
-- `/node-carousel:export` — PNGs ready to upload
+This one is neither. v0.4 is a **procedural design system** — not a template engine, not a freeform generator.
 
-## Why another carousel tool
-
-Most AI carousel tools are one of two things: text-only templates that all look the same, or "AI generates the whole SVG" products that work great in the demo and break in week two.
-
-This one takes a different cut:
-
-- **Template-first, Claude-filled.** Your slides render from hand-designed SVG templates with `{{PLACEHOLDERS}}`. Claude picks layouts and fills content. No black-box generation. Output looks the same every time.
-- **Brand config in one file.** Colors, fonts, tone, background — all in `brand-profile.json`. Change one hex code, every slide updates.
-- **No API keys.** Runs entirely on your Claude Code plan. No OpenRouter, no Gemini, no Stability, no Replicate. Zero dollars to run.
-- **Works on Haiku, Sonnet, Opus.** The logic is simple enough that any Claude model can drive it.
+- **Variety within quality.** Every carousel is seeded by `hash(brand.handle + topic + version)`. The same inputs always produce the byte-identical deck. Different inputs produce visibly different compositions — different typography scale, different decoration picks, different background variations — within a locked aesthetic. Two users generating two topics never get the same deck. Re-running on the same topic always does.
+- **Token-driven polish.** Typography, spacing, grids, color roles, and decoration rhythm come from shared token files (not hardcoded per-slide). Change one token, every slide updates. Swap one preset, the whole deck re-skins without touching the content.
+- **8 compositional patterns, 6 aesthetic presets.** Cover, list (bullet / numbered), stat-dominant, quote-pulled, split-comparison, CTA — each pattern has multiple typographic + background variations. Presets pick from well-known brand languages (Stripe / Linear, NYT, Pentagram, Vercel, Fontshare).
+- **Deterministic seeded sampling across 6 variation axes.** Size (compact / standard / oversized), weight contrast, kicker presence, decoration flavor, background variant, noise texture — each is a controlled axis. The seeded RNG picks a coordinate in that space. Output feels hand-designed but is reproducible and version-controllable.
 
 ## Install
-
-### Option 1: Install as a Claude Code plugin (recommended)
 
 ```bash
 git clone https://github.com/nodeagencyai/node-carousel ~/.claude/plugins/node-carousel
 ```
 
-Restart Claude Code. You should see `/node-carousel:setup` available.
-
-### Option 2: Copy skills globally
-
-```bash
-git clone https://github.com/nodeagencyai/node-carousel /tmp/nc
-cp -r /tmp/nc/commands/* ~/.claude/commands/
-cp -r /tmp/nc ~/.claude/node-carousel
-```
-
-Then edit the commands to point at `~/.claude/node-carousel` as the plugin root.
+Restart Claude Code. `/node-carousel:setup` should appear in the command palette.
 
 ## Quick start
 
 ```bash
-# 1. Set up your brand (one-time, creates brand-profile.json in your current dir)
+# 1. Configure your brand (one-time — writes brand-profile.json to cwd)
 /node-carousel:setup
 
 # 2. Generate a carousel
 /node-carousel:generate 5 signs your AI automation is over-engineered
 
-# 3. Export to PNG (optional — requires Puppeteer, ~170MB Chromium)
+# 3. Export PNGs (optional — requires Playwright, bundled)
 /node-carousel:export
 ```
 
-That's the whole thing. Outputs land in `./output/<topic-slug>/`:
-- `slide-01.svg` through `slide-NN.svg` — the slides
-- `preview.html` — all slides in a browser, for review
-- `caption.txt` — the Instagram caption
-- `strategy.json` — the slide spec, so you can edit and re-render
+Outputs land in `./output/<topic-slug>/`:
+
+- `slide-01.svg` … `slide-NN.svg` — the slides
+- `preview.html` — all slides in a single browser view
+- `caption.txt` — Instagram caption
+- `strategy.json` — slide spec (edit + re-render without re-asking Claude)
+- `_axes.json` — the chosen coordinate on the 6 variation axes (for debugging + reproducibility)
 
 ## Configuration
 
-Your `brand-profile.json` looks like this:
+Your `brand-profile.json` lives at the project root. Setup writes it for you; you can hand-edit any field.
 
-```json
-{
-  "brand": {
-    "name": "Node",
-    "handle": "@nodeagency",
-    "tone": "direct, builder-voice, no fluff"
-  },
-  "visual": {
-    "colors": {
-      "background": "#0f0f0f",
-      "text": "#FFFFFF",
-      "accent": "#29F2FE",
-      "accentSecondary": "#0B8AEE",
-      "muted": "#888888"
-    },
-    "fonts": {
-      "display": "Playfair Display",
-      "body": "Inter"
-    },
-    "background": {
-      "type": "gradient",
-      "color": "#0f0f0f",
-      "gradient": { "from": "#0f0f0f", "to": "#0B8AEE", "angle": 135 },
-      "imagePath": null
-    },
-    "dimensions": { "width": 1080, "height": 1350 }
-  }
+Full schema with every field, type, and default: [**`docs/brand-profile-schema.md`**](docs/brand-profile-schema.md).
+
+Fonts are sourced from **Google Fonts** (any free family name works) and **Fontshare** (for the `satoshi-tech` preset). Backgrounds, noise, decorations, logos, numbering, and dimensions are all declarative — no CSS, no code.
+
+## The 6 aesthetic presets
+
+Choose one during setup. Each preset is a coherent brand language — fonts, palette, background style, decoration defaults — not a theme skin.
+
+| Preset | Voice fit | Visual language |
+|---|---|---|
+| `editorial-serif` | Warm, premium, long-form | Instrument Serif + Inter, paper-warm palette, soft grain (Lenny's Newsletter, Morning Brew) |
+| `neo-grotesk` | Clean, confident, SaaS | Inter + Inter, flat neutrals + single strong accent (Stripe, Linear, Cal.com) |
+| `technical-mono` | Precise, developer-facing | JetBrains Mono display + Inter body, bracketed corners, grid overlay (Vercel v0, Supabase) |
+| `display-serif-bold` | High-contrast editorial | DM Serif Display + Manrope, NYT-style oversized headlines with drop rules |
+| `utilitarian-bold` | Swiss minimal, stark | Archivo Black + Inter, left-aligned, heavy black-on-white (Pentagram, Manual) |
+| `satoshi-tech` | Modern, tech-forward | Satoshi (Fontshare) + Inter, dark noise gradient + lime accent, premium web3 / AI startup feel |
+
+## The 8 patterns
+
+Claude picks the pattern per slide based on content shape — not a random lottery.
+
+| Pattern | When to use |
+|---|---|
+| `cover-asymmetric` | Opening slide. Kicker + 2-line headline anchored top-left, handle bottom. Editorial default. |
+| `cover-centered` | Opening slide, centered variant. Works better for short punchy hooks. |
+| `list-bullet` | 3–5 parallel points. Arrow or icon prefix. |
+| `list-numbered` | Ordered / sequential list. Large accent numerals. |
+| `stat-dominant` | One number that has to land. 250px+ stat + label + context row. |
+| `quote-pulled` | A line that earns isolation. 2–4 line quote + attribution. |
+| `split-comparison` | Before / after, good / bad, them / us. Two columns, shared midline. |
+| `cta-stacked` | Closing ask. Hook + button + subtext + handle. |
+
+## Background + texture vocabulary
+
+9 background types, any of which can be layered with 1 of 6 noise textures.
+
+**Backgrounds:** `solid` · `gradient` · `mesh` (blurred color blobs) · `radial` · `image` · `dot-grid` · `geometric-shapes` · `glow-sphere` · `noise-gradient`
+
+**Noise textures:** `film` (classic grain) · `static` (coarse TV) · `organic` (soft cloudy) · `grit` (tight digital) · `ink-wash` (blurred painterly) · `dither` (1-bit pixelation)
+
+Each noise type is a different `feTurbulence` configuration tuned by hand. Set `noise.intensity` (0–0.2) for the overall opacity, `noise.scale` to tighten or loosen the grain.
+
+## Decorations
+
+5 optional decorative layers you can toggle per brand or override per slide:
+
+- `cornerMarks` — L-brackets at each corner (technical / utilitarian aesthetic)
+- `accentRule` — short horizontal emphasis line under the kicker (editorial)
+- `numberBadges` — oversized low-opacity slide number as watermark (for numbered decks)
+- `pullQuoteBlock` — colored rect behind a highlighted phrase
+- `oversizedMark` — huge decorative punctuation as visual anchor (serif brands)
+
+## Icons
+
+Three sources, one mental model (all 24×24, stroke-based, currentColor — ready for recoloring via brand accent):
+
+- **Lucide library** (30 curated icons bundled) — `icon: { library: "bolt" }`. Shield, bolt, rocket, chart-bar, target, clock, dollar, trending-up, check, arrow-right, plus 20 more.
+- **User file upload** — `icon: { file: "path/to/icon.svg" }`. Drop your own 24×24 SVG (stroke="currentColor"). Relative paths resolve from `strategy.json`.
+- **AI-generated inline** — when no library or file is specified, Claude generates an SVG on the fly, validated against safe-bounds (≤ 8KB, no `<script>`, no hardcoded colors, inside viewBox).
+
+Logos work the same way: `brand.visual.logo = { file: "logo.svg", position: "top-left", size: 48 }` ships the logo on cover + CTA slides (body slides intentionally skip it to avoid visual competition with content).
+
+## How determinism + variety work
+
+```
+seed = hash(brand.handle + topic + carouselVersion)
+rng  = seededRandom(seed)
+
+axes = {
+  size:         rng.pick([compact, standard, oversized]),
+  weightRatio:  rng.pick([balanced, high-contrast, ultra-bold]),
+  kicker:       rng.pick([always, hero-only, none]),
+  decoration:   rng.pick([minimal, editorial, technical]),
+  bgVariant:    rng.pick([primary, alt-angle, alt-palette]),
+  noiseTexture: rng.pick([film, organic, grit, ink-wash, dither, static]),
 }
 ```
 
-Full schema with every field, type, and default: [`docs/brand-profile-schema.md`](docs/brand-profile-schema.md).
+Same brand + same topic + same version → identical coordinate → identical deck (shareable, committable). Different topic → different coordinate → visibly different composition, same brand system. Different brand → different palette + preset on top of the coordinate. No two users get the same deck; any single user gets the same deck twice if they want to.
 
-**Fonts** come from [Google Fonts](https://fonts.google.com) — any free Google Fonts family name works.
-
-**Background types:** `solid` (single color), `gradient` (two colors + angle), or `image` (path to a PNG/JPG — a dark overlay is added automatically for text readability).
-
-**Dimensions** default to 1080×1350 (Instagram 4:5 portrait — highest engagement). Templates in v0.1.0 are optimized for this ratio; other dimensions may produce layout issues.
-
-## Templates
-
-Five slide templates ship with v0.1.0. Claude picks which to use per slide based on content.
-
-| Template | Use for |
-|---|---|
-| `title` | Opening hook. Kicker + 2-line headline + brand handle. |
-| `bullet` | 3–5 parallel points with arrow prefix. |
-| `stat` | One huge number that lands. Stat + label + optional context. |
-| `quote` | A line that earns isolation. 2–4 line quote + attribution. |
-| `cta` | Final ask. Hook + button + optional subtext. |
-
-Want to add your own? See [`docs/adding-templates.md`](docs/adding-templates.md).
-
-## Examples
-
-Three reference carousels ship in [`examples/`](examples/):
-
-- **[5 signs your AI automation is over-engineered](examples/5-signs-overengineered/)** — dark gradient, Playfair + Inter, builder-voice
-- **[The 2-minute CRM audit framework](examples/2-minute-crm-audit/)** — light editorial, DM Serif Display + Manrope, warm concrete tone
-- **[Why your lead magnet isn't converting](examples/why-your-lead-magnet-isnt-converting/)** — deep gradient, Space Grotesk, sharp opinionated voice
-
-Open any of the `preview.html` files to see the slides in your browser.
+The `_axes.json` file in every output folder logs the chosen coordinate so you can debug, reproduce, or force a different axis by seeding a different carousel version.
 
 ## FAQ
 
-**Does it work without a paid Claude plan?**
-You need Claude Code (free tier works). No other paid service is required.
+**Does it work without paid APIs?**
+Yes. Zero third-party keys. The whole pipeline runs on your Claude Code plan — strategy copy from Claude, SVG render from local Node scripts, PNG export via bundled Playwright. No Gemini, no Stability, no Replicate, no Canva, no Figma.
 
-**Can I use my own fonts (not Google Fonts)?**
-Not in v0.1.0. Use the closest Google Fonts match, or fork and embed fonts in the templates directly. Custom font support is v2 scope.
+**Can I use my own fonts?**
+Yes. Any [Google Fonts](https://fonts.google.com) family works — put the name in `visual.fonts.display` / `visual.fonts.body`. The `satoshi-tech` preset uses [Fontshare](https://fontshare.com) (also free). Fonts load via `@import` inside the SVG so they render correctly in both browser preview and PNG export. Custom self-hosted fonts aren't supported yet; fork and embed base64 in the templates if you need that.
 
-**Can I use my own background image?**
-Yes — set `visual.background.type` to `"image"` and `visual.background.imagePath` to your image's path (relative or absolute). A dark overlay is added for text readability. Note: untested with all image paths — may need tuning for non-standard renderers.
+**Can I add custom templates / patterns?**
+Yes. Drop a new SVG in `patterns/` using the `{{PLACEHOLDER}}` token pattern, register it in `patterns/manifest.json`, and add strategy guidance in `prompts/strategy-system.md`. Walkthrough: [`docs/adding-templates.md`](docs/adding-templates.md).
 
-**How do I add a new slide layout?**
-Write an SVG template in `templates/` using the `{{PLACEHOLDER}}` pattern, add guidance to `prompts/strategy-system.md` so Claude knows when to pick it, ship a PR. See [`docs/adding-templates.md`](docs/adding-templates.md).
+**Can I upload my own icons and logo?**
+Yes. Icons: `icon: { file: "./path/to/my-icon.svg" }` on any slide. Logo: `brand.visual.logo.file = "./logo.svg"` at the brand level. Both must be 24×24 viewBox SVGs using `stroke="currentColor"` (Lucide convention). They pass the same safe-bounds validation as AI-generated icons.
 
-**Does it work on Haiku or Sonnet?**
-Yes. The template-filling logic is simple enough that any Claude model handles it. Opus produces the most nuanced strategy copy but all tiers render correctly.
+**Does it work on Haiku / Sonnet / Opus?**
+Yes. Strategy + content generation is well within Haiku's reach. Opus produces slightly tighter copy. The render pipeline is deterministic Node — no LLM cost there.
 
-**What's the difference between this and other carousel tools?**
-Most tools generate the SVG visually from scratch — gorgeous demos, but every run produces different quality. This one separates strategy (Claude picks what's on each slide) from rendering (deterministic template fill). Output is predictable, editable, and version-controllable.
+**Is the output actually editable?**
+Yes. Every slide is standalone SVG — open in Figma / Illustrator / text editor and hand-tune. `strategy.json` is also editable — change a line, re-run `node scripts/render-v0.4.mjs <paths>` without calling Claude again.
 
-**Why no animation or MP4 export?**
-v0.1.0 is static SVG + PNG only. Animation + MP4 is planned for v0.2.0 alongside more templates.
+## What's planned (v0.5)
 
-## What's planned
-
-- v0.2.0 — Animation (SMIL + CSS), MP4 export, 3–4 more templates (timeline, comparison, checklist)
-- v0.3.0 — Custom font embedding, richer image-background controls
-- v0.4.0 — Template marketplace / community contributions
+- **AI-generated background images** via Gemini (optional, falls back to procedural when no API key)
+- **Bundled grunge texture PNGs** for heavier analog-print aesthetics (newsprint, mimeograph, risograph)
+- **Tables + bar-chart patterns** for data-heavy topics
+- **Broader icon library** — expand from 30 to 100+ Lucide icons + sector-specific sets (fintech, healthcare, devtools)
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+[MIT](LICENSE).
 
 ## Credits
 
-Built by [Niek Huggers](https://nodeagency.ai) at Node. If this saved you from buying a Canva subscription, DM [@nodeagency](https://instagram.com/nodeagency) and let me know.
+Built by [Niek Huggers](https://nodeagency.ai) at Node. If this saved you from paying $25/mo for Canva, DM [@nodeagency](https://instagram.com/nodeagency) and let me know.

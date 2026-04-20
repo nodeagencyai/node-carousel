@@ -1,8 +1,8 @@
 # brand-profile.json Schema
 
-Every node-carousel project has a `brand-profile.json` at its root. Commands read this file to determine colors, fonts, typography, and dimensions. Created by `/node-carousel:setup`.
+Every node-carousel project has a `brand-profile.json` at its root. Commands read this file to determine colors, fonts, typography, background, noise, decorations, logo, numbering, and dimensions. Created by `/node-carousel:setup`.
 
-## Full example (v0.2 — all features)
+## Full example (v0.4 — all features)
 
 ```json
 {
@@ -24,19 +24,24 @@ Every node-carousel project has a `brand-profile.json` at its root. Commands rea
       "body": "Inter"
     },
     "background": {
-      "type": "mesh",
+      "type": "noise-gradient",
       "color": "#0f0f0f",
       "gradient": { "from": "#0f0f0f", "to": "#29F2FE", "angle": 135 },
       "mesh": {
         "blobs": [
           { "cx": "20%", "cy": "30%", "r": "45%", "color": "#29F2FE", "opacity": 0.35 },
-          { "cx": "80%", "cy": "70%", "r": "55%", "color": "#0B8AEE", "opacity": 0.4 },
-          { "cx": "50%", "cy": "50%", "r": "35%", "color": "#6B3FA0", "opacity": 0.25 }
+          { "cx": "80%", "cy": "70%", "r": "55%", "color": "#0B8AEE", "opacity": 0.4 }
         ]
       },
       "radial": { "center": "50% 30%", "from": "#29F2FE", "to": "#0f0f0f", "stops": [0.2, 0.8] },
       "imagePath": null,
-      "grain": { "enabled": true, "intensity": 0.12, "baseFrequency": 0.9 }
+      "dotGrid": { "spacing": 40, "dotSize": 1.5, "dotColor": "#29F2FE", "opacity": 0.25 },
+      "shapes": [
+        { "type": "circle", "cx": 200, "cy": 300, "r": 180, "fill": "none", "stroke": "#29F2FE", "strokeWidth": 2, "opacity": 0.25 }
+      ],
+      "glow": { "cx": "50%", "cy": "-20%", "r": "80%", "from": "#29F2FE", "to": "#0f0f0f", "opacity": 0.5 },
+      "noiseGradient": { "from": "#0f0f0f", "to": "#1a2a3e", "angle": 135, "noiseType": "organic", "noiseIntensity": 0.2 },
+      "noise": { "enabled": true, "type": "film", "intensity": 0.08, "scale": 1.0 }
     },
     "numbering": { "style": "fraction-mono", "position": "bottom-right" },
     "decorations": {
@@ -46,6 +51,7 @@ Every node-carousel project has a `brand-profile.json` at its root. Commands rea
       "pullQuoteBlock": false,
       "oversizedMark": false
     },
+    "logo": { "file": "./assets/logo.svg", "position": "top-left", "size": 48 },
     "dimensions": { "width": 1080, "height": 1350 }
   }
 }
@@ -57,8 +63,8 @@ Every node-carousel project has a `brand-profile.json` at its root. Commands rea
 
 | Field | Type | Required | Default | Notes |
 |---|---|---|---|---|
-| `name` | string | yes | — | Brand display name. Appears on some slide templates. |
-| `handle` | string | yes | — | Social handle (with `@`). Appears on `title` and `cta` slides. |
+| `name` | string | yes | — | Brand display name. Appears on some slide patterns. |
+| `handle` | string | yes | — | Social handle (with `@`). Appears on cover + CTA patterns. Also feeds the determinism seed. |
 | `tone` | string | yes | — | Free-form voice description (e.g. `"direct, builder-voice, no fluff"`). The strategy prompt uses this to match copy voice. |
 
 ### `visual.colors` (object, required)
@@ -67,22 +73,22 @@ Every node-carousel project has a `brand-profile.json` at its root. Commands rea
 |---|---|---|---|---|
 | `background` | hex string | yes | `#0f0f0f` | Slide background fill when `background.type === "solid"`. |
 | `text` | hex string | yes | `#FFFFFF` | Primary text color. |
-| `accent` | hex string | yes | `#29F2FE` | Brand accent (used on stat numbers, CTA buttons, gradient starts). |
-| `accentSecondary` | hex string | no | `#0B8AEE` | Secondary accent (used for gradient ends). Falls back to `accent` if omitted. |
+| `accent` | hex string | yes | `#29F2FE` | Brand accent (used on stat numbers, CTA buttons, gradient starts, icon strokes). |
+| `accentSecondary` | hex string | no | `#0B8AEE` | Secondary accent (used for gradient ends, split-comparison right column, two-tone decorations). Falls back to `accent` if omitted. |
 | `muted` | hex string | yes | `#999999` | Secondary/muted text (captions, attributions, slide counters). |
 
 ### `visual.fonts` (object, required)
 
 | Field | Type | Required | Default | Notes |
 |---|---|---|---|---|
-| `display` | string | yes | `Playfair Display` | Font family for headlines and large text. Must be a valid [Google Fonts](https://fonts.google.com) family name — fetched via `@import` in SVG. |
-| `body` | string | yes | `Inter` | Font family for body text, bullets, and supporting copy. Must be a valid Google Fonts family name. |
+| `display` | string | yes | `Playfair Display` | Font family for headlines and large text. Must be a valid [Google Fonts](https://fonts.google.com) or [Fontshare](https://fontshare.com) (for `Satoshi`) family name — fetched via `@import` in the SVG. |
+| `body` | string | yes | `Inter` | Font family for body text, bullets, and supporting copy. Same source rules as `display`. |
 
-Custom (non-Google) fonts are not supported in v0.2. Use web-safe fallbacks or pick the closest Google Fonts match.
+Custom self-hosted (non-Google / non-Fontshare) fonts are not supported in v0.4. Use the closest match, or fork and embed fonts as base64 in the templates.
 
 ### `visual.background` (object, required)
 
-Controls how the slide background renders.
+Controls how the slide background renders. Must specify `type`; each type has its own sub-config block.
 
 #### `background.type`
 
@@ -95,14 +101,15 @@ Controls how the slide background renders.
 | `"image"` | Background image from `imagePath` with automatic dark overlay for readability. |
 | `"dot-grid"` | Subtle SVG pattern of spaced dots over base color. Raycast / Stripe docs aesthetic. v0.4.1+. |
 | `"geometric-shapes"` | 3–5 floating circles at low opacity for compositional rhythm. v0.4.1+. |
-| `"glow-sphere"` | Radial gradient with off-canvas origin (e.g. `cy: -20%`) producing a half-glow. Apple-keynote hero vignette. v0.4.1+. |
+| `"glow-sphere"` | Radial gradient with off-canvas origin producing a half-glow. Apple-keynote hero vignette. v0.4.1+. |
+| `"noise-gradient"` | Linear gradient with noise texture baked in via `mix-blend-mode: multiply`. Premium dark-aesthetic default. v0.4.3+. |
 
 #### Core fields
 
 | Field | Type | Required | Default | Notes |
 |---|---|---|---|---|
 | `type` | enum (above) | yes | `"solid"` | Which background mode to use. |
-| `color` | hex string | required when `type === "solid"` or `"mesh"` (base layer) | `#0f0f0f` | Base fill. For `mesh` type, this is the base color under the blobs. |
+| `color` | hex string | required when `type === "solid"` or `"mesh"` (base layer) | `#0f0f0f` | Base fill. For `mesh`, `dot-grid`, `glow-sphere`, and `noise-gradient` types, this is the base color under the overlay. |
 | `imagePath` | string \| null | required when `type === "image"` | `null` | Path to PNG/JPG. Relative to project root or absolute. Rendered with `xMidYMid slice` (cover). |
 
 #### `background.gradient` (used when `type === "gradient"`)
@@ -118,8 +125,8 @@ Controls how the slide background renders.
 | Field | Type | Default | Notes |
 |---|---|---|---|
 | `mesh.blobs` | array | — | 1–5 blob objects. More than 5 are ignored. Each blob blurs heavily (120px stdDeviation) so edges dissolve into the base. |
-| `mesh.blobs[n].cx` / `cy` | string | — | Position as percentage string (e.g. `"20%"`) OR pixel number. SVG viewBox-relative. |
-| `mesh.blobs[n].r` | string | — | Radius as percentage string OR pixel number. |
+| `mesh.blobs[n].cx` / `cy` | string \| number | — | Position as percentage string (e.g. `"20%"`) OR pixel number. SVG viewBox-relative. |
+| `mesh.blobs[n].r` | string \| number | — | Radius as percentage string OR pixel number. |
 | `mesh.blobs[n].color` | hex string | — | Blob fill color. |
 | `mesh.blobs[n].opacity` | number 0–1 | `0.35` | Blob opacity before blur. Lower = subtler. |
 
@@ -172,33 +179,44 @@ Radial gradient over base color. Differs from `radial` in that the gradient **or
 | `glow.to` | hex string | `background.color` | Color at gradient edge (fades to 0 alpha). Usually matches base. |
 | `glow.opacity` | number 0–1 | `0.5` | Intensity at center. Keep ≤ `0.6` to avoid washing out text. |
 
-#### `background.grain` (optional — works on ALL background types)
+#### `background.noiseGradient` (used when `type === "noise-gradient"`) — v0.4.3+
 
-Film-grain texture overlay. Single biggest premium upgrade. Works on any `type` by adding a noise layer on top.
+Linear gradient with a noise texture baked in via `mix-blend-mode: multiply`. Different from stacking `gradient` + `noise` overlay: the noise shares the gradient's hue range instead of sitting as a separate black-grain layer on top. Produces the "premium dark editorial" look (Linear, Vercel, newer Stripe marketing).
+
+| Field | Type | Required | Default | Notes |
+|---|---|---|---|---|
+| `noiseGradient.from` | hex string | yes | — | Gradient start color. |
+| `noiseGradient.to` | hex string | yes | — | Gradient end color. |
+| `noiseGradient.angle` | number | no | `135` | Gradient angle in degrees. |
+| `noiseGradient.noiseType` | enum (see below) | no | `"organic"` | Which of the 6 noise texture families to bake into the gradient. |
+| `noiseGradient.noiseIntensity` | number 0–1 | no | `0.18` | Opacity of the noise layer inside the gradient. Keep ≤ `0.25` — higher makes text harder to read. |
+
+#### `background.noise` (optional — works on ALL background types) — v0.4.3+
+
+Noise / grain texture overlay on top of any background type. Replaces the v0.4.2 `grain` block with a richer 6-texture vocabulary. Both blocks are still accepted — `grain` is auto-mapped to `noise.type = "film"` for backward compatibility.
 
 | Field | Type | Default | Notes |
 |---|---|---|---|
-| `grain.enabled` | boolean | `false` | Turn grain on/off. |
-| `grain.intensity` | number 0–1 | `0.12` | Opacity of the grain overlay. `0.05` = barely visible, `0.15` = obviously textured. Stay under `0.2` or text becomes hard to read. |
-| `grain.baseFrequency` | number 0.3–2.0 | `0.9` | Frequency of `feTurbulence`. Higher = finer grain. `0.6` = chunky film grain, `1.2` = tight digital noise. |
+| `noise.enabled` | boolean | `false` | Turn noise on/off. |
+| `noise.type` | enum | `"film"` | One of: `"film"` (classic fractal grain), `"static"` (coarse TV turbulence), `"organic"` (soft cloudy fractal), `"grit"` (tight digital fractal), `"ink-wash"` (blurred painterly fractal), `"dither"` (1-bit pixelation via discrete transfer). |
+| `noise.intensity` | number 0–1 | `0.12` | Opacity of the noise overlay. `0.05` = barely visible, `0.15` = obviously textured. Stay under `0.2` or text becomes hard to read. |
+| `noise.scale` | number > 0 | `1.0` | Multiplier on the noise type's base `baseFrequency`. Higher = finer/tighter grain, lower = chunkier. `1.0` = neutral. |
 
-### `visual.logo` (object, optional — v0.4.2+)
+#### `background.grain` (legacy — v0.3/v0.4.2 alias for `noise.type = "film"`)
 
-Brand-wide logo rendered on cover + CTA patterns (`cover-asymmetric`, `cover-centered`, `cta-stacked`). Body patterns (list, stat, quote, split) intentionally skip the logo — they're too busy visually.
-
-Missing field or missing `logo.file` → no logo rendered (backward compatible with v0.4.1 brand profiles).
+Accepted for backward compatibility. If present and `noise` is not set, it is auto-converted to `{ enabled: true, type: "film", intensity: grain.intensity, scale: grain.baseFrequency / 0.9 }`.
 
 | Field | Type | Default | Notes |
 |---|---|---|---|
-| `logo.file` | string | — | Path to an SVG file, resolved relative to the `strategy.json` directory (not the plugin install dir). File must be a 24×24 viewBox SVG using `stroke="currentColor"`. Passes the same safe-bounds validation as icons — no `<script>`, no hardcoded hex, ≤ 8KB. |
-| `logo.position` | `"top-left"` \| `"top-right"` \| `"bottom-left"` \| `"bottom-right"` | `"top-left"` | Which corner. 72px inset from both edges (matches cover-asymmetric kicker inset). |
-| `logo.size` | number | `48` | Logo height/width in pixels. Source SVG is assumed to use a 24×24 viewBox (Lucide convention) — scale factor is `size / 24`. |
+| `grain.enabled` | boolean | `false` | Legacy enable flag. |
+| `grain.intensity` | number 0–1 | `0.12` | Legacy opacity. |
+| `grain.baseFrequency` | number 0.3–2.0 | `0.9` | Legacy turbulence frequency. |
 
-Logo color defaults to `visual.colors.text` (via the `ON_SURFACE` role) so it reads on both light and dark brand surfaces.
+New profiles should use `noise` instead.
 
 ### `visual.numbering` (object, optional)
 
-Slide counter style on mid-deck slides (not shown on title or CTA slides).
+Slide counter style on mid-deck slides (not shown on cover or CTA slides).
 
 | Field | Type | Default | Notes |
 |---|---|---|---|
@@ -206,7 +224,7 @@ Slide counter style on mid-deck slides (not shown on title or CTA slides).
 | `numbering.position` | `"bottom-right"` \| `"bottom-center"` \| `"top-right"` | `"bottom-right"` | Where on the slide the counter appears (applies to `fraction-mono` only; `dot` is always bottom-center, `bar` spans the width). |
 
 Visual descriptions:
-- **`fraction-mono`** — `03 / 08` in monospace, small, muted. The 2026-premium default.
+- **`fraction-mono`** — `03 / 08` in monospace, small, muted. The v0.4 premium default.
 - **`dot`** — Filled + outlined dots centered at the bottom, one per slide. Current slide filled in accent color. Nice for short decks.
 - **`bar`** — Thin progress bar across the bottom. Accent-colored portion fills as deck progresses.
 - **`none`** — No counter. Intentional choice when slides should feel standalone.
@@ -218,7 +236,7 @@ Optional decorative elements layered above the background but below text content
 | Field | Type | Default | Description | When to use |
 |---|---|---|---|---|
 | `cornerMarks` | boolean | `false` | Four small `L`-shaped brackets at each corner of the canvas (40px arms, 3px stroke, accent color, 60px inset). | Technical, utility, "bracketed screenshot" aesthetic — pairs well with mono fonts. |
-| `accentRule` | boolean | `false` | Short horizontal line (120×3px) below the kicker at y=210. Subtle editorial emphasis mark. | Editorial, magazine-style decks. The original title-asymmetric inline rule, extracted as a reusable decoration. |
+| `accentRule` | boolean | `false` | Short horizontal line (120×3px) below the kicker at y=210. Subtle editorial emphasis mark. | Editorial, magazine-style decks. |
 | `numberBadges` | boolean | `false` | Oversized slide number top-right as a low-opacity (0.18) watermark in accent color. 180px display font. | Numbered-sequence content ("5 lessons", "10 steps") where big numerals reinforce the ordinal nature. |
 | `pullQuoteBlock` | boolean | `false` | Colored rectangle (accent color, 15% opacity) behind a phrase at y=880–944 with text at y=920. Requires per-slide `PULL_QUOTE_TEXT` for the text content. | Drawing the eye to a highlighted quote or key phrase on a bullet/stat slide. |
 | `oversizedMark` | boolean | `false` | Huge decorative punctuation (420px font, 15% opacity accent) top-right as visual anchor. Default char is `"`; override via slideData `OVERSIZED_MARK_CHAR`. | Display-serif brands (DM Serif Display, Playfair) where large punctuation reads as expressive typography rather than literal punctuation. |
@@ -239,6 +257,20 @@ Optional decorative elements layered above the background but below text content
 
 **Note on `title-asymmetric`.** The `title-asymmetric.svg` template has an always-on accent rule inline under the kicker (baked into the template, not the decoration system). Turning `accentRule: true` in decorations only adds the line to other templates (bullet, stat, quote, cta) — on title-asymmetric you will get the inline rule either way. This is intentional: the inline rule predates the decoration system and is preserved for backward compatibility with v0.2 brand profiles.
 
+### `visual.logo` (object, optional — v0.4.2+)
+
+Brand-wide logo rendered on cover + CTA patterns (`cover-asymmetric`, `cover-centered`, `cta-stacked`). Body patterns (list, stat, quote, split) intentionally skip the logo — they're too busy visually.
+
+Missing field or missing `logo.file` → no logo rendered (backward compatible with v0.4.1 brand profiles).
+
+| Field | Type | Default | Notes |
+|---|---|---|---|
+| `logo.file` | string | — | Path to an SVG file, resolved relative to the `strategy.json` directory (not the plugin install dir). File must be a 24×24 viewBox SVG using `stroke="currentColor"`. Passes the same safe-bounds validation as icons — no `<script>`, no hardcoded hex, ≤ 8KB. |
+| `logo.position` | `"top-left"` \| `"top-right"` \| `"bottom-left"` \| `"bottom-right"` | `"top-left"` | Which corner. 72px inset from both edges (matches cover-asymmetric kicker inset). |
+| `logo.size` | number | `48` | Logo height/width in pixels. Source SVG is assumed to use a 24×24 viewBox (Lucide convention) — scale factor is `size / 24`. |
+
+Logo color defaults to `visual.colors.text` (via the `ON_SURFACE` role) so it reads on both light and dark brand surfaces.
+
 ### `visual.dimensions` (object, required)
 
 | Field | Type | Required | Default | Notes |
@@ -246,26 +278,28 @@ Optional decorative elements layered above the background but below text content
 | `width` | number | yes | `1080` | Slide width in pixels. |
 | `height` | number | yes | `1350` | Slide height in pixels. |
 
-**Default dimensions are `1080 × 1350`** — Instagram's 4:5 portrait ratio, the highest-engagement feed format. Templates in v0.2 are optimized for this ratio. Other dimensions render but may produce layout issues (a warning prints once per render run).
+**Default dimensions are `1080 × 1350`** — Instagram's 4:5 portrait ratio, the highest-engagement feed format. Patterns in v0.4 are optimized for this ratio. Other dimensions render but may produce layout issues (a warning prints once per render run).
 
 ## Validation
 
-The `render.mjs` script runs shape validation at render time via `validateBrand()`. Missing required fields raise clear errors like:
+The `render-v0.4.mjs` script runs shape validation at render time via `validateBrand()`. Missing required fields raise clear errors like:
 ```
 Invalid brand-profile.json: missing required field "visual.dimensions.width" (expected number).
 ```
 
-See `templates/brand-profile.default.json` for a complete valid example with all v0.2 fields populated.
+See `templates/brand-profile.default.json` for a complete valid example with all v0.4 fields populated.
 
-## Backward compatibility (v0.1 → v0.2 → v0.3)
+## Backward compatibility (v0.1 → v0.2 → v0.3 → v0.4)
 
-All post-v0.1 additions are optional. A v0.1 brand profile with just `solid`/`gradient`/`image` backgrounds, no `grain`, no `numbering`, and no `decorations` renders identically in v0.3.
+All post-v0.1 additions are optional. A v0.1 brand profile with just `solid`/`gradient`/`image` backgrounds, no `grain`, no `numbering`, and no `decorations` renders identically in v0.4.
 
-- Missing `grain`? → treated as `{ enabled: false }`
+- Missing `grain` / `noise`? → treated as no-op (no overlay)
+- `grain` present but `noise` absent? → auto-mapped to `noise.type = "film"` with equivalent parameters
 - Missing `numbering`? → defaults to `{ style: "fraction-mono", position: "bottom-right" }`
-- Missing `mesh` / `radial`? → only used when `type` points to them
+- Missing `mesh` / `radial` / `dotGrid` / `shapes` / `glow` / `noiseGradient`? → only used when `type` points to them
 - Missing `decorations`? → treated as all `false` — no decoration rendered (v0.1/v0.2 behaviour preserved)
+- Missing `logo` or `logo.file`? → no logo rendered (v0.4.1 behaviour preserved)
 
 ## Presets (setup wizard)
 
-The `/node-carousel:setup` wizard starts from one of 5 aesthetic presets, then overlays your brand identity. Preset choice drives font pairing, color palette, background style, and grain defaults. See `prompts/setup-presets.md` for the preset library.
+The `/node-carousel:setup` wizard starts from one of 6 aesthetic presets, then overlays your brand identity. Preset choice drives font pairing, color palette, background style, and noise defaults. See `templates/presets/*.json` for the preset library (`editorial-serif`, `neo-grotesk`, `technical-mono`, `display-serif-bold`, `utilitarian-bold`, `satoshi-tech`).
