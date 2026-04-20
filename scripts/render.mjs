@@ -123,10 +123,10 @@ export function validateBrand(brand) {
   if (!bg || typeof bg !== 'object') {
     throw new Error(missing('visual.background'));
   }
-  const validBgTypes = new Set(['solid', 'gradient', 'image']);
+  const validBgTypes = new Set(['solid', 'gradient', 'image', 'mesh', 'radial']);
   if (!validBgTypes.has(bg.type)) {
     throw new Error(
-      `Invalid brand-profile.json: "visual.background.type" must be one of "solid", "gradient", "image" (got ${JSON.stringify(bg.type)}). ${schemaRef}`,
+      `Invalid brand-profile.json: "visual.background.type" must be one of "solid", "gradient", "image", "mesh", "radial" (got ${JSON.stringify(bg.type)}). ${schemaRef}`,
     );
   }
   if (bg.type === 'solid') {
@@ -147,6 +147,80 @@ export function validateBrand(brand) {
     if (!bg.imagePath || typeof bg.imagePath !== 'string') {
       throw new Error(missing('visual.background.imagePath', 'required non-null string when background.type = "image"'));
     }
+  } else if (bg.type === 'mesh') {
+    if (!bg.mesh || typeof bg.mesh !== 'object' || !Array.isArray(bg.mesh.blobs) || bg.mesh.blobs.length === 0) {
+      throw new Error(
+        `Invalid brand-profile.json: background.type is "mesh" but background.mesh.blobs is missing or empty. ${schemaRef}`,
+      );
+    }
+    bg.mesh.blobs.forEach((blob, i) => {
+      if (!blob || typeof blob !== 'object') {
+        throw new Error(
+          `Invalid brand-profile.json: background.mesh.blobs[${i}] must be an object with cx/cy/r/color/opacity. ${schemaRef}`,
+        );
+      }
+      for (const key of ['cx', 'cy', 'r', 'color']) {
+        if (blob[key] === undefined || blob[key] === null || blob[key] === '') {
+          throw new Error(
+            `Invalid brand-profile.json: background.mesh.blobs[${i}].${key} is required. ${schemaRef}`,
+          );
+        }
+      }
+      if (typeof blob.opacity !== 'number' || !Number.isFinite(blob.opacity)) {
+        throw new Error(
+          `Invalid brand-profile.json: background.mesh.blobs[${i}].opacity must be a number. ${schemaRef}`,
+        );
+      }
+    });
+  } else if (bg.type === 'radial') {
+    if (!bg.radial || typeof bg.radial !== 'object') {
+      throw new Error(missing('visual.background.radial', 'required when background.type = "radial"'));
+    }
+    if (typeof bg.radial.from !== 'string' || !bg.radial.from) {
+      throw new Error(missing('visual.background.radial.from', 'expected non-empty string'));
+    }
+    if (typeof bg.radial.to !== 'string' || !bg.radial.to) {
+      throw new Error(missing('visual.background.radial.to', 'expected non-empty string'));
+    }
+  }
+
+  // visual.background.grain (optional)
+  if (bg.grain !== undefined && bg.grain !== null) {
+    if (typeof bg.grain !== 'object') {
+      throw new Error(
+        `Invalid brand-profile.json: background.grain must be an object if present. ${schemaRef}`,
+      );
+    }
+    if (bg.grain.enabled === true) {
+      if (
+        typeof bg.grain.intensity !== 'number' ||
+        !Number.isFinite(bg.grain.intensity) ||
+        bg.grain.intensity < 0 ||
+        bg.grain.intensity > 1
+      ) {
+        throw new Error(
+          `Invalid brand-profile.json: background.grain.intensity must be a number between 0 and 1 when grain.enabled is true. ${schemaRef}`,
+        );
+      }
+    }
+  }
+
+  // visual.numbering (optional)
+  if (brand.visual.numbering !== undefined && brand.visual.numbering !== null) {
+    const num = brand.visual.numbering;
+    if (typeof num !== 'object') {
+      throw new Error(
+        `Invalid brand-profile.json: visual.numbering must be an object if present. ${schemaRef}`,
+      );
+    }
+    if (num.style !== undefined) {
+      const validStyles = new Set(['fraction-mono', 'dot', 'bar', 'none']);
+      if (!validStyles.has(num.style)) {
+        throw new Error(
+          `Invalid brand-profile.json: visual.numbering.style must be one of "fraction-mono", "dot", "bar", "none" (got ${JSON.stringify(num.style)}). ${schemaRef}`,
+        );
+      }
+    }
   }
 
   // visual.dimensions.{width,height}
@@ -162,16 +236,69 @@ export function validateBrand(brand) {
   }
 }
 
+function parseRadialCenter(center) {
+  // "50% 30%" → { cx: "50%", cy: "30%" }
+  if (typeof center !== 'string' || !center.trim()) {
+    return { cx: '50%', cy: '50%' };
+  }
+  const parts = center.trim().split(/\s+/);
+  return {
+    cx: parts[0] || '50%',
+    cy: parts[1] || parts[0] || '50%',
+  };
+}
+
 function buildBackgroundValues(brand) {
   const bg = brand.visual.background || {};
   const gradient = bg.gradient || {};
-  return {
+  const mesh = bg.mesh || {};
+  const radial = bg.radial || {};
+  const grain = bg.grain || {};
+
+  const values = {
     BG_COLOR: bg.color ?? '#000000',
     BG_GRADIENT_FROM: gradient.from ?? bg.color ?? '#000000',
     BG_GRADIENT_TO: gradient.to ?? bg.color ?? '#000000',
     BG_GRADIENT_ANGLE: gradient.angle ?? 135,
     BG_IMAGE_HREF: bg.imagePath || '',
   };
+
+  // Mesh blobs — pad to 5 slots, use invisible defaults for unused slots
+  const blobs = Array.isArray(mesh.blobs) ? mesh.blobs : [];
+  for (let i = 0; i < 5; i++) {
+    const n = i + 1;
+    const blob = blobs[i];
+    if (blob) {
+      values[`MESH_BLOB_${n}_CX`] = blob.cx;
+      values[`MESH_BLOB_${n}_CY`] = blob.cy;
+      values[`MESH_BLOB_${n}_R`] = blob.r;
+      values[`MESH_BLOB_${n}_COLOR`] = blob.color;
+      values[`MESH_BLOB_${n}_OPACITY`] = blob.opacity;
+    } else {
+      values[`MESH_BLOB_${n}_CX`] = 0;
+      values[`MESH_BLOB_${n}_CY`] = 0;
+      values[`MESH_BLOB_${n}_R`] = 0;
+      values[`MESH_BLOB_${n}_COLOR`] = '#000';
+      values[`MESH_BLOB_${n}_OPACITY`] = 0;
+    }
+  }
+
+  // Radial gradient
+  const { cx, cy } = parseRadialCenter(radial.center);
+  const stops = Array.isArray(radial.stops) && radial.stops.length >= 2 ? radial.stops : [0, 1];
+  values.RADIAL_CX = cx;
+  values.RADIAL_CY = cy;
+  values.RADIAL_R = '70%';
+  values.RADIAL_FROM = radial.from ?? bg.color ?? '#000000';
+  values.RADIAL_TO = radial.to ?? bg.color ?? '#000000';
+  values.RADIAL_STOP_FROM = stops[0];
+  values.RADIAL_STOP_TO = stops[1];
+
+  // Grain
+  values.GRAIN_BASE_FREQ = grain.baseFrequency ?? 0.9;
+  values.GRAIN_INTENSITY = grain.intensity ?? 0.12;
+
+  return values;
 }
 
 function renderBackground({ brand, pluginRoot, baseValues }) {
@@ -180,16 +307,107 @@ function renderBackground({ brand, pluginRoot, baseValues }) {
     solid: '_background-solid.svg',
     gradient: '_background-gradient.svg',
     image: '_background-image.svg',
+    mesh: '_background-mesh.svg',
+    radial: '_background-radial.svg',
   };
   const file = fileMap[type] || fileMap.solid;
   const path = join(pluginRoot, 'templates', file);
   const snippet = readFileSync(path, 'utf8');
   // Background placeholders are safe to escape across the board:
   // - BG_IMAGE_HREF is user-controlled (file path) — escaping protects & / "
-  // - BG_COLOR / BG_GRADIENT_* are color strings; escaping is a no-op in practice
+  // - BG_COLOR / BG_GRADIENT_* / MESH_* / RADIAL_* are color strings or numbers
   // - WIDTH / HEIGHT / BG_GRADIENT_ANGLE are numbers — pass through
   const escaped = escapeValues(baseValues);
-  return fillTemplate(snippet, escaped);
+  let out = fillTemplate(snippet, escaped);
+
+  // Grain overlay — appended AFTER the base background when enabled
+  const grain = brand.visual.background?.grain;
+  if (grain && grain.enabled === true) {
+    const grainPath = join(pluginRoot, 'templates', '_grain-filter.svg');
+    const grainSnippet = readFileSync(grainPath, 'utf8');
+    out += fillTemplate(grainSnippet, escaped);
+  }
+
+  return out;
+}
+
+function buildDotsNumbering(slideNumber, slideTotal, centerX, bottomY, accent, muted) {
+  const spacing = 24;
+  const radius = 5;
+  const totalWidth = (slideTotal - 1) * spacing;
+  const startX = centerX - totalWidth / 2;
+  const circles = [];
+  for (let i = 0; i < slideTotal; i++) {
+    const cx = Math.round(startX + i * spacing);
+    const isCurrent = i + 1 === slideNumber;
+    if (isCurrent) {
+      circles.push(`<circle cx="${cx}" cy="${bottomY}" r="${radius}" fill="${accent}"/>`);
+    } else {
+      circles.push(
+        `<circle cx="${cx}" cy="${bottomY}" r="${radius}" fill="none" stroke="${muted}" stroke-width="2"/>`,
+      );
+    }
+  }
+  return `<g>${circles.join('')}</g>`;
+}
+
+function renderNumbering({ brand, pluginRoot, baseValues, slideNumber, slideTotal }) {
+  const numbering = brand.visual.numbering || {};
+  const style = numbering.style ?? 'fraction-mono';
+  if (style === 'none') return '';
+
+  const width = baseValues.WIDTH;
+  const centerX = baseValues.CENTER_X;
+  const bottomY = baseValues.BOTTOM_Y;
+  const accent = baseValues.COLOR_ACCENT;
+  const muted = baseValues.COLOR_MUTED;
+
+  if (style === 'dot') {
+    return buildDotsNumbering(slideNumber, slideTotal, centerX, bottomY, accent, muted);
+  }
+
+  if (style === 'bar') {
+    const barBgWidth = width - 200;
+    const barProgressWidth = Math.round((slideNumber / slideTotal) * barBgWidth);
+    const snippetPath = join(pluginRoot, 'templates', '_numbering-bar.svg');
+    const snippet = readFileSync(snippetPath, 'utf8');
+    const values = {
+      ...baseValues,
+      BAR_BG_WIDTH: barBgWidth,
+      BAR_PROGRESS_WIDTH: barProgressWidth,
+    };
+    return fillTemplate(snippet, escapeValues(values));
+  }
+
+  // fraction-mono (default)
+  const position = numbering.position ?? 'bottom-right';
+  let numberingX, numberingY, numberingAnchor;
+  if (position === 'bottom-center') {
+    numberingX = centerX;
+    numberingY = bottomY;
+    numberingAnchor = 'middle';
+  } else if (position === 'top-right') {
+    numberingX = width - 100;
+    numberingY = 140;
+    numberingAnchor = 'end';
+  } else {
+    // bottom-right (default)
+    numberingX = width - 100;
+    numberingY = bottomY;
+    numberingAnchor = 'end';
+  }
+
+  const snippetPath = join(pluginRoot, 'templates', '_numbering-fraction-mono.svg');
+  const snippet = readFileSync(snippetPath, 'utf8');
+  const values = {
+    ...baseValues,
+    NUMBERING_X: numberingX,
+    NUMBERING_Y: numberingY,
+    NUMBERING_ANCHOR: numberingAnchor,
+    SLIDE_NUMBER_PADDED: String(slideNumber).padStart(2, '0'),
+    SLIDE_TOTAL_PADDED: String(slideTotal).padStart(2, '0'),
+  };
+  return fillTemplate(snippet, escapeValues(values));
 }
 
 // NOTE: Layout math below (CTA_HOOK_Y: 480, BUTTON_Y: 700, template dy offsets,
@@ -271,9 +489,19 @@ export function renderSlide({
   // then inject it into the main template's BACKGROUND slot.
   const backgroundSvg = renderBackground({ brand, pluginRoot, baseValues });
 
+  // Pass 1b: render the numbering snippet (SVG markup) for NUMBERING slot.
+  const numberingSvg = renderNumbering({
+    brand,
+    pluginRoot,
+    baseValues,
+    slideNumber,
+    slideTotal,
+  });
+
   const values = {
     ...baseValues,
     BACKGROUND: backgroundSvg,
+    NUMBERING: numberingSvg,
     ...(slideData || {}),
   };
 
@@ -287,8 +515,8 @@ export function renderSlide({
   }
 
   // Pass 2: fill the main template. Escape every string EXCEPT BACKGROUND
-  // (which is already SVG markup — escaping would turn <rect> into &lt;rect&gt;).
-  const escaped = escapeValues(values, ['BACKGROUND']);
+  // and NUMBERING (already SVG markup — escaping would turn <rect> into &lt;rect&gt;).
+  const escaped = escapeValues(values, ['BACKGROUND', 'NUMBERING']);
   return fillTemplate(templateStr, escaped);
 }
 

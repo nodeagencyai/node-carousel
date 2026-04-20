@@ -1,0 +1,13 @@
+<defs>
+  <filter id="mesh-blur" x="-50%" y="-50%" width="200%" height="200%">
+    <feGaussianBlur stdDeviation="120" />
+  </filter>
+</defs>
+<rect x="0" y="0" width="{{WIDTH}}" height="{{HEIGHT}}" fill="{{BG_COLOR}}"/>
+<g filter="url(#mesh-blur)">
+  <circle cx="{{MESH_BLOB_1_CX}}" cy="{{MESH_BLOB_1_CY}}" r="{{MESH_BLOB_1_R}}" fill="{{MESH_BLOB_1_COLOR}}" opacity="{{MESH_BLOB_1_OPACITY}}"/>
+  <circle cx="{{MESH_BLOB_2_CX}}" cy="{{MESH_BLOB_2_CY}}" r="{{MESH_BLOB_2_R}}" fill="{{MESH_BLOB_2_COLOR}}" opacity="{{MESH_BLOB_2_OPACITY}}"/>
+  <circle cx="{{MESH_BLOB_3_CX}}" cy="{{MESH_BLOB_3_CY}}" r="{{MESH_BLOB_3_R}}" fill="{{MESH_BLOB_3_COLOR}}" opacity="{{MESH_BLOB_3_OPACITY}}"/>
+  <circle cx="{{MESH_BLOB_4_CX}}" cy="{{MESH_BLOB_4_CY}}" r="{{MESH_BLOB_4_R}}" fill="{{MESH_BLOB_4_COLOR}}" opacity="{{MESH_BLOB_4_OPACITY}}"/>
+  <circle cx="{{MESH_BLOB_5_CX}}" cy="{{MESH_BLOB_5_CY}}" r="{{MESH_BLOB_5_R}}" fill="{{MESH_BLOB_5_COLOR}}" opacity="{{MESH_BLOB_5_OPACITY}}"/>
+</g>
