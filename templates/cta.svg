@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {{WIDTH}} {{HEIGHT}}" width="{{WIDTH}}" height="{{HEIGHT}}">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family={{FONT_DISPLAY_URL}}:wght@700;800&amp;family={{FONT_BODY_URL}}:wght@400;500;600&amp;display=swap');
+      .hook { font-family: '{{FONT_DISPLAY}}', serif; font-weight: 800; font-size: 72px; fill: {{COLOR_TEXT}}; }
+      .button-text { font-family: '{{FONT_BODY}}', sans-serif; font-weight: 600; font-size: 38px; fill: {{BG_COLOR}}; letter-spacing: 0.02em; }
+      .subtext { font-family: '{{FONT_BODY}}', sans-serif; font-weight: 400; font-size: 28px; fill: {{COLOR_MUTED}}; }
+      .handle { font-family: '{{FONT_BODY}}', sans-serif; font-weight: 500; font-size: 26px; fill: {{COLOR_TEXT}}; letter-spacing: 0.05em; }
+    </style>
+  </defs>
+  {{BACKGROUND}}
+  <text x="{{CENTER_X}}" y="{{CTA_HOOK_Y}}" class="hook" text-anchor="middle">
+    <tspan x="{{CENTER_X}}" dy="0">{{CTA_HOOK_LINE_1}}</tspan>
+    <tspan x="{{CENTER_X}}" dy="86">{{CTA_HOOK_LINE_2}}</tspan>
+  </text>
+  <rect x="{{BUTTON_X}}" y="{{BUTTON_Y}}" width="{{BUTTON_WIDTH}}" height="120" rx="60" fill="{{COLOR_ACCENT}}"/>
+  <text x="{{CENTER_X}}" y="{{BUTTON_TEXT_Y}}" class="button-text" text-anchor="middle">{{CTA_BUTTON}}</text>
+  <text x="{{CENTER_X}}" y="{{CTA_SUBTEXT_Y}}" class="subtext" text-anchor="middle">{{CTA_SUBTEXT}}</text>
+  <text x="{{CENTER_X}}" y="{{BOTTOM_Y}}" class="handle" text-anchor="middle">{{BRAND_HANDLE}}</text>
+</svg>

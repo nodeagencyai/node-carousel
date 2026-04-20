@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {{WIDTH}} {{HEIGHT}}" width="{{WIDTH}}" height="{{HEIGHT}}">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family={{FONT_DISPLAY_URL}}:wght@700&amp;family={{FONT_BODY_URL}}:wght@400;500;600&amp;display=swap');
+      .headline { font-family: '{{FONT_DISPLAY}}', serif; font-weight: 700; font-size: 64px; fill: {{COLOR_TEXT}}; }
+      .bullet { font-family: '{{FONT_BODY}}', sans-serif; font-weight: 500; font-size: 38px; fill: {{COLOR_TEXT}}; }
+      .arrow { font-family: '{{FONT_BODY}}', sans-serif; font-weight: 600; font-size: 38px; fill: {{COLOR_ACCENT}}; }
+      .counter { font-family: '{{FONT_BODY}}', sans-serif; font-weight: 500; font-size: 22px; fill: {{COLOR_MUTED}}; letter-spacing: 0.1em; }
+    </style>
+  </defs>
+  {{BACKGROUND}}
+  <text x="100" y="240" class="headline">{{HEADLINE}}</text>
+  <g transform="translate(100, 430)">
+    <text x="0" y="0" class="arrow">→</text><text x="50" y="0" class="bullet">{{BULLET_1}}</text>
+    <text x="0" y="90" class="arrow">→</text><text x="50" y="90" class="bullet">{{BULLET_2}}</text>
+    <text x="0" y="180" class="arrow">→</text><text x="50" y="180" class="bullet">{{BULLET_3}}</text>
+    <text x="0" y="270" class="arrow">→</text><text x="50" y="270" class="bullet">{{BULLET_4}}</text>
+    <text x="0" y="360" class="arrow">→</text><text x="50" y="360" class="bullet">{{BULLET_5}}</text>
+  </g>
+  <text x="{{WIDTH_MINUS_100}}" y="{{BOTTOM_Y}}" class="counter" text-anchor="end">{{SLIDE_NUMBER}} / {{SLIDE_TOTAL}}</text>
+</svg>

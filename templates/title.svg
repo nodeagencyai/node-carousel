@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {{WIDTH}} {{HEIGHT}}" width="{{WIDTH}}" height="{{HEIGHT}}">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family={{FONT_DISPLAY_URL}}:wght@700;800&amp;family={{FONT_BODY_URL}}:wght@400;500&amp;display=swap');
+      .kicker { font-family: '{{FONT_BODY}}', sans-serif; font-weight: 500; font-size: 26px; letter-spacing: 0.22em; text-transform: uppercase; fill: {{COLOR_ACCENT}}; }
+      .headline { font-family: '{{FONT_DISPLAY}}', serif; font-weight: 800; font-size: 110px; fill: {{COLOR_TEXT}}; line-height: 1.05; }
+      .headline-line2 { font-family: '{{FONT_DISPLAY}}', serif; font-weight: 800; font-size: 110px; fill: {{COLOR_TEXT}}; }
+      .handle { font-family: '{{FONT_BODY}}', sans-serif; font-weight: 500; font-size: 26px; fill: {{COLOR_MUTED}}; letter-spacing: 0.05em; }
+    </style>
+  </defs>
+  {{BACKGROUND}}
+  <text x="{{CENTER_X}}" y="480" class="kicker" text-anchor="middle">{{KICKER}}</text>
+  <text x="{{CENTER_X}}" y="{{CENTER_Y}}" class="headline" text-anchor="middle">
+    <tspan x="{{CENTER_X}}" dy="0">{{HEADLINE_LINE_1}}</tspan>
+    <tspan x="{{CENTER_X}}" dy="120">{{HEADLINE_LINE_2}}</tspan>
+  </text>
+  <text x="{{CENTER_X}}" y="{{BOTTOM_Y}}" class="handle" text-anchor="middle">{{BRAND_HANDLE}}</text>
+</svg>

@@ -1,0 +1,2 @@
+<image href="{{BG_IMAGE_HREF}}" x="0" y="0" width="{{WIDTH}}" height="{{HEIGHT}}" preserveAspectRatio="xMidYMid slice"/>
+<rect x="0" y="0" width="{{WIDTH}}" height="{{HEIGHT}}" fill="{{BG_COLOR}}" opacity="0.35"/>

@@ -1,0 +1,7 @@
+<defs>
+  <linearGradient id="bg-gradient" gradientTransform="rotate({{BG_GRADIENT_ANGLE}}, 0.5, 0.5)">
+    <stop offset="0%" stop-color="{{BG_GRADIENT_FROM}}"/>
+    <stop offset="100%" stop-color="{{BG_GRADIENT_TO}}"/>
+  </linearGradient>
+</defs>
+<rect x="0" y="0" width="{{WIDTH}}" height="{{HEIGHT}}" fill="url(#bg-gradient)"/>

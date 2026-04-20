@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {{WIDTH}} {{HEIGHT}}" width="{{WIDTH}}" height="{{HEIGHT}}">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family={{FONT_DISPLAY_URL}}:wght@700;800&amp;family={{FONT_BODY_URL}}:wght@400;500&amp;display=swap');
+      .stat { font-family: '{{FONT_DISPLAY}}', serif; font-weight: 800; font-size: 280px; fill: {{COLOR_ACCENT}}; letter-spacing: -0.03em; }
+      .label { font-family: '{{FONT_DISPLAY}}', serif; font-weight: 700; font-size: 54px; fill: {{COLOR_TEXT}}; }
+      .context { font-family: '{{FONT_BODY}}', sans-serif; font-weight: 400; font-size: 28px; fill: {{COLOR_MUTED}}; }
+      .counter { font-family: '{{FONT_BODY}}', sans-serif; font-weight: 500; font-size: 22px; fill: {{COLOR_MUTED}}; letter-spacing: 0.1em; }
+    </style>
+  </defs>
+  {{BACKGROUND}}
+  <text x="{{CENTER_X}}" y="{{CENTER_Y_MINUS_120}}" class="stat" text-anchor="middle">{{STAT_VALUE}}</text>
+  <text x="{{CENTER_X}}" y="{{CENTER_Y_PLUS_60}}" class="label" text-anchor="middle">{{STAT_LABEL}}</text>
+  <text x="{{CENTER_X}}" y="{{CENTER_Y_PLUS_140}}" class="context" text-anchor="middle">{{STAT_CONTEXT}}</text>
+  <text x="{{WIDTH_MINUS_100}}" y="{{BOTTOM_Y}}" class="counter" text-anchor="end">{{SLIDE_NUMBER}} / {{SLIDE_TOTAL}}</text>
+</svg>
