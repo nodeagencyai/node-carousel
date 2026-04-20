@@ -1,0 +1,40 @@
+{
+  "brand": {
+    "name": "Shapes Demo",
+    "handle": "@shapesdemo",
+    "tone": "bold, confident, modern"
+  },
+  "visual": {
+    "colors": {
+      "background": "#0A0A0A",
+      "text": "#FAFAFA",
+      "accent": "#C9FF4E",
+      "accentSecondary": "#5A8CFF",
+      "muted": "#777777"
+    },
+    "fonts": {
+      "display": "Satoshi",
+      "body": "Satoshi"
+    },
+    "background": {
+      "type": "geometric-shapes",
+      "color": "#0A0A0A",
+      "shapes": [
+        { "type": "circle", "cx": 180, "cy": 220, "r": 110, "fill": "#C9FF4E", "stroke": "none", "strokeWidth": 0, "opacity": 0.18 },
+        { "type": "circle", "cx": 900, "cy": 400, "r": 70,  "fill": "none", "stroke": "#5A8CFF", "strokeWidth": 3, "opacity": 0.55 },
+        { "type": "circle", "cx": 140, "cy": 1060, "r": 180, "fill": "#8B5CF6", "stroke": "none", "strokeWidth": 0, "opacity": 0.14 },
+        { "type": "circle", "cx": 940, "cy": 1180, "r": 60,  "fill": "#C9FF4E", "stroke": "none", "strokeWidth": 0, "opacity": 0.28 }
+      ],
+      "grain": { "enabled": true, "intensity": 0.08, "baseFrequency": 1.1 }
+    },
+    "numbering": { "style": "fraction-mono", "position": "bottom-right" },
+    "decorations": {
+      "cornerMarks": false,
+      "accentRule": true,
+      "numberBadges": false,
+      "pullQuoteBlock": false,
+      "oversizedMark": false
+    },
+    "dimensions": { "width": 1080, "height": 1350 }
+  }
+}

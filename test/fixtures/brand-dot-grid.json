@@ -1,0 +1,40 @@
+{
+  "brand": {
+    "name": "Dot Grid Demo",
+    "handle": "@dotgrid",
+    "tone": "minimal, technical, calm"
+  },
+  "visual": {
+    "colors": {
+      "background": "#0A0A0A",
+      "text": "#FAFAFA",
+      "accent": "#C9FF4E",
+      "accentSecondary": "#5A8CFF",
+      "muted": "#777777"
+    },
+    "fonts": {
+      "display": "Satoshi",
+      "body": "Satoshi"
+    },
+    "background": {
+      "type": "dot-grid",
+      "color": "#0A0A0A",
+      "dotGrid": {
+        "spacing": 40,
+        "dotSize": 1.5,
+        "dotColor": "#C9FF4E",
+        "opacity": 0.22
+      },
+      "grain": { "enabled": true, "intensity": 0.08, "baseFrequency": 1.1 }
+    },
+    "numbering": { "style": "fraction-mono", "position": "bottom-right" },
+    "decorations": {
+      "cornerMarks": true,
+      "accentRule": true,
+      "numberBadges": false,
+      "pullQuoteBlock": false,
+      "oversizedMark": false
+    },
+    "dimensions": { "width": 1080, "height": 1350 }
+  }
+}

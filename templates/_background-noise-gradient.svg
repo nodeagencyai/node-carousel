@@ -1,0 +1,13 @@
+<defs>
+  <linearGradient id="ng-grad" gradientTransform="rotate({{NG_ANGLE}}, 0.5, 0.5)">
+    <stop offset="0%" stop-color="{{NG_FROM}}"/>
+    <stop offset="100%" stop-color="{{NG_TO}}"/>
+  </linearGradient>
+  <filter id="ng-noise-overlay" x="0%" y="0%" width="100%" height="100%">
+    <feTurbulence type="{{NG_TURB_TYPE}}" baseFrequency="{{NG_BASE_FREQ}}" numOctaves="{{NG_OCTAVES}}" stitchTiles="stitch"/>
+    <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 {{NG_INTENSITY}} 0"/>
+  </filter>
+</defs>
+<rect x="0" y="0" width="{{WIDTH}}" height="{{HEIGHT}}" fill="{{BG_COLOR}}"/>
+<rect x="0" y="0" width="{{WIDTH}}" height="{{HEIGHT}}" fill="url(#ng-grad)"/>
+<rect x="0" y="0" width="{{WIDTH}}" height="{{HEIGHT}}" filter="url(#ng-noise-overlay)" style="mix-blend-mode: multiply;"/>

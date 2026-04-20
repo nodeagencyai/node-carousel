@@ -48,8 +48,62 @@ const PATTERN_BY_ID = Object.fromEntries(MANIFEST.patterns.map((p) => [p.id, p])
 //   dot-grid, geometric-shapes, glow-sphere
 // Shared-render.mjs still owns solid/gradient/mesh/radial/image so v0.3 stays
 // frozen. v0.4-only types are rendered by `renderBackgroundV04` below.
-const V04_BACKGROUND_TYPES = new Set(['dot-grid', 'geometric-shapes', 'glow-sphere']);
+// v0.4.3 adds `noise-gradient`.
+const V04_BACKGROUND_TYPES = new Set([
+  'dot-grid',
+  'geometric-shapes',
+  'glow-sphere',
+  'noise-gradient',
+]);
 const HEX_RE = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
+
+// v0.4.3 — curated feTurbulence parameter sets for the 6 noise types.
+// Each type maps to a distinct visual texture. baseFreq values were tuned by
+// visual inspection on 1080x1350 canvases against dark backgrounds.
+const NOISE_TYPE_CONFIG = {
+  film:       { turbType: 'fractalNoise', baseFreq: 0.9,  octaves: 2, extra: '' },
+  static:     { turbType: 'turbulence',   baseFreq: 0.55, octaves: 3, extra: '' },
+  organic:    { turbType: 'fractalNoise', baseFreq: 0.35, octaves: 4, extra: '' },
+  grit:       { turbType: 'fractalNoise', baseFreq: 1.3,  octaves: 3, extra: '' },
+  'ink-wash': {
+    turbType: 'fractalNoise',
+    baseFreq: 0.25,
+    octaves: 5,
+    extra: '<feGaussianBlur stdDeviation="1.5"/>',
+  },
+  dither: {
+    turbType: 'turbulence',
+    baseFreq: 2.0,
+    octaves: 1,
+    extra: '<feComponentTransfer><feFuncA type="discrete" tableValues="0 0 0 0.8 0.8"/></feComponentTransfer>',
+  },
+};
+
+const NOISE_TYPES = new Set(Object.keys(NOISE_TYPE_CONFIG));
+
+/**
+ * Resolve the noise config for a background. Accepts the new v0.4.3 `noise`
+ * block or the legacy v0.4.2 `grain` block (mapped to `noise.type='film'`).
+ *
+ * Returns the normalized noise config { enabled, type, intensity, scale } or
+ * `null` if no noise is configured / enabled.
+ */
+function resolveNoiseConfig(bg) {
+  if (bg?.noise && typeof bg.noise === 'object') {
+    return bg.noise;
+  }
+  if (bg?.grain && typeof bg.grain === 'object' && bg.grain.enabled === true) {
+    // Legacy grain → film noise. Old baseFrequency becomes scale (where 0.9 is
+    // the neutral baseline that produces identical output to v0.4.2 grain).
+    return {
+      enabled: true,
+      type: 'film',
+      intensity: bg.grain.intensity ?? 0.12,
+      scale: (bg.grain.baseFrequency ?? 0.9) / 0.9,
+    };
+  }
+  return null;
+}
 
 /**
  * Validate a brand profile for v0.4-specific extensions.
@@ -69,6 +123,24 @@ export function validateBrand(brand) {
   if (!brand || typeof brand !== 'object') fail('expected an object');
   const bg = brand?.visual?.background;
   if (!bg || typeof bg !== 'object') return;
+
+  // v0.4.3 — validate the optional `noise` block on ANY background type
+  // (including v0.3 types like solid/gradient/mesh/radial/image). This is the
+  // replacement for the old `grain` block.
+  if (bg.noise !== undefined && bg.noise !== null) {
+    if (typeof bg.noise !== 'object') fail('background.noise must be an object if present');
+    const n = bg.noise;
+    if (n.type !== undefined && !NOISE_TYPES.has(n.type)) {
+      fail(`background.noise.type must be one of: ${[...NOISE_TYPES].join(', ')}`);
+    }
+    if (n.intensity !== undefined && (typeof n.intensity !== 'number' || !Number.isFinite(n.intensity) || n.intensity < 0 || n.intensity > 1)) {
+      fail('background.noise.intensity must be a number between 0 and 1');
+    }
+    if (n.scale !== undefined && (typeof n.scale !== 'number' || !Number.isFinite(n.scale) || n.scale <= 0)) {
+      fail('background.noise.scale must be a positive number');
+    }
+  }
+
   const type = bg.type;
   if (!V04_BACKGROUND_TYPES.has(type)) return; // v0.3 types handled elsewhere
 
@@ -119,6 +191,28 @@ export function validateBrand(brand) {
       if (g.opacity !== undefined && (typeof g.opacity !== 'number' || g.opacity < 0 || g.opacity > 1)) {
         fail('background.glow.opacity must be a number between 0 and 1');
       }
+    }
+  } else if (type === 'noise-gradient') {
+    // v0.4.3 — noise baked into gradient via mix-blend-mode.
+    if (bg.noiseGradient === undefined || bg.noiseGradient === null) {
+      fail('background.noiseGradient is required when type === "noise-gradient"');
+    }
+    if (typeof bg.noiseGradient !== 'object') fail('background.noiseGradient must be an object');
+    const ng = bg.noiseGradient;
+    for (const key of ['from', 'to']) {
+      if (ng[key] === undefined) fail(`background.noiseGradient.${key} is required (hex string)`);
+      if (typeof ng[key] !== 'string' || !HEX_RE.test(ng[key])) {
+        fail(`background.noiseGradient.${key} must be a hex string`);
+      }
+    }
+    if (ng.angle !== undefined && (typeof ng.angle !== 'number' || !Number.isFinite(ng.angle))) {
+      fail('background.noiseGradient.angle must be a number');
+    }
+    if (ng.noiseType !== undefined && !NOISE_TYPES.has(ng.noiseType)) {
+      fail(`background.noiseGradient.noiseType must be one of: ${[...NOISE_TYPES].join(', ')}`);
+    }
+    if (ng.noiseIntensity !== undefined && (typeof ng.noiseIntensity !== 'number' || ng.noiseIntensity < 0 || ng.noiseIntensity > 1)) {
+      fail('background.noiseGradient.noiseIntensity must be a number between 0 and 1');
     }
   }
 }
@@ -172,6 +266,17 @@ function buildV04BackgroundValues(brand, baseValues) {
     values.GLOW_FROM = g.from ?? baseValues.COLOR_ACCENT;
     values.GLOW_TO = g.to ?? bg.color ?? baseValues.SURFACE ?? '#000000';
     values.GLOW_OPACITY = g.opacity ?? 0.5;
+  } else if (type === 'noise-gradient') {
+    const ng = bg.noiseGradient || {};
+    const noiseTypeName = ng.noiseType ?? 'organic';
+    const noiseCfg = NOISE_TYPE_CONFIG[noiseTypeName] || NOISE_TYPE_CONFIG.organic;
+    values.NG_FROM = ng.from ?? baseValues.COLOR_ACCENT;
+    values.NG_TO = ng.to ?? bg.color ?? '#000000';
+    values.NG_ANGLE = ng.angle ?? 135;
+    values.NG_TURB_TYPE = noiseCfg.turbType;
+    values.NG_BASE_FREQ = noiseCfg.baseFreq;
+    values.NG_OCTAVES = noiseCfg.octaves;
+    values.NG_INTENSITY = ng.noiseIntensity ?? 0.18;
   }
 
   return values;
@@ -180,44 +285,82 @@ function buildV04BackgroundValues(brand, baseValues) {
 /**
  * v0.4 background renderer.
  * Routes v0.4-only types through new snippets; delegates others to v0.3 path
- * in shared-render.mjs. Grain overlay is appended for both paths.
+ * in shared-render.mjs. Noise overlay is appended for both paths (v0.4.3+);
+ * legacy grain config auto-maps to noise.type='film' via resolveNoiseConfig.
  */
 function renderBackgroundV04({ brand, pluginRoot, baseValues }) {
-  const type = brand.visual?.background?.type || 'solid';
+  const bg = brand.visual?.background || {};
+  const type = bg.type || 'solid';
+
+  let out;
+  let merged;
+
   if (!V04_BACKGROUND_TYPES.has(type)) {
-    // Defer to v0.3 implementation for solid/gradient/mesh/radial/image
-    return renderBackgroundV03({ brand, pluginRoot, baseValues });
+    // Defer to v0.3 implementation for solid/gradient/mesh/radial/image.
+    // shared-render's renderBackground handles its own grain overlay for
+    // v0.3-era brand profiles (grain block only). We intentionally call it
+    // WITHOUT grain so v0.4.3 `noise` config takes precedence — we re-apply
+    // noise below via the unified resolveNoiseConfig path.
+    //
+    // Temporarily strip grain from the brand so renderBackgroundV03 doesn't
+    // double-apply it when the v0.4.3 `noise` key is also present.
+    const hasNoise = bg.noise !== undefined && bg.noise !== null;
+    if (hasNoise) {
+      const strippedBg = { ...bg };
+      delete strippedBg.grain;
+      const strippedBrand = {
+        ...brand,
+        visual: { ...brand.visual, background: strippedBg },
+      };
+      out = renderBackgroundV03({ brand: strippedBrand, pluginRoot, baseValues });
+    } else {
+      // Legacy grain config path — shared-render handles it natively.
+      out = renderBackgroundV03({ brand, pluginRoot, baseValues });
+      // When shared-render's built-in grain fires, we've already rendered the
+      // noise. Skip the unified noise append below.
+      merged = baseValues;
+      return out;
+    }
+    merged = baseValues;
+  } else {
+    const fileMap = {
+      'dot-grid': '_background-dot-grid.svg',
+      'geometric-shapes': '_background-geometric-shapes.svg',
+      'glow-sphere': '_background-glow-sphere.svg',
+      'noise-gradient': '_background-noise-gradient.svg',
+    };
+    const path = join(pluginRoot, 'templates', fileMap[type]);
+    const snippet = readFileSync(path, 'utf8');
+
+    // Merge v0.4 bg values into baseValues so snippet placeholders resolve.
+    const v04Values = buildV04BackgroundValues(brand, baseValues);
+    merged = { ...baseValues, ...v04Values };
+    const escaped = escapeValues(merged);
+    out = fillTemplate(snippet, escaped);
   }
 
-  const fileMap = {
-    'dot-grid': '_background-dot-grid.svg',
-    'geometric-shapes': '_background-geometric-shapes.svg',
-    'glow-sphere': '_background-glow-sphere.svg',
-  };
-  const path = join(pluginRoot, 'templates', fileMap[type]);
-  const snippet = readFileSync(path, 'utf8');
-
-  // Merge v0.4 bg values into baseValues so snippet placeholders resolve.
-  const v04Values = buildV04BackgroundValues(brand, baseValues);
-  const merged = { ...baseValues, ...v04Values };
-  const escaped = escapeValues(merged);
-  let out = fillTemplate(snippet, escaped);
-
-  // Grain overlay — same as v0.3 path
-  const grain = brand.visual.background?.grain;
-  if (grain && grain.enabled === true) {
-    const grainPath = join(pluginRoot, 'templates', '_grain-filter.svg');
-    const grainSnippet = readFileSync(grainPath, 'utf8');
-    // Populate grain-specific placeholders — these aren't in baseValues because
-    // v0.3's render.mjs builds them inline. v0.4 has to populate them here or
-    // the feTurbulence/feColorMatrix args render empty and grain becomes a
-    // solid grey overlay instead of noise.
-    const grainValues = escapeValues({
+  // Noise overlay (v0.4.3) — resolveNoiseConfig accepts both the new
+  // `background.noise` block AND legacy `background.grain` (auto-mapped to
+  // noise.type='film'). For v0.3 types, legacy grain is handled by
+  // renderBackgroundV03 itself (skipped above).
+  const noise = resolveNoiseConfig(bg);
+  if (noise && noise.enabled === true) {
+    const noiseTypeName = noise.type ?? 'film';
+    const cfg = NOISE_TYPE_CONFIG[noiseTypeName] || NOISE_TYPE_CONFIG.film;
+    const scale = noise.scale ?? 1.0;
+    const noisePath = join(pluginRoot, 'templates', '_noise-filter.svg');
+    const noiseSnippet = readFileSync(noisePath, 'utf8');
+    const noiseValues = {
       ...merged,
-      GRAIN_BASE_FREQ: grain.baseFrequency ?? 0.9,
-      GRAIN_INTENSITY: grain.intensity ?? 0.12,
-    });
-    out += fillTemplate(grainSnippet, grainValues);
+      NOISE_TURB_TYPE: cfg.turbType,
+      NOISE_BASE_FREQ: cfg.baseFreq * scale,
+      NOISE_OCTAVES: cfg.octaves,
+      NOISE_EXTRA_FILTERS: cfg.extra,
+      NOISE_INTENSITY: noise.intensity ?? 0.12,
+    };
+    // NOISE_EXTRA_FILTERS contains raw SVG markup — must not be escaped.
+    const escapedNoise = escapeValues(noiseValues, ['NOISE_EXTRA_FILTERS']);
+    out += fillTemplate(noiseSnippet, escapedNoise);
   }
 
   return out;

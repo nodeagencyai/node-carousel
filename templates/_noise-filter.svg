@@ -1,0 +1,8 @@
+<defs>
+  <filter id="noise-filter" x="0%" y="0%" width="100%" height="100%">
+    <feTurbulence type="{{NOISE_TURB_TYPE}}" baseFrequency="{{NOISE_BASE_FREQ}}" numOctaves="{{NOISE_OCTAVES}}" stitchTiles="stitch"/>
+    {{NOISE_EXTRA_FILTERS}}
+    <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 {{NOISE_INTENSITY}} 0"/>
+  </filter>
+</defs>
+<rect x="0" y="0" width="{{WIDTH}}" height="{{HEIGHT}}" filter="url(#noise-filter)" pointer-events="none"/>
