@@ -1,0 +1,21 @@
+{
+  "seed": "v0.4::@crescentops::The 2-minute CRM audit",
+  "axes": {
+    "density": {
+      "name": "balanced",
+      "bodyColumns": 5,
+      "padding": "DEFAULT"
+    },
+    "composition": "split-vertical",
+    "emphasis": "middle-noun",
+    "hierarchy": {
+      "name": "pair",
+      "maxFocal": 2
+    },
+    "accentPlacement": "headline-word",
+    "decorationMix": [
+      "cornerMarks",
+      "accentRule"
+    ]
+  }
+}

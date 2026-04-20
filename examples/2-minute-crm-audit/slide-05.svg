@@ -1,29 +1,45 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" width="1080" height="1350">
   <defs>
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:wght@700&amp;family=Inter:wght@400;500;600&amp;display=swap');
-      .headline { font-family: 'Instrument Serif', serif; font-weight: 700; font-size: 64px; fill: #1A1A1A; }
-      .bullet { font-family: 'Inter', sans-serif; font-weight: 500; font-size: 38px; fill: #1A1A1A; }
-      .arrow { font-family: 'Inter', sans-serif; font-weight: 600; font-size: 38px; fill: #C84B31; }
+      @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:wght@400;500;700;800&amp;display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&amp;display=swap');
+      .quote { font-family: 'Instrument Serif', serif; font-style: italic; font-weight: 700; font-size: 64px; fill: #C84B31; letter-spacing: -0.02em; }
+      .attribution { font-family: 'Inter', sans-serif; font-weight: 500; font-size: 28px; fill: #6B6B6B; letter-spacing: 0.1em; text-transform: uppercase; }
+      .handle { font-family: 'Inter', sans-serif; font-weight: 500; font-size: 26px; fill: #6B6B6B; letter-spacing: 0.05em; }
     </style>
   </defs>
-  <rect x="0" y="0" width="1080" height="1350" fill="#F8F5F0"/>
+  <defs>
+  <linearGradient id="ng-grad" gradientTransform="rotate(135, 0.5, 0.5)">
+    <stop offset="0%" stop-color="#F8F5F0"/>
+    <stop offset="100%" stop-color="#EFE8DD"/>
+  </linearGradient>
+  <filter id="ng-noise-overlay" x="0%" y="0%" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="1.3" numOctaves="3" stitchTiles="stitch"/>
+    <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.14 0"/>
+  </filter>
+</defs>
+<rect x="0" y="0" width="1080" height="1350" fill="#F8F5F0"/>
+<rect x="0" y="0" width="1080" height="1350" fill="url(#ng-grad)"/>
+<rect x="0" y="0" width="1080" height="1350" filter="url(#ng-noise-overlay)" style="mix-blend-mode: multiply;"/>
 <defs>
-  <filter id="grain-filter" x="0%" y="0%" width="100%" height="100%">
+  <filter id="noise-filter" x="0%" y="0%" width="100%" height="100%">
     <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/>
+    
     <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.08 0"/>
   </filter>
 </defs>
-<rect x="0" y="0" width="1080" height="1350" filter="url(#grain-filter)" pointer-events="none"/>
+<rect x="0" y="0" width="1080" height="1350" filter="url(#noise-filter)" pointer-events="none"/>
 
-  <text x="100" y="240" class="headline">What makes it stick</text>
-  <g transform="translate(100, 430)">
-    <text x="0" y="0" class="arrow">→</text><text x="50" y="0" class="bullet">A saved view per check, not a new report</text>
-    <text x="0" y="90" class="arrow">→</text><text x="50" y="90" class="bullet">One named owner for each pipeline stage</text>
-    <text x="0" y="180" class="arrow">→</text><text x="50" y="180" class="bullet">A 15-minute slot on everyone&apos;s calendar</text>
-    <text x="0" y="270" class="arrow">→</text><text x="50" y="270" class="bullet">One Slack channel for revenue alerts only</text>
-    <text x="0" y="360" class="arrow">→</text><text x="50" y="360" class="bullet">Screenshots in the channel when a fix lands</text>
-  </g>
-  <text x="980" y="1250" class="counter-mono" text-anchor="end" style="font-family: ui-monospace, 'JetBrains Mono', 'SF Mono', monospace; font-weight: 500; font-size: 22px; fill: #6B6B6B; letter-spacing: 0.1em;">05 / 06</text>
+  <line x1="100" y1="210" x2="220" y2="210" stroke="#C84B31" stroke-width="3"/>
 
+  <text x="980" y="1250" class="counter-mono" text-anchor="end" style="font-family: ui-monospace, 'JetBrains Mono', 'SF Mono', monospace; font-weight: 500; font-size: 22px; fill: #6B6B6B; letter-spacing: 0.1em;">05 / 07</text>
+
+  <text x="72" y="520" class="quote" text-anchor="start">
+    <tspan x="72" dy="0">Every unassigned lead</tspan>
+    <tspan x="72" dy="72">is a conversation</tspan>
+    <tspan x="72" dy="72">someone on your team</tspan>
+    <tspan x="72" dy="72">already paid for.</tspan>
+  </text>
+  <text x="72" y="832" class="attribution" text-anchor="start">— Crescent Consulting</text>
+  <text x="1008" y="1224" class="handle" text-anchor="end">@crescentops</text>
 </svg>

@@ -1,61 +1,79 @@
 {
+  "topic": "The 2-minute CRM audit",
   "slides": [
     {
-      "template": "title-asymmetric",
+      "pattern": "cover-centered",
       "data": {
-        "KICKER": "A 2-MIN AUDIT",
-        "HEADLINE_LINE_1": "Your CRM is leaking",
-        "HEADLINE_LINE_2": "revenue right now"
+        "KICKER": "FIELD NOTES",
+        "HEADLINE_LINE_1": "The 2-minute",
+        "HEADLINE_LINE_2": "CRM audit",
+        "BRAND_HANDLE": "@crescentops"
       }
     },
     {
-      "template": "bullet",
+      "pattern": "list-bullet",
       "data": {
-        "HEADLINE": "Run these 5 checks",
-        "BULLET_1": "Open deals with no next step set",
-        "BULLET_2": "Leads assigned to people who left",
-        "BULLET_3": "Contacts missing email or phone",
-        "BULLET_4": "Deals stuck in one stage over 30 days",
-        "BULLET_5": "Won deals with no renewal date on file"
+        "HEADLINE": "Four checks",
+        "ITEM_1": "Open deals with no next step set",
+        "ITEM_2": "Leads assigned to people who left",
+        "ITEM_3": "Deals idle in one stage over 30 days",
+        "ITEM_4": "Won deals with no renewal date"
       }
     },
     {
-      "template": "stat",
+      "pattern": "stat-dominant",
+      "icon": { "library": "dollar" },
       "data": {
-        "STAT_VALUE": "$47k",
-        "STAT_LABEL": "average we find in the first audit",
-        "STAT_CONTEXT": "across 20 agency clients"
+        "STAT_VALUE": "$47K",
+        "STAT_LABEL": "found in the first audit",
+        "STAT_CONTEXT": "Across 20 agency clients"
       }
     },
     {
-      "template": "bullet",
+      "pattern": "split-comparison",
+      "icon": {
+        "left":  { "library": "x-mark" },
+        "right": { "library": "check" }
+      },
+      "data": {
+        "LEFT_LABEL": "Broken",
+        "LEFT_LINE_1": "214 open deals",
+        "LEFT_LINE_2": "No forecast trust",
+        "LEFT_LINE_3": "Mondays feel heavy",
+        "RIGHT_LABEL": "Healthy",
+        "RIGHT_LINE_1": "38 real deals",
+        "RIGHT_LINE_2": "Honest numbers",
+        "RIGHT_LINE_3": "Back in the work"
+      }
+    },
+    {
+      "pattern": "quote-pulled",
+      "data": {
+        "QUOTE_LINE_1": "Every unassigned lead",
+        "QUOTE_LINE_2": "is a conversation",
+        "QUOTE_LINE_3": "someone on your team",
+        "QUOTE_LINE_4": "already paid for.",
+        "QUOTE_ATTRIBUTION": "Crescent Consulting"
+      }
+    },
+    {
+      "pattern": "list-bullet",
       "data": {
         "HEADLINE": "Fix in this order",
-        "BULLET_1": "Stuck deals first, revenue already on the table",
-        "BULLET_2": "Unassigned leads next, capacity already paid for",
-        "BULLET_3": "Missing contacts third, hygiene compounds later",
-        "BULLET_4": "Stage definitions fourth, stops leaks returning",
-        "BULLET_5": "Weekly 15-min review last, keeps it all alive"
+        "ITEM_1": "Stuck deals first, revenue on the table",
+        "ITEM_2": "Unassigned leads next, capacity is paid",
+        "ITEM_3": "Missing contacts third, hygiene compounds",
+        "ITEM_4": "Weekly 15-min review, keeps it alive"
       }
     },
     {
-      "template": "bullet",
+      "pattern": "cta-stacked",
       "data": {
-        "HEADLINE": "What makes it stick",
-        "BULLET_1": "A saved view per check, not a new report",
-        "BULLET_2": "One named owner for each pipeline stage",
-        "BULLET_3": "A 15-minute slot on everyone's calendar",
-        "BULLET_4": "One Slack channel for revenue alerts only",
-        "BULLET_5": "Screenshots in the channel when a fix lands"
-      }
-    },
-    {
-      "template": "cta",
-      "data": {
-        "CTA_HOOK_LINE_1": "Want the full",
-        "CTA_HOOK_LINE_2": "walkthrough?",
-        "CTA_BUTTON": "Comment AUDIT",
-        "CTA_SUBTEXT": "I'll DM you the step-by-step"
+        "HOOK_LINE_1": "Want the",
+        "HOOK_LINE_2": "full walkthrough?",
+        "BUTTON": "DM AUDIT",
+        "SUBTEXT": "I'll send the saved-view filters",
+        "BRAND_HANDLE": "@crescentops"
       }
     }
   ]

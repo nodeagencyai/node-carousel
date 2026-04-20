@@ -17,27 +17,15 @@
       "body": "Inter"
     },
     "background": {
-      "type": "solid",
+      "type": "noise-gradient",
       "color": "#F8F5F0",
-      "gradient": {
+      "noiseGradient": {
         "from": "#F8F5F0",
-        "to": "#C84B31",
-        "angle": 135
+        "to": "#EFE8DD",
+        "angle": 135,
+        "noiseType": "grit",
+        "noiseIntensity": 0.14
       },
-      "mesh": {
-        "blobs": [
-          { "cx": "20%", "cy": "30%", "r": "45%", "color": "#C84B31", "opacity": 0.15 },
-          { "cx": "80%", "cy": "70%", "r": "55%", "color": "#9B3D27", "opacity": 0.12 },
-          { "cx": "50%", "cy": "50%", "r": "35%", "color": "#F8F5F0", "opacity": 0.1 }
-        ]
-      },
-      "radial": {
-        "center": "50% 30%",
-        "from": "#C84B31",
-        "to": "#F8F5F0",
-        "stops": [0.15, 0.85]
-      },
-      "imagePath": null,
       "grain": {
         "enabled": true,
         "intensity": 0.08,
@@ -47,6 +35,13 @@
     "numbering": {
       "style": "fraction-mono",
       "position": "bottom-right"
+    },
+    "decorations": {
+      "cornerMarks": false,
+      "accentRule": true,
+      "numberBadges": false,
+      "pullQuoteBlock": true,
+      "oversizedMark": false
     },
     "dimensions": {
       "width": 1080,

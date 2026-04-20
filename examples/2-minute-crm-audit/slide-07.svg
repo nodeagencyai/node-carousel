@@ -3,10 +3,10 @@
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:wght@400;500;700;800&amp;display=swap');
       @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&amp;display=swap');
-      .headline { font-family: 'Instrument Serif', serif; font-weight: 700; font-size: 64px; fill: #1A1A1A; letter-spacing: -0.02em; }
-      .arrow { font-family: 'Inter', sans-serif; font-weight: 600; font-size: 36px; fill: #C84B31; }
-      .item { font-family: 'Inter', sans-serif; font-weight: 500; font-size: 36px; fill: #1A1A1A; }
-      .handle { font-family: 'Inter', sans-serif; font-weight: 500; font-size: 26px; fill: #6B6B6B; letter-spacing: 0.05em; }
+      .hook { font-family: 'Instrument Serif', serif; font-weight: 800; font-size: 88px; fill: #1A1A1A; letter-spacing: -0.03em; }
+      .button-label { font-family: 'Inter', sans-serif; font-weight: 600; font-size: 36px; fill: #F8F5F0; letter-spacing: 0.02em; }
+      .subtext { font-family: 'Inter', sans-serif; font-weight: 400; font-size: 28px; fill: #6B6B6B; }
+      .handle { font-family: 'Inter', sans-serif; font-weight: 500; font-size: 28px; fill: #1A1A1A; letter-spacing: 0.05em; }
     </style>
   </defs>
   <defs>
@@ -33,20 +33,15 @@
 
   <line x1="100" y1="210" x2="220" y2="210" stroke="#C84B31" stroke-width="3"/>
 
-  <text x="980" y="1250" class="counter-mono" text-anchor="end" style="font-family: ui-monospace, 'JetBrains Mono', 'SF Mono', monospace; font-weight: 500; font-size: 22px; fill: #6B6B6B; letter-spacing: 0.1em;">06 / 07</text>
+  
+  <text x="980" y="1250" class="counter-mono" text-anchor="end" style="font-family: ui-monospace, 'JetBrains Mono', 'SF Mono', monospace; font-weight: 500; font-size: 22px; fill: #6B6B6B; letter-spacing: 0.1em;">07 / 07</text>
 
-  <text x="72" y="360" class="headline">Fix in this order</text>
-  <g transform="translate(72, 552)">
-    <text x="0" y="0" class="arrow">→</text>
-    <text x="64" y="0" class="item">Stuck deals first, revenue on the table</text>
-    <text x="0" y="88" class="arrow">→</text>
-    <text x="64" y="88" class="item">Unassigned leads next, capacity is paid</text>
-    <text x="0" y="176" class="arrow">→</text>
-    <text x="64" y="176" class="item">Missing contacts third, hygiene compounds</text>
-    <text x="0" y="264" class="arrow">→</text>
-    <text x="64" y="264" class="item">Weekly 15-min review, keeps it alive</text>
-    <text x="0" y="352" class="arrow"></text>
-    <text x="64" y="352" class="item"></text>
-  </g>
-  <text x="1008" y="1224" class="handle" text-anchor="end">@crescentops</text>
+  <text x="540" y="520" class="hook" text-anchor="middle">
+    <tspan x="540" dy="0">Want the</tspan>
+    <tspan x="540" dy="104">full walkthrough?</tspan>
+  </text>
+  <rect x="260" y="816" width="560" height="112" rx="56" fill="#C84B31"/>
+  <text x="540" y="888" class="button-label" text-anchor="middle">DM AUDIT</text>
+  <text x="540" y="992" class="subtext" text-anchor="middle">I&apos;ll send the saved-view filters</text>
+  <text x="540" y="1224" class="handle" text-anchor="middle">@crescentops</text>
 </svg>
