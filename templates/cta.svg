@@ -9,6 +9,7 @@
     </style>
   </defs>
   {{BACKGROUND}}
+  {{DECORATIONS}}
   <text x="{{CENTER_X}}" y="{{CTA_HOOK_Y}}" class="hook" text-anchor="middle">
     <tspan x="{{CENTER_X}}" dy="0">{{CTA_HOOK_LINE_1}}</tspan>
     <tspan x="{{CENTER_X}}" dy="86">{{CTA_HOOK_LINE_2}}</tspan>

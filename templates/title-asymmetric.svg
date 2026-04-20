@@ -9,6 +9,7 @@
     </style>
   </defs>
   {{BACKGROUND}}
+  {{DECORATIONS}}
   <text x="100" y="180" class="kicker">{{KICKER}}</text>
   <line x1="100" y1="210" x2="220" y2="210" class="rule"/>
   <text x="100" y="{{TITLE_HEADLINE_Y}}" class="headline-asym">

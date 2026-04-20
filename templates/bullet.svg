@@ -8,6 +8,7 @@
     </style>
   </defs>
   {{BACKGROUND}}
+  {{DECORATIONS}}
   <text x="100" y="240" class="headline">{{HEADLINE}}</text>
   <g transform="translate(100, 430)">
     <text x="0" y="0" class="arrow">{{ARROW_1}}</text><text x="50" y="0" class="bullet">{{BULLET_1}}</text>

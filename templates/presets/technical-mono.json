@@ -48,6 +48,13 @@
       "style": "fraction-mono",
       "position": "bottom-right"
     },
+    "decorations": {
+      "cornerMarks": true,
+      "accentRule": false,
+      "numberBadges": true,
+      "pullQuoteBlock": false,
+      "oversizedMark": false
+    },
     "dimensions": {
       "width": 1080,
       "height": 1350

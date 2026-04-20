@@ -1,0 +1,4 @@
+<g>
+  <rect x="100" y="{{PULL_QUOTE_Y_OFFSET}}" width="{{PULL_QUOTE_WIDTH}}" height="64" fill="{{COLOR_ACCENT}}" opacity="0.15" rx="4"/>
+  <text x="120" y="{{PULL_QUOTE_Y}}" font-family="'{{FONT_DISPLAY}}', serif" font-weight="700" font-size="32" fill="{{COLOR_TEXT}}">{{PULL_QUOTE_TEXT}}</text>
+</g>

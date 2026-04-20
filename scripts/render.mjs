@@ -436,7 +436,112 @@ function buildDerivedDimensions(brand) {
     BUTTON_Y: 700,
     BUTTON_TEXT_Y: 778,
     CTA_SUBTEXT_Y: 900,
+    // Decoration-specific layout (corner marks)
+    CORNER_TR_X: width - 60,       // right-edge inset for top-right + bottom-right brackets
+    CORNER_BL_Y_START: height - 100, // start of vertical arm for bottom corners
+    CORNER_BL_Y_END: height - 60,    // corner vertex for bottom corners
   };
+}
+
+// Known decoration names (keys in the decorations config object).
+// Order here defines render order (first rendered = underneath later ones).
+const DECORATION_NAMES = [
+  'cornerMarks',
+  'accentRule',
+  'numberBadges',
+  'pullQuoteBlock',
+  'oversizedMark',
+];
+
+// Map a decoration config key → snippet filename in templates/decorations/.
+const DECORATION_FILE_MAP = {
+  cornerMarks: 'corner-marks.svg',
+  accentRule: 'accent-rule.svg',
+  numberBadges: 'number-badge.svg',
+  pullQuoteBlock: 'pull-quote-block.svg',
+  oversizedMark: 'oversized-mark.svg',
+};
+
+/**
+ * Merge decoration config from brand + slideData.
+ *
+ * - Start with brand.visual.decorations (object with booleans).
+ * - If slideData.decorations is an array: treat as "enable exactly these" (override brand).
+ * - If slideData.decorations is an object: overlay fields on top of brand.
+ * - If missing: use brand defaults.
+ *
+ * Unknown names are ignored. Missing values default to `false`.
+ */
+function resolveDecorationConfig(brandDecorations, slideDecorations) {
+  const brandCfg = brandDecorations && typeof brandDecorations === 'object' ? brandDecorations : {};
+  const resolved = {};
+  for (const name of DECORATION_NAMES) {
+    resolved[name] = Boolean(brandCfg[name]);
+  }
+
+  if (Array.isArray(slideDecorations)) {
+    // Explicit override — enable exactly these (all others disabled).
+    for (const name of DECORATION_NAMES) resolved[name] = false;
+    for (const name of slideDecorations) {
+      if (DECORATION_NAMES.includes(name)) resolved[name] = true;
+    }
+  } else if (slideDecorations && typeof slideDecorations === 'object') {
+    // Overlay — merge fields on top of brand defaults.
+    for (const [k, v] of Object.entries(slideDecorations)) {
+      if (DECORATION_NAMES.includes(k)) resolved[k] = Boolean(v);
+    }
+  }
+
+  return resolved;
+}
+
+function renderDecorations({ brand, slideData, pluginRoot, baseValues, slideNumber }) {
+  const config = resolveDecorationConfig(
+    brand.visual?.decorations,
+    slideData?.decorations,
+  );
+
+  const anyEnabled = DECORATION_NAMES.some((n) => config[n]);
+  if (!anyEnabled) return '';
+
+  // Build values for decoration placeholders. Uses baseValues for colors,
+  // fonts, and layout; layers on decoration-specific defaults.
+  const slideDataObj = slideData && typeof slideData === 'object' ? slideData : {};
+  const values = {
+    ...baseValues,
+    SLIDE_NUMBER_PADDED: String(slideNumber).padStart(2, '0'),
+    // Pull-quote defaults (overridable via slideData)
+    PULL_QUOTE_TEXT: slideDataObj.PULL_QUOTE_TEXT ?? '',
+    PULL_QUOTE_Y: slideDataObj.PULL_QUOTE_Y ?? 920,
+    PULL_QUOTE_WIDTH: slideDataObj.PULL_QUOTE_WIDTH ?? 600,
+    PULL_QUOTE_Y_OFFSET: slideDataObj.PULL_QUOTE_Y_OFFSET ?? 880,
+    // Oversized mark default (overridable via slideData)
+    OVERSIZED_MARK_CHAR: slideDataObj.OVERSIZED_MARK_CHAR ?? '"',
+  };
+
+  // Decoration snippets contain user-visible text (PULL_QUOTE_TEXT,
+  // OVERSIZED_MARK_CHAR) and numeric/layout values — escape them all.
+  const escaped = escapeValues(values);
+
+  const parts = [];
+  for (const name of DECORATION_NAMES) {
+    if (!config[name]) continue;
+    // Pull-quote block only renders when we actually have text — otherwise
+    // the tinted rect and empty <text> element show up as a ghost artifact
+    // on slides that don't supply PULL_QUOTE_TEXT (e.g. title slides).
+    if (name === 'pullQuoteBlock') {
+      const text = String(values.PULL_QUOTE_TEXT ?? '').trim();
+      if (!text) continue;
+    }
+    const file = DECORATION_FILE_MAP[name];
+    if (!file) continue;
+    const path = join(pluginRoot, 'templates', 'decorations', file);
+    if (!existsSync(path)) continue;
+    const snippet = readFileSync(path, 'utf8');
+    parts.push(fillTemplate(snippet, escaped));
+  }
+
+  return parts.join('\n');
 }
 
 export function renderSlide({
@@ -498,10 +603,20 @@ export function renderSlide({
     slideTotal,
   });
 
+  // Pass 1c: render decorations (above background, below text content).
+  const decorationsSvg = renderDecorations({
+    brand,
+    slideData,
+    pluginRoot,
+    baseValues,
+    slideNumber,
+  });
+
   const values = {
     ...baseValues,
     BACKGROUND: backgroundSvg,
     NUMBERING: numberingSvg,
+    DECORATIONS: decorationsSvg,
     ...(slideData || {}),
   };
 
@@ -537,9 +652,10 @@ export function renderSlide({
     values.TITLE_HEADLINE_Y = 820 + Math.round((124 - size) * 0.6);
   }
 
-  // Pass 2: fill the main template. Escape every string EXCEPT BACKGROUND
-  // and NUMBERING (already SVG markup — escaping would turn <rect> into &lt;rect&gt;).
-  const escaped = escapeValues(values, ['BACKGROUND', 'NUMBERING']);
+  // Pass 2: fill the main template. Escape every string EXCEPT BACKGROUND,
+  // NUMBERING, and DECORATIONS (already SVG markup — escaping would turn
+  // <rect> into &lt;rect&gt;).
+  const escaped = escapeValues(values, ['BACKGROUND', 'NUMBERING', 'DECORATIONS']);
   return fillTemplate(templateStr, escaped);
 }
 
@@ -594,9 +710,17 @@ async function main() {
   const total = slides.length;
   slides.forEach((slide, i) => {
     const slideNumber = i + 1;
+    // Accept `decorations` either as a sibling of `data` or inside `data`.
+    // Sibling form is the documented shape for strategy.json; data-nested
+    // form stays supported for callers that pre-built the full slideData
+    // object.
+    const slideData = { ...(slide.data || {}) };
+    if (slide.decorations !== undefined && slideData.decorations === undefined) {
+      slideData.decorations = slide.decorations;
+    }
     const svg = renderSlide({
       templateName: slide.template,
-      slideData: slide.data || {},
+      slideData,
       brand,
       slideNumber,
       slideTotal: total,

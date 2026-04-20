@@ -8,6 +8,7 @@
     </style>
   </defs>
   {{BACKGROUND}}
+  {{DECORATIONS}}
   <text x="100" y="360" class="quote-mark">"</text>
   <text x="100" y="{{CENTER_Y}}" class="quote">
     <tspan x="100" dy="0">{{QUOTE_LINE_1}}</tspan>

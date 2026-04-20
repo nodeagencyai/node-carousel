@@ -1,0 +1,6 @@
+<g>
+  <path d="M 60,100 L 60,60 L 100,60" stroke="{{COLOR_ACCENT}}" stroke-width="3" fill="none"/>
+  <path d="M {{WIDTH_MINUS_100}},60 L {{CORNER_TR_X}},60 L {{CORNER_TR_X}},100" stroke="{{COLOR_ACCENT}}" stroke-width="3" fill="none"/>
+  <path d="M 60,{{CORNER_BL_Y_START}} L 60,{{CORNER_BL_Y_END}} L 100,{{CORNER_BL_Y_END}}" stroke="{{COLOR_ACCENT}}" stroke-width="3" fill="none"/>
+  <path d="M {{WIDTH_MINUS_100}},{{CORNER_BL_Y_END}} L {{CORNER_TR_X}},{{CORNER_BL_Y_END}} L {{CORNER_TR_X}},{{CORNER_BL_Y_START}}" stroke="{{COLOR_ACCENT}}" stroke-width="3" fill="none"/>
+</g>

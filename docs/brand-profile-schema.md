@@ -39,6 +39,13 @@ Every node-carousel project has a `brand-profile.json` at its root. Commands rea
       "grain": { "enabled": true, "intensity": 0.12, "baseFrequency": 0.9 }
     },
     "numbering": { "style": "fraction-mono", "position": "bottom-right" },
+    "decorations": {
+      "cornerMarks": false,
+      "accentRule": true,
+      "numberBadges": false,
+      "pullQuoteBlock": false,
+      "oversizedMark": false
+    },
     "dimensions": { "width": 1080, "height": 1350 }
   }
 }
@@ -147,6 +154,34 @@ Visual descriptions:
 - **`bar`** — Thin progress bar across the bottom. Accent-colored portion fills as deck progresses.
 - **`none`** — No counter. Intentional choice when slides should feel standalone.
 
+### `visual.decorations` (object, optional — v0.3+)
+
+Optional decorative elements layered above the background but below text content. Each field is a boolean — set to `true` to enable the decoration on every mid-deck slide that uses it. Missing field or missing `decorations` block entirely → all decorations default to `false` (backward-compatible with v0.1/v0.2 brand profiles).
+
+| Field | Type | Default | Description | When to use |
+|---|---|---|---|---|
+| `cornerMarks` | boolean | `false` | Four small `L`-shaped brackets at each corner of the canvas (40px arms, 3px stroke, accent color, 60px inset). | Technical, utility, "bracketed screenshot" aesthetic — pairs well with mono fonts. |
+| `accentRule` | boolean | `false` | Short horizontal line (120×3px) below the kicker at y=210. Subtle editorial emphasis mark. | Editorial, magazine-style decks. The original title-asymmetric inline rule, extracted as a reusable decoration. |
+| `numberBadges` | boolean | `false` | Oversized slide number top-right as a low-opacity (0.18) watermark in accent color. 180px display font. | Numbered-sequence content ("5 lessons", "10 steps") where big numerals reinforce the ordinal nature. |
+| `pullQuoteBlock` | boolean | `false` | Colored rectangle (accent color, 15% opacity) behind a phrase at y=880–944 with text at y=920. Requires per-slide `PULL_QUOTE_TEXT` for the text content. | Drawing the eye to a highlighted quote or key phrase on a bullet/stat slide. |
+| `oversizedMark` | boolean | `false` | Huge decorative punctuation (420px font, 15% opacity accent) top-right as visual anchor. Default char is `"`; override via slideData `OVERSIZED_MARK_CHAR`. | Display-serif brands (DM Serif Display, Playfair) where large punctuation reads as expressive typography rather than literal punctuation. |
+
+**Per-slide overrides.** `slideData.decorations` on any slide in `strategy.json` overrides the brand default for that slide:
+- Array form — `"decorations": ["cornerMarks", "pullQuoteBlock"]` — enables exactly those decorations, all others disabled.
+- Object form — `"decorations": { "pullQuoteBlock": true }` — overlays fields on top of brand defaults.
+
+**Pull-quote layout values** — overridable per-slide in `slideData`:
+- `PULL_QUOTE_TEXT` — the phrase (required when `pullQuoteBlock: true`; otherwise empty).
+- `PULL_QUOTE_Y_OFFSET` — top of rect (default `880`).
+- `PULL_QUOTE_Y` — baseline of text inside rect (default `920`).
+- `PULL_QUOTE_WIDTH` — rect width (default `600`).
+
+**Oversized mark** — `OVERSIZED_MARK_CHAR` in slideData overrides the default `"` (double-quote). Try `!`, `?`, or `#` for topic-matched variants.
+
+**Pull-quote block gating.** When `pullQuoteBlock` is enabled but the slide does not provide a `PULL_QUOTE_TEXT`, the decoration is skipped for that slide (no empty rect artifact). Enable it at the brand level and sprinkle `PULL_QUOTE_TEXT` onto specific slides that should carry the highlight.
+
+**Note on `title-asymmetric`.** The `title-asymmetric.svg` template has an always-on accent rule inline under the kicker (baked into the template, not the decoration system). Turning `accentRule: true` in decorations only adds the line to other templates (bullet, stat, quote, cta) — on title-asymmetric you will get the inline rule either way. This is intentional: the inline rule predates the decoration system and is preserved for backward compatibility with v0.2 brand profiles.
+
 ### `visual.dimensions` (object, required)
 
 | Field | Type | Required | Default | Notes |
@@ -165,13 +200,14 @@ Invalid brand-profile.json: missing required field "visual.dimensions.width" (ex
 
 See `templates/brand-profile.default.json` for a complete valid example with all v0.2 fields populated.
 
-## Backward compatibility (v0.1 → v0.2)
+## Backward compatibility (v0.1 → v0.2 → v0.3)
 
-All v0.2 additions are optional. A v0.1 brand profile with just `solid`/`gradient`/`image` backgrounds, no `grain`, and no `numbering` renders identically in v0.2.
+All post-v0.1 additions are optional. A v0.1 brand profile with just `solid`/`gradient`/`image` backgrounds, no `grain`, no `numbering`, and no `decorations` renders identically in v0.3.
 
 - Missing `grain`? → treated as `{ enabled: false }`
 - Missing `numbering`? → defaults to `{ style: "fraction-mono", position: "bottom-right" }`
 - Missing `mesh` / `radial`? → only used when `type` points to them
+- Missing `decorations`? → treated as all `false` — no decoration rendered (v0.1/v0.2 behaviour preserved)
 
 ## Presets (setup wizard)
 

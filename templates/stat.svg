@@ -8,6 +8,7 @@
     </style>
   </defs>
   {{BACKGROUND}}
+  {{DECORATIONS}}
   <text x="{{CENTER_X}}" y="{{CENTER_Y_MINUS_120}}" class="stat" text-anchor="middle">{{STAT_VALUE}}</text>
   <text x="{{CENTER_X}}" y="{{CENTER_Y_PLUS_60}}" class="label" text-anchor="middle">{{STAT_LABEL}}</text>
   <text x="{{CENTER_X}}" y="{{CENTER_Y_PLUS_140}}" class="context" text-anchor="middle">{{STAT_CONTEXT}}</text>

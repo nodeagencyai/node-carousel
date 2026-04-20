@@ -48,6 +48,13 @@
       "style": "dot",
       "position": "bottom-center"
     },
+    "decorations": {
+      "cornerMarks": true,
+      "accentRule": false,
+      "numberBadges": false,
+      "pullQuoteBlock": false,
+      "oversizedMark": false
+    },
     "dimensions": {
       "width": 1080,
       "height": 1350

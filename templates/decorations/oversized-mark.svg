@@ -1,0 +1,1 @@
+<text x="{{WIDTH_MINUS_100}}" y="380" text-anchor="end" font-family="'{{FONT_DISPLAY}}', serif" font-weight="800" font-size="420" fill="{{COLOR_ACCENT}}" opacity="0.15">{{OVERSIZED_MARK_CHAR}}</text>

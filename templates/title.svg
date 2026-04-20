@@ -8,6 +8,7 @@
     </style>
   </defs>
   {{BACKGROUND}}
+  {{DECORATIONS}}
   <text x="{{CENTER_X}}" y="480" class="kicker" text-anchor="middle">{{KICKER}}</text>
   <text x="{{CENTER_X}}" y="{{CENTER_Y}}" class="headline" text-anchor="middle">
     <tspan x="{{CENTER_X}}" dy="0">{{HEADLINE_LINE_1}}</tspan>

@@ -48,6 +48,13 @@
       "style": "bar",
       "position": "bottom-center"
     },
+    "decorations": {
+      "cornerMarks": false,
+      "accentRule": false,
+      "numberBadges": false,
+      "pullQuoteBlock": true,
+      "oversizedMark": true
+    },
     "dimensions": {
       "width": 1080,
       "height": 1350
