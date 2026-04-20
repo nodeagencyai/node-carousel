@@ -1,0 +1,2 @@
+<rect x="100" y="{{BOTTOM_Y}}" width="{{BAR_BG_WIDTH}}" height="4" rx="2" fill="{{COLOR_MUTED}}" opacity="0.3"/>
+<rect x="100" y="{{BOTTOM_Y}}" width="{{BAR_PROGRESS_WIDTH}}" height="4" rx="2" fill="{{COLOR_ACCENT}}"/>

@@ -1,0 +1,1 @@
+<text x="{{NUMBERING_X}}" y="{{NUMBERING_Y}}" class="counter-mono" text-anchor="{{NUMBERING_ANCHOR}}" style="font-family: ui-monospace, 'JetBrains Mono', 'SF Mono', monospace; font-weight: 500; font-size: 22px; fill: {{COLOR_MUTED}}; letter-spacing: 0.1em;">{{SLIDE_NUMBER_PADDED}} / {{SLIDE_TOTAL_PADDED}}</text>

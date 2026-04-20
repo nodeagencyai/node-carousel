@@ -5,7 +5,6 @@
       .quote-mark { font-family: '{{FONT_DISPLAY}}', serif; font-weight: 700; font-size: 280px; fill: {{COLOR_ACCENT}}; opacity: 0.85; }
       .quote { font-family: '{{FONT_DISPLAY}}', serif; font-weight: 700; font-style: italic; font-size: 58px; fill: {{COLOR_TEXT}}; }
       .attribution { font-family: '{{FONT_BODY}}', sans-serif; font-weight: 500; font-size: 30px; fill: {{COLOR_MUTED}}; letter-spacing: 0.05em; }
-      .counter { font-family: '{{FONT_BODY}}', sans-serif; font-weight: 500; font-size: 22px; fill: {{COLOR_MUTED}}; letter-spacing: 0.1em; }
     </style>
   </defs>
   {{BACKGROUND}}
@@ -17,5 +16,5 @@
     <tspan x="100" dy="76">{{QUOTE_LINE_4}}</tspan>
   </text>
   <text x="100" y="{{BOTTOM_Y_MINUS_40}}" class="attribution">— {{QUOTE_ATTRIBUTION}}</text>
-  <text x="{{WIDTH_MINUS_100}}" y="{{BOTTOM_Y}}" class="counter" text-anchor="end">{{SLIDE_NUMBER}} / {{SLIDE_TOTAL}}</text>
+  {{NUMBERING}}
 </svg>

@@ -5,7 +5,6 @@
       .headline { font-family: '{{FONT_DISPLAY}}', serif; font-weight: 700; font-size: 64px; fill: {{COLOR_TEXT}}; }
       .bullet { font-family: '{{FONT_BODY}}', sans-serif; font-weight: 500; font-size: 38px; fill: {{COLOR_TEXT}}; }
       .arrow { font-family: '{{FONT_BODY}}', sans-serif; font-weight: 600; font-size: 38px; fill: {{COLOR_ACCENT}}; }
-      .counter { font-family: '{{FONT_BODY}}', sans-serif; font-weight: 500; font-size: 22px; fill: {{COLOR_MUTED}}; letter-spacing: 0.1em; }
     </style>
   </defs>
   {{BACKGROUND}}
@@ -17,5 +16,5 @@
     <text x="0" y="270" class="arrow">{{ARROW_4}}</text><text x="50" y="270" class="bullet">{{BULLET_4}}</text>
     <text x="0" y="360" class="arrow">{{ARROW_5}}</text><text x="50" y="360" class="bullet">{{BULLET_5}}</text>
   </g>
-  <text x="{{WIDTH_MINUS_100}}" y="{{BOTTOM_Y}}" class="counter" text-anchor="end">{{SLIDE_NUMBER}} / {{SLIDE_TOTAL}}</text>
+  {{NUMBERING}}
 </svg>
