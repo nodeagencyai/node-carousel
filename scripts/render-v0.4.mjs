@@ -292,6 +292,14 @@ function renderBackgroundV04({ brand, pluginRoot, baseValues }) {
   const bg = brand.visual?.background || {};
   const type = bg.type || 'solid';
 
+  // v0.3 bg snippets (solid/gradient/mesh/radial/image) need placeholder values
+  // like MESH_BLOB_N_CX, GRADIENT_ANGLE, IMAGE_HREF, etc. v0.3's render.mjs
+  // computed these via buildBackgroundValues and passed them in baseValues.
+  // v0.4's baseValues didn't include them — meaning v0.3-delegated backgrounds
+  // (used by most presets) rendered with empty placeholders. Fix: merge them
+  // into baseValues before delegating.
+  baseValues = { ...baseValues, ...buildBackgroundValues(brand) };
+
   let out;
   let merged;
 
