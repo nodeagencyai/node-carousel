@@ -208,7 +208,16 @@ function renderBackgroundV04({ brand, pluginRoot, baseValues }) {
   if (grain && grain.enabled === true) {
     const grainPath = join(pluginRoot, 'templates', '_grain-filter.svg');
     const grainSnippet = readFileSync(grainPath, 'utf8');
-    out += fillTemplate(grainSnippet, escaped);
+    // Populate grain-specific placeholders — these aren't in baseValues because
+    // v0.3's render.mjs builds them inline. v0.4 has to populate them here or
+    // the feTurbulence/feColorMatrix args render empty and grain becomes a
+    // solid grey overlay instead of noise.
+    const grainValues = escapeValues({
+      ...merged,
+      GRAIN_BASE_FREQ: grain.baseFrequency ?? 0.9,
+      GRAIN_INTENSITY: grain.intensity ?? 0.12,
+    });
+    out += fillTemplate(grainSnippet, grainValues);
   }
 
   return out;
@@ -382,6 +391,10 @@ function buildTokenValues(brand, axes, slideNumber, slideTotal) {
     // Grid
     COL_1_X: COLS[0],
     WIDTH_MINUS_MARGIN: CANVAS.width - GRID.sideMargin,
+    WIDTH_MINUS_100: CANVAS.width - 100,  // v0.3 compat token for shared decorations
+    CORNER_TR_X: CANVAS.width - 60,       // top-right corner inset for corner-marks
+    CORNER_BL_Y_START: CANVAS.height - 100, // vertical arm start for bottom corners
+    CORNER_BL_Y_END: CANVAS.height - 60,    // corner vertex for bottom corners
 
     // Anchors (from tokens/grid.js)
     ANCHOR_FLAG_TOP: ANCHORS.FLAG_TOP,
