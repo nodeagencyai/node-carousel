@@ -1,0 +1,11 @@
+{
+  "slides": [
+    { "template": "cta-double", "data": {
+      "CTA_HOOK_LINE_1": "Found this",
+      "CTA_HOOK_LINE_2": "useful?",
+      "CTA_BUTTON": "Follow",
+      "CTA_BUTTON_2": "Save",
+      "CTA_SUBTEXT": "One of these helps me, the other helps you"
+    }}
+  ]
+}

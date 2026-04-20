@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {{WIDTH}} {{HEIGHT}}" width="{{WIDTH}}" height="{{HEIGHT}}">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family={{FONT_DISPLAY_URL}}:wght@700;800&amp;family={{FONT_BODY_URL}}:wght@400;500&amp;display=swap');
+      .hook-minimal { font-family: '{{FONT_DISPLAY}}', serif; font-weight: 800; font-size: 80px; fill: {{COLOR_TEXT}}; letter-spacing: -0.02em; }
+      .subtext-minimal { font-family: '{{FONT_BODY}}', sans-serif; font-weight: 400; font-size: 36px; fill: {{COLOR_MUTED}}; }
+      .handle-minimal { font-family: '{{FONT_BODY}}', sans-serif; font-weight: 500; font-size: 26px; fill: {{COLOR_TEXT}}; letter-spacing: 0.05em; }
+    </style>
+  </defs>
+  {{BACKGROUND}}
+  {{DECORATIONS}}
+  <text x="{{CENTER_X}}" y="{{CENTER_Y_MINUS_60}}" class="hook-minimal" text-anchor="middle">
+    <tspan x="{{CENTER_X}}" dy="0">{{CTA_HOOK_LINE_1}}</tspan>
+    <tspan x="{{CENTER_X}}" dy="96">{{CTA_HOOK_LINE_2}}</tspan>
+  </text>
+  <text x="{{CENTER_X}}" y="{{CENTER_Y_PLUS_160}}" class="subtext-minimal" text-anchor="middle">{{CTA_SUBTEXT}}</text>
+  <text x="{{CENTER_X}}" y="{{BOTTOM_Y}}" class="handle-minimal" text-anchor="middle">{{BRAND_HANDLE}}</text>
+</svg>

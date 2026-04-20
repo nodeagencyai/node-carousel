@@ -1,0 +1,9 @@
+{
+  "slides": [
+    { "template": "cta-minimal", "data": {
+      "CTA_HOOK_LINE_1": "Want more",
+      "CTA_HOOK_LINE_2": "like this?",
+      "CTA_SUBTEXT": "New ones drop every Tuesday"
+    }}
+  ]
+}
