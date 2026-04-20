@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {{WIDTH}} {{HEIGHT}}" width="{{WIDTH}}" height="{{HEIGHT}}">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family={{FONT_DISPLAY_URL}}:ital,wght@1,700&amp;family={{FONT_BODY_URL}}:wght@400;500&amp;display=swap');
+      .quote { font-family: {{FONT_DISPLAY_STACK}}; font-style: italic; font-weight: 700; font-size: {{TYPE_SUBHEAD}}px; fill: {{ACCENT}}; letter-spacing: -0.02em; }
+      .attribution { font-family: {{FONT_BODY_STACK}}; font-weight: 500; font-size: {{TYPE_BODY}}px; fill: {{SURFACE_MUTED}}; letter-spacing: 0.1em; text-transform: uppercase; }
+      .handle { font-family: {{FONT_BODY_STACK}}; font-weight: 500; font-size: 26px; fill: {{SURFACE_MUTED}}; letter-spacing: 0.05em; }
+    </style>
+  </defs>
+  {{BACKGROUND}}
+  {{DECORATIONS}}
+  {{NUMBERING}}
+  <text x="{{COL_1_X}}" y="{{ANCHOR_QUOTE_Y}}" class="quote" text-anchor="start">
+    <tspan x="{{COL_1_X}}" dy="0">{{QUOTE_LINE_1}}</tspan>
+    <tspan x="{{COL_1_X}}" dy="{{QUOTE_DY}}">{{QUOTE_LINE_2}}</tspan>
+    <tspan x="{{COL_1_X}}" dy="{{QUOTE_DY}}">{{QUOTE_LINE_3}}</tspan>
+    <tspan x="{{COL_1_X}}" dy="{{QUOTE_DY}}">{{QUOTE_LINE_4}}</tspan>
+  </text>
+  <text x="{{COL_1_X}}" y="{{ANCHOR_QUOTE_ATTRIB_Y}}" class="attribution" text-anchor="start">— {{QUOTE_ATTRIBUTION}}</text>
+  <text x="{{WIDTH_MINUS_MARGIN}}" y="{{ANCHOR_FOOTER_CENTER}}" class="handle" text-anchor="end">{{BRAND_HANDLE}}</text>
+</svg>
