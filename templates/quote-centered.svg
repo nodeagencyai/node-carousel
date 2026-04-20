@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {{WIDTH}} {{HEIGHT}}" width="{{WIDTH}}" height="{{HEIGHT}}">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family={{FONT_DISPLAY_URL}}:wght@700&amp;family={{FONT_BODY_URL}}:wght@400;500&amp;display=swap');
+      .quote-center { font-family: '{{FONT_DISPLAY}}', serif; font-weight: 700; font-style: italic; font-size: 56px; fill: {{COLOR_TEXT}}; }
+      .quote-mark-small { font-family: '{{FONT_DISPLAY}}', serif; font-weight: 700; font-size: 120px; fill: {{COLOR_ACCENT}}; opacity: 0.6; }
+      .attribution-center { font-family: '{{FONT_BODY}}', sans-serif; font-weight: 400; font-size: 28px; fill: {{COLOR_MUTED}}; }
+    </style>
+  </defs>
+  {{BACKGROUND}}
+  {{DECORATIONS}}
+  <text x="{{CENTER_X}}" y="580" class="quote-center" text-anchor="middle">
+    <tspan x="{{CENTER_X}}" dy="0">{{QUOTE_LINE_1}}</tspan>
+    <tspan x="{{CENTER_X}}" dy="76">{{QUOTE_LINE_2}}</tspan>
+    <tspan x="{{CENTER_X}}" dy="76">{{QUOTE_LINE_3}}</tspan>
+    <tspan x="{{CENTER_X}}" dy="76">{{QUOTE_LINE_4}}</tspan>
+  </text>
+  <text x="{{CENTER_X}}" y="1020" class="quote-mark-small" text-anchor="middle">"</text>
+  <text x="{{CENTER_X}}" y="1110" class="attribution-center" text-anchor="middle">— {{QUOTE_ATTRIBUTION}}</text>
+  {{NUMBERING}}
+</svg>

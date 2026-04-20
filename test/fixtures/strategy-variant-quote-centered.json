@@ -1,0 +1,11 @@
+{
+  "slides": [
+    { "template": "quote-centered", "data": {
+      "QUOTE_LINE_1": "The best tool",
+      "QUOTE_LINE_2": "replaces a decision,",
+      "QUOTE_LINE_3": "not a task.",
+      "QUOTE_LINE_4": "",
+      "QUOTE_ATTRIBUTION": "Me, after shipping 40 of them"
+    }}
+  ]
+}

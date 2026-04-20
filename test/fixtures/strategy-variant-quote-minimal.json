@@ -1,0 +1,11 @@
+{
+  "slides": [
+    { "template": "quote-minimal", "data": {
+      "QUOTE_LINE_1": "Ship ugly",
+      "QUOTE_LINE_2": "on Tuesday.",
+      "QUOTE_LINE_3": "Fix it",
+      "QUOTE_LINE_4": "on Friday.",
+      "QUOTE_ATTRIBUTION": "A founder I worked with"
+    }}
+  ]
+}
