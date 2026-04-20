@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" width="1080" height="1350">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700;800&amp;family=Space+Grotesk:wght@400;500&amp;display=swap');
+      .kicker { font-family: 'Space Grotesk', sans-serif; font-weight: 500; font-size: 26px; letter-spacing: 0.22em; text-transform: uppercase; fill: #FFD23F; }
+      .headline { font-family: 'Space Grotesk', serif; font-weight: 800; font-size: 110px; fill: #FFFFFF; line-height: 1.05; }
+      .headline-line2 { font-family: 'Space Grotesk', serif; font-weight: 800; font-size: 110px; fill: #FFFFFF; }
+      .handle { font-family: 'Space Grotesk', sans-serif; font-weight: 500; font-size: 26px; fill: #AAAAAA; letter-spacing: 0.05em; }
+    </style>
+  </defs>
+  <defs>
+  <linearGradient id="bg-gradient" gradientTransform="rotate(160, 0.5, 0.5)">
+    <stop offset="0%" stop-color="#1A0F2E"/>
+    <stop offset="100%" stop-color="#4A1D5C"/>
+  </linearGradient>
+</defs>
+<rect x="0" y="0" width="1080" height="1350" fill="url(#bg-gradient)"/>
+
+  <text x="540" y="480" class="kicker" text-anchor="middle">THE REAL REASON</text>
+  <text x="540" y="675" class="headline" text-anchor="middle">
+    <tspan x="540" dy="0">Your lead magnet</tspan>
+    <tspan x="540" dy="120">isn&apos;t the problem</tspan>
+  </text>
+  <text x="540" y="1250" class="handle" text-anchor="middle">@liftstudio</text>
+</svg>

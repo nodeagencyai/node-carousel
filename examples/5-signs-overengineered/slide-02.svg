@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" width="1080" height="1350">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&amp;family=Inter:wght@400;500;600&amp;display=swap');
+      .headline { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 64px; fill: #FFFFFF; }
+      .bullet { font-family: 'Inter', sans-serif; font-weight: 500; font-size: 38px; fill: #FFFFFF; }
+      .arrow { font-family: 'Inter', sans-serif; font-weight: 600; font-size: 38px; fill: #29F2FE; }
+      .counter { font-family: 'Inter', sans-serif; font-weight: 500; font-size: 22px; fill: #888888; letter-spacing: 0.1em; }
+    </style>
+  </defs>
+  <defs>
+  <linearGradient id="bg-gradient" gradientTransform="rotate(135, 0.5, 0.5)">
+    <stop offset="0%" stop-color="#0f0f0f"/>
+    <stop offset="100%" stop-color="#0B8AEE"/>
+  </linearGradient>
+</defs>
+<rect x="0" y="0" width="1080" height="1350" fill="url(#bg-gradient)"/>
+
+  <text x="100" y="240" class="headline">The 5 tells</text>
+  <g transform="translate(100, 430)">
+    <text x="0" y="0" class="arrow">→</text><text x="50" y="0" class="bullet">3 LLM calls where 1 would do</text>
+    <text x="0" y="90" class="arrow">→</text><text x="50" y="90" class="bullet">Vector DB for under 1,000 docs</text>
+    <text x="0" y="180" class="arrow">→</text><text x="50" y="180" class="bullet">A graph of agents, one user</text>
+    <text x="0" y="270" class="arrow">→</text><text x="50" y="270" class="bullet">Retries on a deterministic step</text>
+    <text x="0" y="360" class="arrow">→</text><text x="50" y="360" class="bullet">Nobody can draw the flow from memory</text>
+  </g>
+  <text x="980" y="1250" class="counter" text-anchor="end">02 / 07</text>
+</svg>

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" width="1080" height="1350">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&amp;family=Inter:wght@400;500&amp;display=swap');
+      .stat { font-family: 'Playfair Display', serif; font-weight: 800; font-size: 280px; fill: #29F2FE; letter-spacing: -0.03em; }
+      .label { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 54px; fill: #FFFFFF; }
+      .context { font-family: 'Inter', sans-serif; font-weight: 400; font-size: 28px; fill: #888888; }
+      .counter { font-family: 'Inter', sans-serif; font-weight: 500; font-size: 22px; fill: #888888; letter-spacing: 0.1em; }
+    </style>
+  </defs>
+  <defs>
+  <linearGradient id="bg-gradient" gradientTransform="rotate(135, 0.5, 0.5)">
+    <stop offset="0%" stop-color="#0f0f0f"/>
+    <stop offset="100%" stop-color="#0B8AEE"/>
+  </linearGradient>
+</defs>
+<rect x="0" y="0" width="1080" height="1350" fill="url(#bg-gradient)"/>
+
+  <text x="540" y="555" class="stat" text-anchor="middle">70%</text>
+  <text x="540" y="735" class="label" text-anchor="middle">of the code I delete on day 1</text>
+  <text x="540" y="815" class="context" text-anchor="middle">across the last 10 client audits</text>
+  <text x="980" y="1250" class="counter" text-anchor="end">05 / 07</text>
+</svg>

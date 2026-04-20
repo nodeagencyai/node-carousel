@@ -1,0 +1,27 @@
+{
+  "brand": {
+    "name": "Node",
+    "handle": "@nodeagency",
+    "tone": "direct, builder-voice, no fluff"
+  },
+  "visual": {
+    "colors": {
+      "background": "#0f0f0f",
+      "text": "#FFFFFF",
+      "accent": "#29F2FE",
+      "accentSecondary": "#0B8AEE",
+      "muted": "#888888"
+    },
+    "fonts": {
+      "display": "Playfair Display",
+      "body": "Inter"
+    },
+    "background": {
+      "type": "gradient",
+      "color": "#0f0f0f",
+      "gradient": { "from": "#0f0f0f", "to": "#0B8AEE", "angle": 135 },
+      "imagePath": null
+    },
+    "dimensions": { "width": 1080, "height": 1350 }
+  }
+}

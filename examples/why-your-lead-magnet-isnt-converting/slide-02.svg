@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" width="1080" height="1350">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&amp;family=Space+Grotesk:wght@400;500;600&amp;display=swap');
+      .headline { font-family: 'Space Grotesk', serif; font-weight: 700; font-size: 64px; fill: #FFFFFF; }
+      .bullet { font-family: 'Space Grotesk', sans-serif; font-weight: 500; font-size: 38px; fill: #FFFFFF; }
+      .arrow { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 38px; fill: #FFD23F; }
+      .counter { font-family: 'Space Grotesk', sans-serif; font-weight: 500; font-size: 22px; fill: #AAAAAA; letter-spacing: 0.1em; }
+    </style>
+  </defs>
+  <defs>
+  <linearGradient id="bg-gradient" gradientTransform="rotate(160, 0.5, 0.5)">
+    <stop offset="0%" stop-color="#1A0F2E"/>
+    <stop offset="100%" stop-color="#4A1D5C"/>
+  </linearGradient>
+</defs>
+<rect x="0" y="0" width="1080" height="1350" fill="url(#bg-gradient)"/>
+
+  <text x="100" y="240" class="headline">Why they don&apos;t convert</text>
+  <g transform="translate(100, 430)">
+    <text x="0" y="0" class="arrow">→</text><text x="50" y="0" class="bullet">You gave away the what, not the how</text>
+    <text x="0" y="90" class="arrow">→</text><text x="50" y="90" class="bullet">It solves a problem they don&apos;t know they have</text>
+    <text x="0" y="180" class="arrow">→</text><text x="50" y="180" class="bullet">The follow-up treats them like a cold lead</text>
+    <text x="0" y="270" class="arrow">→</text><text x="50" y="270" class="bullet">No next step after the PDF lands</text>
+    <text x="0" y="360" class="arrow">→</text><text x="50" y="360" class="bullet">The offer has nothing to do with the magnet</text>
+  </g>
+  <text x="980" y="1250" class="counter" text-anchor="end">02 / 05</text>
+</svg>

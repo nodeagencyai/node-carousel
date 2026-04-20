@@ -1,0 +1,27 @@
+{
+  "brand": {
+    "name": "Lift",
+    "handle": "@liftstudio",
+    "tone": "sharp, opinionated, no-BS"
+  },
+  "visual": {
+    "colors": {
+      "background": "#1A0F2E",
+      "text": "#FFFFFF",
+      "accent": "#FFD23F",
+      "accentSecondary": "#E8AE0A",
+      "muted": "#AAAAAA"
+    },
+    "fonts": {
+      "display": "Space Grotesk",
+      "body": "Space Grotesk"
+    },
+    "background": {
+      "type": "gradient",
+      "color": "#1A0F2E",
+      "gradient": { "from": "#1A0F2E", "to": "#4A1D5C", "angle": 160 },
+      "imagePath": null
+    },
+    "dimensions": { "width": 1080, "height": 1350 }
+  }
+}

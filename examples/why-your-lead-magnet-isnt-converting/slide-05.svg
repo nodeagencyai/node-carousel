@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" width="1080" height="1350">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700;800&amp;family=Space+Grotesk:wght@400;500;600&amp;display=swap');
+      .hook { font-family: 'Space Grotesk', serif; font-weight: 800; font-size: 72px; fill: #FFFFFF; }
+      .button-text { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 38px; fill: #1A0F2E; letter-spacing: 0.02em; }
+      .subtext { font-family: 'Space Grotesk', sans-serif; font-weight: 400; font-size: 28px; fill: #AAAAAA; }
+      .handle { font-family: 'Space Grotesk', sans-serif; font-weight: 500; font-size: 26px; fill: #FFFFFF; letter-spacing: 0.05em; }
+    </style>
+  </defs>
+  <defs>
+  <linearGradient id="bg-gradient" gradientTransform="rotate(160, 0.5, 0.5)">
+    <stop offset="0%" stop-color="#1A0F2E"/>
+    <stop offset="100%" stop-color="#4A1D5C"/>
+  </linearGradient>
+</defs>
+<rect x="0" y="0" width="1080" height="1350" fill="url(#bg-gradient)"/>
+
+  <text x="540" y="480" class="hook" text-anchor="middle">
+    <tspan x="540" dy="0">Want more</tspan>
+    <tspan x="540" dy="86">like this?</tspan>
+  </text>
+  <rect x="180" y="700" width="720" height="120" rx="60" fill="#FFD23F"/>
+  <text x="540" y="778" class="button-text" text-anchor="middle">Follow for more</text>
+  <text x="540" y="900" class="subtext" text-anchor="middle">New breakdown every Tuesday</text>
+  <text x="540" y="1250" class="handle" text-anchor="middle">@liftstudio</text>
+</svg>

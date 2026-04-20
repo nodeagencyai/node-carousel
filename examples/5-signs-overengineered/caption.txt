@@ -1,0 +1,11 @@
+Most AI automations I audit are one prompt pretending to be a system.
+
+I've shipped 40 of these. The pattern is always the same: a founder reads a thread about multi-agent architectures, builds the graph, and then spends 3 weeks debugging why a 4-step pipeline can't do what a single well-written prompt did in v0.
+
+The tell isn't the tech. It's the moment nobody on the team can draw the flow from memory. When that happens, the system has more state than its operators. You're not automating anything, you're outsourcing confusion to tokens.
+
+The fix is almost always deletion. Replace the agent loop with one prompt. Swap the vector DB for a grep. Drop the router until you actually have 2 paths worth routing to. Every line of glue you remove is one less place a prod bug can hide at 2am.
+
+If you suspect yours is overbuilt, DM me AUDIT. I'll tell you what to cut first.
+
+#aiautomation #aiagents #claudeai #buildinpublic #aiengineering #llmops #founderjourney #saas #startuptools

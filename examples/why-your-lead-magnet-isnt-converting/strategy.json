@@ -1,0 +1,53 @@
+{
+  "slides": [
+    {
+      "template": "title",
+      "data": {
+        "KICKER": "THE REAL REASON",
+        "HEADLINE_LINE_1": "Your lead magnet",
+        "HEADLINE_LINE_2": "isn't the problem"
+      }
+    },
+    {
+      "template": "bullet",
+      "data": {
+        "HEADLINE": "Why they don't convert",
+        "BULLET_1": "You gave away the what, not the how",
+        "BULLET_2": "It solves a problem they don't know they have",
+        "BULLET_3": "The follow-up treats them like a cold lead",
+        "BULLET_4": "No next step after the PDF lands",
+        "BULLET_5": "The offer has nothing to do with the magnet"
+      }
+    },
+    {
+      "template": "quote",
+      "data": {
+        "QUOTE_LINE_1": "The magnet isn't",
+        "QUOTE_LINE_2": "the offer.",
+        "QUOTE_LINE_3": "It's the audition",
+        "QUOTE_LINE_4": "for the offer.",
+        "QUOTE_ATTRIBUTION": "Lift"
+      }
+    },
+    {
+      "template": "bullet",
+      "data": {
+        "HEADLINE": "What actually converts",
+        "BULLET_1": "A tool they use once and want again",
+        "BULLET_2": "A checklist that exposes a real problem",
+        "BULLET_3": "A teardown of a specific live example",
+        "BULLET_4": "A single email with a direct offer",
+        "BULLET_5": "A calendar link the magnet earned them"
+      }
+    },
+    {
+      "template": "cta",
+      "data": {
+        "CTA_HOOK_LINE_1": "Want more",
+        "CTA_HOOK_LINE_2": "like this?",
+        "CTA_BUTTON": "Follow for more",
+        "CTA_SUBTEXT": "New breakdown every Tuesday"
+      }
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" width="1080" height="1350">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:wght@700;800&amp;family=Manrope:wght@400;500;600&amp;display=swap');
+      .hook { font-family: 'DM Serif Display', serif; font-weight: 800; font-size: 72px; fill: #1A1A1A; }
+      .button-text { font-family: 'Manrope', sans-serif; font-weight: 600; font-size: 38px; fill: #F8F5F0; letter-spacing: 0.02em; }
+      .subtext { font-family: 'Manrope', sans-serif; font-weight: 400; font-size: 28px; fill: #6B6B6B; }
+      .handle { font-family: 'Manrope', sans-serif; font-weight: 500; font-size: 26px; fill: #1A1A1A; letter-spacing: 0.05em; }
+    </style>
+  </defs>
+  <rect x="0" y="0" width="1080" height="1350" fill="#F8F5F0"/>
+
+  <text x="540" y="480" class="hook" text-anchor="middle">
+    <tspan x="540" dy="0">Want the full</tspan>
+    <tspan x="540" dy="86">walkthrough?</tspan>
+  </text>
+  <rect x="180" y="700" width="720" height="120" rx="60" fill="#C84B31"/>
+  <text x="540" y="778" class="button-text" text-anchor="middle">Comment AUDIT</text>
+  <text x="540" y="900" class="subtext" text-anchor="middle">I&apos;ll DM you the step-by-step</text>
+  <text x="540" y="1250" class="handle" text-anchor="middle">@crescentops</text>
+</svg>

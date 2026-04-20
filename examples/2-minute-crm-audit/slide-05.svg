@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" width="1080" height="1350">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:wght@700&amp;family=Manrope:wght@400;500;600&amp;display=swap');
+      .headline { font-family: 'DM Serif Display', serif; font-weight: 700; font-size: 64px; fill: #1A1A1A; }
+      .bullet { font-family: 'Manrope', sans-serif; font-weight: 500; font-size: 38px; fill: #1A1A1A; }
+      .arrow { font-family: 'Manrope', sans-serif; font-weight: 600; font-size: 38px; fill: #C84B31; }
+      .counter { font-family: 'Manrope', sans-serif; font-weight: 500; font-size: 22px; fill: #6B6B6B; letter-spacing: 0.1em; }
+    </style>
+  </defs>
+  <rect x="0" y="0" width="1080" height="1350" fill="#F8F5F0"/>
+
+  <text x="100" y="240" class="headline">What makes it stick</text>
+  <g transform="translate(100, 430)">
+    <text x="0" y="0" class="arrow">→</text><text x="50" y="0" class="bullet">A saved view per check, not a new report</text>
+    <text x="0" y="90" class="arrow">→</text><text x="50" y="90" class="bullet">One named owner for each pipeline stage</text>
+    <text x="0" y="180" class="arrow">→</text><text x="50" y="180" class="bullet">A 15-minute slot on everyone&apos;s calendar</text>
+    <text x="0" y="270" class="arrow">→</text><text x="50" y="270" class="bullet">One Slack channel for revenue alerts only</text>
+    <text x="0" y="360" class="arrow">→</text><text x="50" y="360" class="bullet">Screenshots in the channel when a fix lands</text>
+  </g>
+  <text x="980" y="1250" class="counter" text-anchor="end">05 / 06</text>
+</svg>

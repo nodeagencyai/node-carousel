@@ -1,0 +1,9 @@
+Your CRM is leaking revenue right now. You just can't see it from the dashboard.
+
+We run this 4-check audit with every new agency client, and it surfaces money on almost every single one. Not because the team is careless, but because CRMs reward adding fields and punish pruning them. Every unassigned lead is a conversation someone already paid for. Every stuck deal is a forecast that's already wrong.
+
+The fix is never "buy a better CRM." It's a 15-minute weekly review with named owners and 4 saved views. Boring. Cheap. Works the first month.
+
+If you want the full walkthrough with the exact saved-view filters and the review template we use internally, comment AUDIT and I'll DM it over.
+
+#crmaudit #revops #salesops #agencyowner #smallbusinessgrowth #clientsuccess #salesenablement #consulting

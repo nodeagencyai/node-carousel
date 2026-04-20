@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" width="1080" height="1350">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&amp;family=Inter:wght@400;500;600&amp;display=swap');
+      .headline { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 64px; fill: #FFFFFF; }
+      .bullet { font-family: 'Inter', sans-serif; font-weight: 500; font-size: 38px; fill: #FFFFFF; }
+      .arrow { font-family: 'Inter', sans-serif; font-weight: 600; font-size: 38px; fill: #29F2FE; }
+      .counter { font-family: 'Inter', sans-serif; font-weight: 500; font-size: 22px; fill: #888888; letter-spacing: 0.1em; }
+    </style>
+  </defs>
+  <defs>
+  <linearGradient id="bg-gradient" gradientTransform="rotate(135, 0.5, 0.5)">
+    <stop offset="0%" stop-color="#0f0f0f"/>
+    <stop offset="100%" stop-color="#0B8AEE"/>
+  </linearGradient>
+</defs>
+<rect x="0" y="0" width="1080" height="1350" fill="url(#bg-gradient)"/>
+
+  <text x="100" y="240" class="headline">You know it&apos;s fixed when</text>
+  <g transform="translate(100, 430)">
+    <text x="0" y="0" class="arrow">→</text><text x="50" y="0" class="bullet">One diagram fits on one page</text>
+    <text x="0" y="90" class="arrow">→</text><text x="50" y="90" class="bullet">One LLM call per user action</text>
+    <text x="0" y="180" class="arrow">→</text><text x="50" y="180" class="bullet">You can debug it without a trace tool</text>
+    <text x="0" y="270" class="arrow">→</text><text x="50" y="270" class="bullet">New hires ship a change in a week</text>
+    <text x="0" y="360" class="arrow">→</text><text x="50" y="360" class="bullet">The on-call doc is 5 lines, not 50</text>
+  </g>
+  <text x="980" y="1250" class="counter" text-anchor="end">06 / 07</text>
+</svg>

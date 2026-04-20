@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" width="1080" height="1350">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:wght@700;800&amp;family=Manrope:wght@400;500&amp;display=swap');
+      .kicker { font-family: 'Manrope', sans-serif; font-weight: 500; font-size: 26px; letter-spacing: 0.22em; text-transform: uppercase; fill: #C84B31; }
+      .headline { font-family: 'DM Serif Display', serif; font-weight: 800; font-size: 110px; fill: #1A1A1A; line-height: 1.05; }
+      .headline-line2 { font-family: 'DM Serif Display', serif; font-weight: 800; font-size: 110px; fill: #1A1A1A; }
+      .handle { font-family: 'Manrope', sans-serif; font-weight: 500; font-size: 26px; fill: #6B6B6B; letter-spacing: 0.05em; }
+    </style>
+  </defs>
+  <rect x="0" y="0" width="1080" height="1350" fill="#F8F5F0"/>
+
+  <text x="540" y="480" class="kicker" text-anchor="middle">A 2-MIN AUDIT</text>
+  <text x="540" y="675" class="headline" text-anchor="middle">
+    <tspan x="540" dy="0">Your CRM is leaking</tspan>
+    <tspan x="540" dy="120">revenue right now</tspan>
+  </text>
+  <text x="540" y="1250" class="handle" text-anchor="middle">@crescentops</text>
+</svg>

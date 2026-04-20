@@ -1,0 +1,27 @@
+{
+  "brand": {
+    "name": "Crescent Consulting",
+    "handle": "@crescentops",
+    "tone": "warm, concrete, educational"
+  },
+  "visual": {
+    "colors": {
+      "background": "#F8F5F0",
+      "text": "#1A1A1A",
+      "accent": "#C84B31",
+      "accentSecondary": "#9B3D27",
+      "muted": "#6B6B6B"
+    },
+    "fonts": {
+      "display": "DM Serif Display",
+      "body": "Manrope"
+    },
+    "background": {
+      "type": "solid",
+      "color": "#F8F5F0",
+      "gradient": { "from": "#F8F5F0", "to": "#E8E0D4", "angle": 135 },
+      "imagePath": null
+    },
+    "dimensions": { "width": 1080, "height": 1350 }
+  }
+}

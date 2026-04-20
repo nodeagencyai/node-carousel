@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" width="1080" height="1350">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:wght@700;800&amp;family=Manrope:wght@400;500&amp;display=swap');
+      .stat { font-family: 'DM Serif Display', serif; font-weight: 800; font-size: 280px; fill: #C84B31; letter-spacing: -0.03em; }
+      .label { font-family: 'DM Serif Display', serif; font-weight: 700; font-size: 54px; fill: #1A1A1A; }
+      .context { font-family: 'Manrope', sans-serif; font-weight: 400; font-size: 28px; fill: #6B6B6B; }
+      .counter { font-family: 'Manrope', sans-serif; font-weight: 500; font-size: 22px; fill: #6B6B6B; letter-spacing: 0.1em; }
+    </style>
+  </defs>
+  <rect x="0" y="0" width="1080" height="1350" fill="#F8F5F0"/>
+
+  <text x="540" y="555" class="stat" text-anchor="middle">$47k</text>
+  <text x="540" y="735" class="label" text-anchor="middle">average we find in the first audit</text>
+  <text x="540" y="815" class="context" text-anchor="middle">across 20 agency clients</text>
+  <text x="980" y="1250" class="counter" text-anchor="end">03 / 06</text>
+</svg>

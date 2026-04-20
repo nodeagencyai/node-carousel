@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" width="1080" height="1350">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&amp;family=Inter:wght@400;500&amp;display=swap');
+      .quote-mark { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 280px; fill: #29F2FE; opacity: 0.85; }
+      .quote { font-family: 'Playfair Display', serif; font-weight: 700; font-style: italic; font-size: 58px; fill: #FFFFFF; }
+      .attribution { font-family: 'Inter', sans-serif; font-weight: 500; font-size: 30px; fill: #888888; letter-spacing: 0.05em; }
+      .counter { font-family: 'Inter', sans-serif; font-weight: 500; font-size: 22px; fill: #888888; letter-spacing: 0.1em; }
+    </style>
+  </defs>
+  <defs>
+  <linearGradient id="bg-gradient" gradientTransform="rotate(135, 0.5, 0.5)">
+    <stop offset="0%" stop-color="#0f0f0f"/>
+    <stop offset="100%" stop-color="#0B8AEE"/>
+  </linearGradient>
+</defs>
+<rect x="0" y="0" width="1080" height="1350" fill="url(#bg-gradient)"/>
+
+  <text x="100" y="360" class="quote-mark">"</text>
+  <text x="100" y="675" class="quote">
+    <tspan x="100" dy="0">If you can&apos;t explain</tspan>
+    <tspan x="100" dy="76">the pipeline in one</tspan>
+    <tspan x="100" dy="76">sentence, it&apos;s too</tspan>
+    <tspan x="100" dy="76">many pipelines.</tspan>
+  </text>
+  <text x="100" y="1210" class="attribution">— Me, after shipping 40 of them</text>
+  <text x="980" y="1250" class="counter" text-anchor="end">03 / 07</text>
+</svg>
