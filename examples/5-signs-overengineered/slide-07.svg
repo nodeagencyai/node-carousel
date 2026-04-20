@@ -1,40 +1,46 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" width="1080" height="1350">
   <defs>
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@700;800&amp;family=Inter:wght@400;500;600&amp;display=swap');
-      .hook { font-family: 'JetBrains Mono', serif; font-weight: 800; font-size: 72px; fill: #FFFFFF; }
-      .button-text { font-family: 'Inter', sans-serif; font-weight: 600; font-size: 38px; fill: #000000; letter-spacing: 0.02em; }
+      @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&amp;display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&amp;display=swap');
+      .hook { font-family: 'JetBrains Mono', serif; font-weight: 800; font-size: 88px; fill: #FFFFFF; letter-spacing: -0.03em; }
+      .button-label { font-family: 'Inter', sans-serif; font-weight: 600; font-size: 36px; fill: #0f0f0f; letter-spacing: 0.02em; }
       .subtext { font-family: 'Inter', sans-serif; font-weight: 400; font-size: 28px; fill: #555555; }
-      .handle { font-family: 'Inter', sans-serif; font-weight: 500; font-size: 26px; fill: #FFFFFF; letter-spacing: 0.05em; }
+      .handle { font-family: 'Inter', sans-serif; font-weight: 500; font-size: 28px; fill: #FFFFFF; letter-spacing: 0.05em; }
     </style>
   </defs>
   <defs>
-  <filter id="mesh-blur" x="-50%" y="-50%" width="200%" height="200%">
-    <feGaussianBlur stdDeviation="120" />
+  <linearGradient id="ng-grad" gradientTransform="rotate(135, 0.5, 0.5)">
+    <stop offset="0%" stop-color="#0f0f0f"/>
+    <stop offset="100%" stop-color="#1a2a3e"/>
+  </linearGradient>
+  <filter id="ng-noise-overlay" x="0%" y="0%" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.35" numOctaves="4" stitchTiles="stitch"/>
+    <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.2 0"/>
   </filter>
 </defs>
-<rect x="0" y="0" width="1080" height="1350" fill="#000000"/>
-<g filter="url(#mesh-blur)">
-  <circle cx="15%" cy="25%" r="50%" fill="#29F2FE" opacity="0.22"/>
-  <circle cx="85%" cy="75%" r="55%" fill="#0B8AEE" opacity="0.25"/>
-  <circle cx="50%" cy="50%" r="30%" fill="#6B3FA0" opacity="0.12"/>
-  <circle cx="0" cy="0" r="0" fill="#000" opacity="0"/>
-  <circle cx="0" cy="0" r="0" fill="#000" opacity="0"/>
-</g>
+<rect x="0" y="0" width="1080" height="1350" fill="#0f0f0f"/>
+<rect x="0" y="0" width="1080" height="1350" fill="url(#ng-grad)"/>
+<rect x="0" y="0" width="1080" height="1350" filter="url(#ng-noise-overlay)" style="mix-blend-mode: multiply;"/>
 <defs>
-  <filter id="grain-filter" x="0%" y="0%" width="100%" height="100%">
+  <filter id="noise-filter" x="0%" y="0%" width="100%" height="100%">
     <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/>
+    
     <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.08 0"/>
   </filter>
 </defs>
-<rect x="0" y="0" width="1080" height="1350" filter="url(#grain-filter)" pointer-events="none"/>
+<rect x="0" y="0" width="1080" height="1350" filter="url(#noise-filter)" pointer-events="none"/>
 
-  <text x="540" y="480" class="hook" text-anchor="middle">
-    <tspan x="540" dy="0">Think yours is</tspan>
-    <tspan x="540" dy="86">overbuilt?</tspan>
+  
+  
+  <text x="980" y="1250" class="counter-mono" text-anchor="end" style="font-family: ui-monospace, 'JetBrains Mono', 'SF Mono', monospace; font-weight: 500; font-size: 22px; fill: #555555; letter-spacing: 0.1em;">07 / 07</text>
+
+  <text x="540" y="520" class="hook" text-anchor="middle">
+    <tspan x="540" dy="0">Building <tspan fill="#29F2FE">one</tspan></tspan>
+    <tspan x="540" dy="104">yourself?</tspan>
   </text>
-  <rect x="180" y="700" width="720" height="120" rx="60" fill="#29F2FE"/>
-  <text x="540" y="778" class="button-text" text-anchor="middle">DM me AUDIT</text>
-  <text x="540" y="900" class="subtext" text-anchor="middle">I&apos;ll tell you what to cut first</text>
-  <text x="540" y="1250" class="handle" text-anchor="middle">@nodeagency</text>
+  <rect x="260" y="816" width="560" height="112" rx="56" fill="#29F2FE"/>
+  <text x="540" y="888" class="button-label" text-anchor="middle">DM AUDIT</text>
+  <text x="540" y="992" class="subtext" text-anchor="middle">I&apos;ll tell you what to cut first</text>
+  <text x="540" y="1224" class="handle" text-anchor="middle">@nodeagency</text>
 </svg>

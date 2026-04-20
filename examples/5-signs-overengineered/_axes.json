@@ -1,0 +1,21 @@
+{
+  "seed": "v0.4::@nodeagency::5 signs your AI is overbuilt",
+  "axes": {
+    "density": {
+      "name": "dense",
+      "bodyColumns": 6,
+      "padding": "SNUG"
+    },
+    "composition": "split-vertical",
+    "emphasis": "last-word",
+    "hierarchy": {
+      "name": "list",
+      "maxFocal": 5
+    },
+    "accentPlacement": "tint-surface",
+    "decorationMix": [
+      "accentRule",
+      "numberBadges"
+    ]
+  }
+}

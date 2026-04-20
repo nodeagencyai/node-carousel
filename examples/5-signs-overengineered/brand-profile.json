@@ -6,7 +6,7 @@
   },
   "visual": {
     "colors": {
-      "background": "#000000",
+      "background": "#0f0f0f",
       "text": "#FFFFFF",
       "accent": "#29F2FE",
       "accentSecondary": "#0B8AEE",
@@ -17,31 +17,20 @@
       "body": "Inter"
     },
     "background": {
-      "type": "mesh",
-      "color": "#000000",
-      "gradient": {
-        "from": "#000000",
-        "to": "#29F2FE",
-        "angle": 135
+      "type": "noise-gradient",
+      "color": "#0f0f0f",
+      "noiseGradient": {
+        "from": "#0f0f0f",
+        "to": "#1a2a3e",
+        "angle": 135,
+        "noiseType": "organic",
+        "noiseIntensity": 0.2
       },
-      "mesh": {
-        "blobs": [
-          { "cx": "15%", "cy": "25%", "r": "50%", "color": "#29F2FE", "opacity": 0.22 },
-          { "cx": "85%", "cy": "75%", "r": "55%", "color": "#0B8AEE", "opacity": 0.25 },
-          { "cx": "50%", "cy": "50%", "r": "30%", "color": "#6B3FA0", "opacity": 0.12 }
-        ]
-      },
-      "radial": {
-        "center": "50% 30%",
-        "from": "#29F2FE",
-        "to": "#000000",
-        "stops": [0.1, 0.85]
-      },
-      "imagePath": null,
-      "grain": {
+      "noise": {
         "enabled": true,
+        "type": "film",
         "intensity": 0.08,
-        "baseFrequency": 0.9
+        "scale": 1.0
       }
     },
     "numbering": {
