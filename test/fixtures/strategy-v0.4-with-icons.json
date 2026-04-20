@@ -1,0 +1,33 @@
+{
+  "topic": "AI automation patterns with icons",
+  "slides": [
+    {
+      "pattern": "cover-asymmetric",
+      "icon": { "library": "zap" },
+      "data": { "KICKER": "5 SIGNS", "HEADLINE_LINE_1": "Your AI is", "HEADLINE_LINE_2": "overbuilt" }
+    },
+    {
+      "pattern": "stat-dominant",
+      "icon": { "library": "shield" },
+      "data": { "STAT_VALUE": "73%", "STAT_LABEL": "of AI projects never ship", "STAT_CONTEXT": "Gartner, 2024" }
+    },
+    {
+      "pattern": "split-comparison",
+      "icon": { "left": { "library": "x-mark" }, "right": { "library": "check" } },
+      "data": { "LEFT_LABEL": "BEFORE", "LEFT_LINE_1": "Manual triage", "LEFT_LINE_2": "Inbox chaos", "LEFT_LINE_3": "Missed replies", "RIGHT_LABEL": "AFTER", "RIGHT_LINE_1": "AI-routed tickets", "RIGHT_LINE_2": "Zero inbox", "RIGHT_LINE_3": "Zero misses" }
+    },
+    {
+      "pattern": "stat-dominant",
+      "icon": { "svg": "<path d=\"M12 2L2 7l10 5 10-5-10-5z\" stroke=\"currentColor\" stroke-width=\"2\" fill=\"none\"/><path d=\"M2 17l10 5 10-5\" stroke=\"currentColor\" stroke-width=\"2\" fill=\"none\"/>" },
+      "data": { "STAT_VALUE": "4.2x", "STAT_LABEL": "ROI when scoped properly", "STAT_CONTEXT": "case studies, n=40" }
+    },
+    {
+      "pattern": "list-bullet",
+      "data": { "HEADLINE": "What actually ships", "ITEM_1": "Clear decision the system makes every time", "ITEM_2": "Human-in-the-loop on the expensive call", "ITEM_3": "Runs on schedule, not trigger chains", "ITEM_4": "Works when the happy path doesn't" }
+    },
+    {
+      "pattern": "cta-stacked",
+      "data": { "HOOK_LINE_1": "Building one", "HOOK_LINE_2": "yourself?", "BUTTON": "DM AUDIT", "SUBTEXT": "I'll review your setup" }
+    }
+  ]
+}

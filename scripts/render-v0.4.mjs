@@ -35,6 +35,7 @@ import {
   renderDecorations,
   renderNumbering,
 } from './shared-render.mjs';
+import { getIcon } from '../tokens/icon-library.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PLUGIN_ROOT = resolve(__dirname, '..');
@@ -213,6 +214,87 @@ function renderBackgroundV04({ brand, pluginRoot, baseValues }) {
   return out;
 }
 
+// ---------------------------------------------------------------------------
+// Icon system (v0.4.1) — curated library + optional AI-generated inline SVG
+// ---------------------------------------------------------------------------
+
+/**
+ * Inline-icon SVG safe-bounds validator. Returns the (trusted) SVG content on
+ * success or `null` on failure; on failure logs a warning — caller falls back
+ * to empty icon slot.
+ */
+function validateIconSvg(svg) {
+  if (typeof svg !== 'string') {
+    console.warn('\u26a0  Icon: svg must be a string — falling back to empty');
+    return null;
+  }
+  if (svg.length > 4000) {
+    console.warn(`\u26a0  Icon: SVG too large (${svg.length} bytes > 4000) — falling back to empty`);
+    return null;
+  }
+  const forbidden = /<\s*(script|foreignObject|image|iframe|style)\b/i;
+  if (forbidden.test(svg)) {
+    console.warn('\u26a0  Icon: contains forbidden element (script/foreignObject/image/iframe/style) — falling back to empty');
+    return null;
+  }
+  const hexMatches = svg.match(/#[0-9a-fA-F]{6}\b/g);
+  if (hexMatches && hexMatches.length) {
+    console.warn(`\u26a0  Icon: uses hardcoded hex color(s) ${hexMatches.join(', ')} — must use currentColor. Falling back to empty`);
+    return null;
+  }
+  return svg;
+}
+
+/**
+ * Resolve a single icon specifier to raw SVG primitives (or empty on miss).
+ * Accepts `{ library: "shield" }`, `{ svg: "<path…/>" }`, or null/undefined.
+ */
+function resolveOneIcon(spec) {
+  if (!spec || typeof spec !== 'object') return '';
+  if (spec.library) {
+    const content = getIcon(spec.library);
+    if (!content) {
+      console.warn(`\u26a0  Icon: unknown library name "${spec.library}" — falling back to empty`);
+      return '';
+    }
+    return content;
+  }
+  if (spec.svg) {
+    const safe = validateIconSvg(spec.svg);
+    return safe ?? '';
+  }
+  return '';
+}
+
+/**
+ * Resolve icon slots for a slide. Returns an object with raw SVG strings:
+ *   { ICON, ICON_LEFT, ICON_RIGHT }
+ *
+ * For single-icon patterns (stat-dominant, cover-asymmetric):
+ *   slide.icon = { library: "shield" }            → ICON populated
+ *   slide.icon = { svg: "<path .../>" }           → ICON populated (validated)
+ *
+ * For split-comparison (two icons):
+ *   slide.icon = { left: {...}, right: {...} }    → ICON_LEFT / ICON_RIGHT
+ *
+ * Missing icons → empty string (template renders `<g>` with no children).
+ */
+function resolveIconSlots(slide) {
+  const out = { ICON: '', ICON_LEFT: '', ICON_RIGHT: '' };
+  const icon = slide?.icon;
+  if (!icon || typeof icon !== 'object') return out;
+
+  // Compound (left/right) form for split-comparison
+  if (icon.left || icon.right) {
+    out.ICON_LEFT = resolveOneIcon(icon.left);
+    out.ICON_RIGHT = resolveOneIcon(icon.right);
+    return out;
+  }
+  // Single-icon form
+  out.ICON = resolveOneIcon(icon);
+  return out;
+}
+
 // Fonts not available on Google Fonts — served by Fontshare instead.
 // Map family name → Fontshare slug.
 const FONTSHARE_FONTS = {
@@ -359,6 +441,20 @@ function buildTokenValues(brand, axes, slideNumber, slideTotal) {
     BUTTON_RX: buttonRx,
     ANCHOR_BUTTON_TEXT_Y: buttonTextY,
     ANCHOR_SUBTEXT_Y: subtextY,
+
+    // Icon slot positions (v0.4.1). 24x24 viewBox at scale 1.5 = 36px, scale 1.67 = 40px.
+    // Cover-asymmetric: top-right balance, opposite kicker
+    ICON_KICKER_X: CANVAS.width - GRID.sideMargin - 40, // 968
+    ICON_KICKER_Y: ANCHORS.FLAG_TOP - 24,               //  72
+    // Stat-dominant: centered above stat-value. Stat baseline=600 (156px font →
+    // text top ~y=475), so icon needs to clear that. y=380 gives a 90px gap
+    // between icon-bottom (y=420) and stat-top.
+    ICON_STAT_X: Math.round(CANVAS.width / 2) - 20,     // 520
+    ICON_STAT_Y: 380,
+    // Split-comparison: above each zone label at y=440. Zone centers 270/810, width 36 → cx-18
+    ICON_LEFT_X: 270 - 18,
+    ICON_RIGHT_X: 810 - 18,
+    ICON_ZONE_Y: 376,
 
     // Type scale
     TYPE_MICRO: TYPE.micro,
@@ -566,15 +662,19 @@ function renderPatternSlide({
     slideTotal,
   });
 
+  // Icon slots — library lookup or validated inline SVG. Empty if absent.
+  const iconSlots = resolveIconSlots(slide);
+
   const finalValues = {
     ...values,
     BACKGROUND: backgroundSvg,
     DECORATIONS: decorationsSvg,
     NUMBERING: numberingSvg,
+    ...iconSlots,
   };
 
   // Escape everything EXCEPT raw-SVG / raw-CSS slots:
-  //   BACKGROUND / DECORATIONS / NUMBERING: raw SVG markup.
+  //   BACKGROUND / DECORATIONS / NUMBERING / ICON*: raw SVG markup.
   //   FONT_*_STACK: CSS font-family value with single quotes around the name
   //     (e.g. `'Instrument Serif', serif`). Escaping turns the quotes into
   //     `&apos;` which breaks CSS. Font names come from brand.visual.fonts
@@ -584,6 +684,9 @@ function renderPatternSlide({
     'BACKGROUND',
     'DECORATIONS',
     'NUMBERING',
+    'ICON',
+    'ICON_LEFT',
+    'ICON_RIGHT',
     'FONT_DISPLAY_STACK',
     'FONT_BODY_STACK',
     'FONT_IMPORTS',

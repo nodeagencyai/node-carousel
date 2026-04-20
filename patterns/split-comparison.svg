@@ -11,6 +11,8 @@
   {{DECORATIONS}}
   {{NUMBERING}}
   <line x1="{{CENTER_X}}" y1="{{ANCHOR_BODY_TOP}}" x2="{{CENTER_X}}" y2="{{ANCHOR_BODY_BOTTOM}}" stroke="{{SURFACE_MUTED}}" stroke-opacity="0.3" stroke-width="2"/>
+  <g color="{{ACCENT}}" transform="translate({{ICON_LEFT_X}} {{ICON_ZONE_Y}}) scale(1.5)" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{{ICON_LEFT}}</g>
+  <g color="{{ACCENT}}" transform="translate({{ICON_RIGHT_X}} {{ICON_ZONE_Y}}) scale(1.5)" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{{ICON_RIGHT}}</g>
   <text x="{{LEFT_ZONE_CENTER_X}}" y="{{ANCHOR_ZONE_LABEL_Y}}" class="zone-label" text-anchor="middle">{{LEFT_LABEL}}</text>
   <text x="{{LEFT_ZONE_CENTER_X}}" y="{{ANCHOR_LINE_1_Y}}" class="zone-line" text-anchor="middle">{{LEFT_LINE_1}}</text>
   <text x="{{LEFT_ZONE_CENTER_X}}" y="{{ANCHOR_LINE_2_Y}}" class="zone-line" text-anchor="middle">{{LEFT_LINE_2}}</text>

@@ -158,6 +158,60 @@ Split the quote manually across 2–4 lines for visual balance. Aim for similar 
 **CTA_BUTTON**: verb-first, 2–5 words. "Follow for more", "DM me SKILL", "Repost to save it".
 **CTA_SUBTEXT**: optional. "Must be following so I can DM", "New drops every Tuesday".
 
+## Icon slots (optional, v0.4.1+)
+
+`stat-dominant`, `cover-asymmetric`, and `split-comparison` patterns support an optional `icon` field per slide. Icons ADD meaning; they are punctuation, not grammar. Never use more than 2 icons per carousel.
+
+### Two ways to specify an icon
+
+**(1) Pick from the library** (preferred — quality-locked):
+```json
+{ "pattern": "stat-dominant", "icon": { "library": "shield" }, "data": { "STAT_VALUE": "73%", "...": "..." } }
+```
+
+Library names:
+`shield`, `bolt`, `zap`, `rocket`, `chart-bar`, `chart-line`, `target`, `compass`, `clock`, `calendar`, `dollar`, `trending-up`, `trending-down`, `check`, `x-mark`, `arrow-right`, `arrow-up-right`, `lightbulb`, `eye`, `user`, `users`, `heart`, `star`, `link`, `database`, `terminal`, `code`, `cpu`, `layers`, `flag`
+
+**(2) Generate inline** (use sparingly — only when no library icon fits):
+```json
+{ "pattern": "stat-dominant", "icon": { "svg": "<path d=\"M12 2L2 7l10 5 10-5-10-5z\" stroke=\"currentColor\" stroke-width=\"2\" fill=\"none\"/>" }, "data": { "...": "..." } }
+```
+
+### Safe-bounds rules for inline SVG
+
+When generating inline icons, you MUST:
+- Use 24×24 viewBox coordinates (no outer `<svg>` wrapper — primitives only).
+- `stroke-width="2"`, `stroke-linecap="round"`, `stroke-linejoin="round"`.
+- `fill="none"` on all elements (icons are line-art).
+- `stroke="currentColor"` — NEVER hardcoded hex codes like `#FF0000`.
+- Only these elements: `<path>`, `<circle>`, `<rect>`, `<line>`, `<polyline>`, `<polygon>`, `<g>`.
+- Total SVG content under 4KB.
+- No `<script>`, `<foreignObject>`, `<image>`, `<style>`, `<iframe>`.
+- Keep it geometric — 3–10 primitives max. If you'd need 50 path commands to draw it, pick a library icon instead or skip the icon entirely.
+
+Invalid icons are dropped gracefully (render with an empty icon slot) — do not panic if one fails; just pick a library icon.
+
+### Split-comparison (two icons)
+
+Split-comparison takes a compound icon spec with `left` + `right`:
+```json
+{ "pattern": "split-comparison", "icon": { "left": { "library": "x-mark" }, "right": { "library": "check" } }, "data": { "...": "..." } }
+```
+
+Classic pairings: `x-mark` / `check`, `trending-down` / `trending-up`, `clock` / `zap`.
+
+### When to use icons
+
+- **`stat-dominant`**: when the stat benefits from a symbol — e.g. "73%" with `shield` for "of projects fail to launch".
+- **`cover-asymmetric`**: to establish topic at a glance — kicker "5 SIGNS" + `zap` icon.
+- **`split-comparison`**: BEFORE side = negative icon (`x-mark`, `trending-down`), AFTER side = positive icon (`check`, `trending-up`).
+
+### When NOT to use icons
+
+- Skip on quote slides (typography carries the weight — no `{{ICON}}` slot there anyway).
+- Skip when the headline already tells the full story — icons should ADD context, not decorate.
+- Never use more than 2 icons in a carousel.
+
 ## Output format
 
 Return a JSON object. No markdown wrapper. No commentary. Just the JSON.

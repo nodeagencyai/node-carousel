@@ -12,6 +12,7 @@
   {{DECORATIONS}}
   {{NUMBERING}}
   <text x="{{COL_1_X}}" y="{{ANCHOR_FLAG_TOP}}" class="kicker">{{KICKER}}</text>
+  <g color="{{ACCENT}}" transform="translate({{ICON_KICKER_X}} {{ICON_KICKER_Y}}) scale(1.5)" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{{ICON}}</g>
   <line x1="{{COL_1_X}}" y1="{{ACCENT_RULE_Y}}" x2="{{ACCENT_RULE_X_END}}" y2="{{ACCENT_RULE_Y}}" class="accent-rule"/>
   <text x="{{COL_1_X}}" y="{{HEADLINE_BOTTOM_Y}}" class="headline">
     <tspan x="{{COL_1_X}}" dy="0">{{HEADLINE_LINE_1}}</tspan>
