@@ -177,6 +177,12 @@ Library names:
 { "pattern": "stat-dominant", "icon": { "svg": "<path d=\"M12 2L2 7l10 5 10-5-10-5z\" stroke=\"currentColor\" stroke-width=\"2\" fill=\"none\"/>" }, "data": { "...": "..." } }
 ```
 
+**(3) Reference a user's own file** (when the user has dropped an SVG into their project):
+```json
+{ "pattern": "stat-dominant", "icon": { "file": "./assets/my-icon.svg" }, "data": { "...": "..." } }
+```
+Path is resolved relative to the `strategy.json` file's directory. File must be an SVG that passes safe-bounds validation (same rules as inline `svg` — no `<script>`, no hardcoded hex, line-art preferred). Larger files (up to 8KB for file source vs 4KB for inline) are OK since they come from a trusted user. The outer `<svg>` wrapper is stripped automatically — the pattern's `<g>` wrapper handles color.
+
 ### Safe-bounds rules for inline SVG
 
 When generating inline icons, you MUST:

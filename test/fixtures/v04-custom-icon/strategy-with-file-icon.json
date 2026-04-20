@@ -1,0 +1,34 @@
+{
+  "topic": "Custom icon file upload test",
+  "slides": [
+    {
+      "pattern": "cover-asymmetric",
+      "icon": { "file": "./valid-icon.svg" },
+      "data": { "KICKER": "FILE ICON", "HEADLINE_LINE_1": "User-provided", "HEADLINE_LINE_2": "SVG file" }
+    },
+    {
+      "pattern": "stat-dominant",
+      "icon": { "file": "./invalid-icon.svg" },
+      "data": { "STAT_VALUE": "4KB", "STAT_LABEL": "hardcoded hex fails validation", "STAT_CONTEXT": "empty slot, no crash" }
+    },
+    {
+      "pattern": "stat-dominant",
+      "icon": { "file": "./invalid-icon-script.svg" },
+      "data": { "STAT_VALUE": "0", "STAT_LABEL": "script tag fails validation", "STAT_CONTEXT": "safe-bounds enforced" }
+    },
+    {
+      "pattern": "stat-dominant",
+      "icon": { "file": "./does-not-exist.svg" },
+      "data": { "STAT_VALUE": "404", "STAT_LABEL": "missing file handled gracefully", "STAT_CONTEXT": "clear warning logged" }
+    },
+    {
+      "pattern": "split-comparison",
+      "icon": { "left": { "file": "./valid-icon.svg" }, "right": { "library": "check" } },
+      "data": { "LEFT_LABEL": "FILE", "LEFT_LINE_1": "User SVG", "LEFT_LINE_2": "On disk", "LEFT_LINE_3": "Validated", "RIGHT_LABEL": "LIBRARY", "RIGHT_LINE_1": "Built-in", "RIGHT_LINE_2": "30 icons", "RIGHT_LINE_3": "Curated" }
+    },
+    {
+      "pattern": "cta-stacked",
+      "data": { "HOOK_LINE_1": "Drop your own", "HOOK_LINE_2": "SVG assets", "BUTTON": "TRY IT", "SUBTEXT": "Path relative to strategy.json" }
+    }
+  ]
+}

@@ -231,14 +231,17 @@ function renderBackgroundV04({ brand, pluginRoot, baseValues }) {
  * Inline-icon SVG safe-bounds validator. Returns the (trusted) SVG content on
  * success or `null` on failure; on failure logs a warning — caller falls back
  * to empty icon slot.
+ *
+ * `maxBytes` is the upper size budget: 4KB for author-inline SVG (AI-generated,
+ * never trusted), 8KB for user-provided files (trusted on-disk asset).
  */
-function validateIconSvg(svg) {
+function validateIconSvg(svg, maxBytes = 4000) {
   if (typeof svg !== 'string') {
     console.warn('\u26a0  Icon: svg must be a string — falling back to empty');
     return null;
   }
-  if (svg.length > 4000) {
-    console.warn(`\u26a0  Icon: SVG too large (${svg.length} bytes > 4000) — falling back to empty`);
+  if (svg.length > maxBytes) {
+    console.warn(`\u26a0  Icon: SVG too large (${svg.length} bytes > ${maxBytes}) — falling back to empty`);
     return null;
   }
   const forbidden = /<\s*(script|foreignObject|image|iframe|style)\b/i;
@@ -255,10 +258,64 @@ function validateIconSvg(svg) {
 }
 
 /**
- * Resolve a single icon specifier to raw SVG primitives (or empty on miss).
- * Accepts `{ library: "shield" }`, `{ svg: "<path…/>" }`, or null/undefined.
+ * Extract the inner content of an <svg>...</svg> wrapper — everything BETWEEN
+ * the opening `<svg ...>` tag's closing `>` and the final `</svg>`. Used when
+ * reading a user's SVG file from disk: the outer <svg> wrapper is stripped
+ * because the pattern's <g color="..."> wrapper handles color + transform.
+ *
+ * Returns null on malformed input.
  */
-function resolveOneIcon(spec) {
+function extractSvgInner(svgText) {
+  const svgOpenIndex = svgText.indexOf('<svg');
+  if (svgOpenIndex < 0) return null;
+  const openTagEnd = svgText.indexOf('>', svgOpenIndex);
+  const closeTagStart = svgText.lastIndexOf('</svg>');
+  if (openTagEnd < 0 || closeTagStart < 0 || closeTagStart <= openTagEnd) {
+    return null; // malformed
+  }
+  return svgText.substring(openTagEnd + 1, closeTagStart).trim();
+}
+
+/**
+ * Read an SVG file relative to the strategy's directory, strip the outer <svg>
+ * wrapper, validate with the user-file size budget, and return inner primitives.
+ *
+ * Returns null (and logs a warning) on any failure — caller falls back to
+ * empty icon slot. Never throws.
+ */
+function loadIconFromFile(filePath, strategyDir) {
+  if (typeof filePath !== 'string' || !filePath.trim()) {
+    console.warn('\u26a0  Icon: file path must be a non-empty string — falling back to empty');
+    return null;
+  }
+  const baseDir = strategyDir || process.cwd();
+  const resolvedPath = resolve(baseDir, filePath);
+  let text;
+  try {
+    text = readFileSync(resolvedPath, 'utf8');
+  } catch (err) {
+    console.warn(`\u26a0  Icon: could not read file "${filePath}" (resolved: ${resolvedPath}): ${err.message} — falling back to empty`);
+    return null;
+  }
+  const inner = extractSvgInner(text);
+  if (inner === null) {
+    console.warn(`\u26a0  Icon: file "${filePath}" is not a valid SVG (missing <svg>...</svg> wrapper) — falling back to empty`);
+    return null;
+  }
+  // 8KB budget for user-provided files (vs 4KB for AI-inline)
+  return validateIconSvg(inner, 8000);
+}
+
+/**
+ * Resolve a single icon specifier to raw SVG primitives (or empty on miss).
+ * Accepts `{ library: "shield" }`, `{ svg: "<path…/>" }`, `{ file: "./icon.svg" }`,
+ * or null/undefined.
+ *
+ * `strategyDir` is used as the base for resolving relative file paths — it's
+ * the directory of the strategy.json, not the render script. Omitted (null) in
+ * CLI fallback → process.cwd() is used.
+ */
+function resolveOneIcon(spec, strategyDir) {
   if (!spec || typeof spec !== 'object') return '';
   if (spec.library) {
     const content = getIcon(spec.library);
@@ -267,6 +324,10 @@ function resolveOneIcon(spec) {
       return '';
     }
     return content;
+  }
+  if (spec.file) {
+    const safe = loadIconFromFile(spec.file, strategyDir);
+    return safe ?? '';
   }
   if (spec.svg) {
     const safe = validateIconSvg(spec.svg);
@@ -282,25 +343,30 @@ function resolveOneIcon(spec) {
  * For single-icon patterns (stat-dominant, cover-asymmetric):
  *   slide.icon = { library: "shield" }            → ICON populated
  *   slide.icon = { svg: "<path .../>" }           → ICON populated (validated)
+ *   slide.icon = { file: "./icon.svg" }           → ICON populated (read + validated)
  *
  * For split-comparison (two icons):
  *   slide.icon = { left: {...}, right: {...} }    → ICON_LEFT / ICON_RIGHT
  *
  * Missing icons → empty string (template renders `<g>` with no children).
+ *
+ * `strategyDir` — directory of the strategy.json file. Relative `file:` paths
+ * resolve against this base (so users drop icons into their own project,
+ * not into node-carousel's install dir).
  */
-function resolveIconSlots(slide) {
+function resolveIconSlots(slide, strategyDir) {
   const out = { ICON: '', ICON_LEFT: '', ICON_RIGHT: '' };
   const icon = slide?.icon;
   if (!icon || typeof icon !== 'object') return out;
 
   // Compound (left/right) form for split-comparison
   if (icon.left || icon.right) {
-    out.ICON_LEFT = resolveOneIcon(icon.left);
-    out.ICON_RIGHT = resolveOneIcon(icon.right);
+    out.ICON_LEFT = resolveOneIcon(icon.left, strategyDir);
+    out.ICON_RIGHT = resolveOneIcon(icon.right, strategyDir);
     return out;
   }
   // Single-icon form
-  out.ICON = resolveOneIcon(icon);
+  out.ICON = resolveOneIcon(icon, strategyDir);
   return out;
 }
 
@@ -623,6 +689,7 @@ function renderPatternSlide({
   axes,
   rng,
   pluginRoot,
+  strategyDir,
 }) {
   const patternDef = PATTERN_BY_ID[slide.pattern];
   if (!patternDef) {
@@ -675,8 +742,9 @@ function renderPatternSlide({
     slideTotal,
   });
 
-  // Icon slots — library lookup or validated inline SVG. Empty if absent.
-  const iconSlots = resolveIconSlots(slide);
+  // Icon slots — library lookup, validated inline SVG, or file on disk.
+  // Empty if absent.
+  const iconSlots = resolveIconSlots(slide, strategyDir);
 
   const finalValues = {
     ...values,
@@ -713,7 +781,7 @@ function renderPatternSlide({
 // Carousel orchestration
 // ---------------------------------------------------------------------------
 
-export function renderCarousel({ brand, strategy, outputDir, pluginRoot = PLUGIN_ROOT }) {
+export function renderCarousel({ brand, strategy, outputDir, pluginRoot = PLUGIN_ROOT, strategyDir = null }) {
   if (!strategy || typeof strategy !== 'object') {
     throw new Error('strategy must be an object with { topic, slides[] }');
   }
@@ -756,6 +824,7 @@ export function renderCarousel({ brand, strategy, outputDir, pluginRoot = PLUGIN
       axes,
       rng,
       pluginRoot,
+      strategyDir,
     });
     const filename = `slide-${String(slideNumber).padStart(2, '0')}.svg`;
     const fullPath = join(outAbs, filename);
@@ -795,6 +864,9 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1
       strategy,
       outputDir: resolve(outDir),
       pluginRoot: PLUGIN_ROOT,
+      // Relative `icon.file` paths in strategy.json resolve against the
+      // strategy file's directory (user's project), not the render script.
+      strategyDir: dirname(resolve(strategyPath)),
     });
   } catch (err) {
     console.error(`\u2717 ${err.message}`);
