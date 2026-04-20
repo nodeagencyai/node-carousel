@@ -3,7 +3,7 @@
     <style>
       @import url('https://fonts.googleapis.com/css2?family={{FONT_DISPLAY_URL}}:wght@700;800&amp;family={{FONT_BODY_URL}}:wght@400;500&amp;display=swap');
       .kicker { font-family: '{{FONT_BODY}}', sans-serif; font-weight: 500; font-size: 26px; letter-spacing: 0.22em; text-transform: uppercase; fill: {{COLOR_ACCENT}}; }
-      .headline-asym { font-family: '{{FONT_DISPLAY}}', serif; font-weight: 800; font-size: 124px; fill: {{COLOR_TEXT}}; line-height: 0.95; letter-spacing: -0.02em; }
+      .headline-asym { font-family: '{{FONT_DISPLAY}}', serif; font-weight: 800; font-size: {{TITLE_HEADLINE_SIZE}}px; fill: {{COLOR_TEXT}}; line-height: 0.95; letter-spacing: -0.02em; }
       .handle { font-family: '{{FONT_BODY}}', sans-serif; font-weight: 500; font-size: 26px; fill: {{COLOR_MUTED}}; letter-spacing: 0.05em; }
       .rule { stroke: {{COLOR_ACCENT}}; stroke-width: 3; }
     </style>
@@ -11,9 +11,9 @@
   {{BACKGROUND}}
   <text x="100" y="180" class="kicker">{{KICKER}}</text>
   <line x1="100" y1="210" x2="220" y2="210" class="rule"/>
-  <text x="100" y="820" class="headline-asym">
+  <text x="100" y="{{TITLE_HEADLINE_Y}}" class="headline-asym">
     <tspan x="100" dy="0">{{HEADLINE_LINE_1}}</tspan>
-    <tspan x="100" dy="128">{{HEADLINE_LINE_2}}</tspan>
+    <tspan x="100" dy="{{TITLE_HEADLINE_DY}}">{{HEADLINE_LINE_2}}</tspan>
   </text>
   <text x="{{WIDTH_MINUS_100}}" y="{{BOTTOM_Y}}" class="handle" text-anchor="end">{{BRAND_HANDLE}}</text>
 </svg>

@@ -3,7 +3,7 @@
     <style>
       @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:wght@700;800&amp;family=Inter:wght@400;500&amp;display=swap');
       .kicker { font-family: 'Inter', sans-serif; font-weight: 500; font-size: 26px; letter-spacing: 0.22em; text-transform: uppercase; fill: #FFD23F; }
-      .headline-asym { font-family: 'DM Serif Display', serif; font-weight: 800; font-size: 124px; fill: #FFFAF0; line-height: 0.95; letter-spacing: -0.02em; }
+      .headline-asym { font-family: 'DM Serif Display', serif; font-weight: 800; font-size: 92px; fill: #FFFAF0; line-height: 0.95; letter-spacing: -0.02em; }
       .handle { font-family: 'Inter', sans-serif; font-weight: 500; font-size: 26px; fill: #9A9A9A; letter-spacing: 0.05em; }
       .rule { stroke: #FFD23F; stroke-width: 3; }
     </style>
@@ -31,9 +31,9 @@
 
   <text x="100" y="180" class="kicker">THE REAL REASON</text>
   <line x1="100" y1="210" x2="220" y2="210" class="rule"/>
-  <text x="100" y="820" class="headline-asym">
+  <text x="100" y="839" class="headline-asym">
     <tspan x="100" dy="0">Your lead magnet</tspan>
-    <tspan x="100" dy="128">isn&apos;t the problem</tspan>
+    <tspan x="100" dy="96">isn&apos;t the problem</tspan>
   </text>
   <text x="980" y="1250" class="handle" text-anchor="end">@liftstudio</text>
 </svg>

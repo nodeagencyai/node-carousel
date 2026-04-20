@@ -3,7 +3,7 @@
     <style>
       @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@700;800&amp;family=Inter:wght@400;500&amp;display=swap');
       .kicker { font-family: 'Inter', sans-serif; font-weight: 500; font-size: 26px; letter-spacing: 0.22em; text-transform: uppercase; fill: #29F2FE; }
-      .headline-asym { font-family: 'JetBrains Mono', serif; font-weight: 800; font-size: 124px; fill: #FFFFFF; line-height: 0.95; letter-spacing: -0.02em; }
+      .headline-asym { font-family: 'JetBrains Mono', serif; font-weight: 800; font-size: 66px; fill: #FFFFFF; line-height: 0.95; letter-spacing: -0.02em; }
       .handle { font-family: 'Inter', sans-serif; font-weight: 500; font-size: 26px; fill: #555555; letter-spacing: 0.05em; }
       .rule { stroke: #29F2FE; stroke-width: 3; }
     </style>
@@ -31,9 +31,9 @@
 
   <text x="100" y="180" class="kicker">5 SIGNS</text>
   <line x1="100" y1="210" x2="220" y2="210" class="rule"/>
-  <text x="100" y="820" class="headline-asym">
+  <text x="100" y="855" class="headline-asym">
     <tspan x="100" dy="0">Your AI automation</tspan>
-    <tspan x="100" dy="128">is overbuilt</tspan>
+    <tspan x="100" dy="69">is overbuilt</tspan>
   </text>
   <text x="980" y="1250" class="handle" text-anchor="end">@nodeagency</text>
 </svg>

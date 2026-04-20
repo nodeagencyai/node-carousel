@@ -514,6 +514,29 @@ export function renderSlide({
     values[`ARROW_${i}`] = hasContent ? '\u2192' : '';
   }
 
+  // Responsive headline sizing for title/title-asymmetric templates.
+  // Prevents overflow when using monospace or long headlines.
+  if (templateName === 'title' || templateName === 'title-asymmetric') {
+    const h1 = String(values.HEADLINE_LINE_1 || '');
+    const h2 = String(values.HEADLINE_LINE_2 || '');
+    const longest = Math.max(h1.length, h2.length);
+    const isMono = /mono/i.test(fonts.display || '');
+    // Mono fonts are ~25% wider per character than proportional serifs
+    const monoFactor = isMono ? 0.72 : 1.0;
+    let baseSize;
+    if (longest <= 10) baseSize = 124;
+    else if (longest <= 14) baseSize = 108;
+    else if (longest <= 18) baseSize = 92;
+    else if (longest <= 22) baseSize = 78;
+    else baseSize = 66;
+    const size = Math.round(baseSize * monoFactor);
+    values.TITLE_HEADLINE_SIZE = size;
+    values.TITLE_HEADLINE_DY = Math.round(size * 1.04);
+    // For title-asymmetric: bottom-anchored, shift DOWN as size shrinks
+    // For title (centered): y is CENTER_Y, no shift needed
+    values.TITLE_HEADLINE_Y = 820 + Math.round((124 - size) * 0.6);
+  }
+
   // Pass 2: fill the main template. Escape every string EXCEPT BACKGROUND
   // and NUMBERING (already SVG markup — escaping would turn <rect> into &lt;rect&gt;).
   const escaped = escapeValues(values, ['BACKGROUND', 'NUMBERING']);

@@ -3,7 +3,7 @@
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:wght@700;800&amp;family=Inter:wght@400;500&amp;display=swap');
       .kicker { font-family: 'Inter', sans-serif; font-weight: 500; font-size: 26px; letter-spacing: 0.22em; text-transform: uppercase; fill: #C84B31; }
-      .headline-asym { font-family: 'Instrument Serif', serif; font-weight: 800; font-size: 124px; fill: #1A1A1A; line-height: 0.95; letter-spacing: -0.02em; }
+      .headline-asym { font-family: 'Instrument Serif', serif; font-weight: 800; font-size: 78px; fill: #1A1A1A; line-height: 0.95; letter-spacing: -0.02em; }
       .handle { font-family: 'Inter', sans-serif; font-weight: 500; font-size: 26px; fill: #6B6B6B; letter-spacing: 0.05em; }
       .rule { stroke: #C84B31; stroke-width: 3; }
     </style>
@@ -19,9 +19,9 @@
 
   <text x="100" y="180" class="kicker">A 2-MIN AUDIT</text>
   <line x1="100" y1="210" x2="220" y2="210" class="rule"/>
-  <text x="100" y="820" class="headline-asym">
+  <text x="100" y="848" class="headline-asym">
     <tspan x="100" dy="0">Your CRM is leaking</tspan>
-    <tspan x="100" dy="128">revenue right now</tspan>
+    <tspan x="100" dy="81">revenue right now</tspan>
   </text>
   <text x="980" y="1250" class="handle" text-anchor="end">@crescentops</text>
 </svg>
