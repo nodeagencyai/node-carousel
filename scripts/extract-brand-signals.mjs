@@ -354,8 +354,19 @@ function pickRoles(ranked, hints = {}) {
 
   const bgLum = luminance(background);
 
+  // Validate hintedText against background contrast. A hinted text color (from
+  // the body's computed `color:` value) can be nonsense — e.g. a near-white
+  // color on a white background where page-level text is actually styled by a
+  // different rule. If the luminance delta is too small, the hint is broken
+  // and we fall through to greyscale-ranked detection.
+  const HINT_CONTRAST_THRESHOLD = 0.3;
+  const hintedTextIsUsable =
+    hints.text
+    && hints.text !== background
+    && Math.abs(luminance(hints.text) - bgLum) >= HINT_CONTRAST_THRESHOLD;
+
   let text;
-  if (hints.text && hints.text !== background) {
+  if (hintedTextIsUsable) {
     text = hints.text;
   } else {
     const textCandidate = topN
