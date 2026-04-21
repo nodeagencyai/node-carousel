@@ -497,23 +497,73 @@ function logoTransform(position, size, canvasWidth, canvasHeight) {
 
 const LOGO_POSITIONS = new Set(['top-left', 'top-right', 'bottom-left', 'bottom-right']);
 
+// Raster logo support (v0.6.1) — sites without a semantic header fall back to
+// favicon (.ico/.png), which the SVG-only loadIconFromFile rejects. Accept
+// raster files via an embedded <image href="data:..."> tag instead.
+const RASTER_LOGO_EXTENSIONS = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.ico': 'image/x-icon',
+  '.webp': 'image/webp',
+};
+
+// Cap embedded raster size at 512KB — favicon/PNG logos are typically <20KB, so
+// anything larger is either a mistake or a content-filled hero image.
+const RASTER_LOGO_MAX_BYTES = 512 * 1024;
+
+function rasterLogoExtension(filePath) {
+  const lower = filePath.toLowerCase();
+  const dotIndex = lower.lastIndexOf('.');
+  if (dotIndex < 0) return null;
+  const ext = lower.substring(dotIndex);
+  return RASTER_LOGO_EXTENSIONS[ext] || null;
+}
+
+/**
+ * Load a raster image file and return a data-URI string
+ * (data:<mime>;base64,<b64>). Returns null (+ warns) on any failure.
+ */
+function loadRasterLogoDataUri(filePath, strategyDir, mimeType) {
+  const baseDir = strategyDir || process.cwd();
+  const resolvedPath = resolve(baseDir, filePath);
+  let buf;
+  try {
+    buf = readFileSync(resolvedPath);
+  } catch (err) {
+    console.warn(`\u26a0  Logo: could not read raster file "${filePath}" (resolved: ${resolvedPath}): ${err.message} — falling back to empty`);
+    return null;
+  }
+  if (buf.length > RASTER_LOGO_MAX_BYTES) {
+    console.warn(`\u26a0  Logo: raster file too large (${buf.length} bytes > ${RASTER_LOGO_MAX_BYTES}) — falling back to empty`);
+    return null;
+  }
+  return `data:${mimeType};base64,${buf.toString('base64')}`;
+}
+
 /**
  * Resolve the brand logo into a raw SVG `<g>` element, positioned per
  * brand.visual.logo.position and sized per brand.visual.logo.size.
  *
+ * Two rendering paths:
+ *   - SVG files: inlined as `<g>` children (currentColor stroke, inherits
+ *     ON_SURFACE so it reads on any brand surface).
+ *   - Raster files (.png/.jpg/.ico/.gif/.webp): embedded via `<image href=
+ *     "data:...">` tag. Colors are baked into the raster so no currentColor
+ *     handling applies.
+ *
  * Returns '' if:
  *   - no logo configured (backward compat with v0.4.1 brand profiles)
  *   - file missing / unreadable
- *   - validation fails (same safe-bounds as icons — no hex, no script, ≤8KB)
+ *   - validation fails (same safe-bounds as icons — no hex, no script, ≤8KB
+ *     for SVG; ≤512KB for raster)
  *
  * `strategyDir` is the base dir for relative file paths (same as icons).
  */
 function resolveLogo(brand, strategyDir) {
   const logo = brand?.visual?.logo;
   if (!logo || typeof logo !== 'object' || !logo.file) return '';
-
-  const inner = loadIconFromFile(logo.file, strategyDir);
-  if (!inner) return ''; // warning already logged
 
   const rawPosition = typeof logo.position === 'string' ? logo.position : 'top-left';
   const position = LOGO_POSITIONS.has(rawPosition) ? rawPosition : 'top-left';
@@ -522,6 +572,35 @@ function resolveLogo(brand, strategyDir) {
   }
 
   const rawSize = typeof logo.size === 'number' && logo.size > 0 ? logo.size : 48;
+
+  // Raster path: emit <image> with data-URI. Bypasses SVG-only validator.
+  const rasterMime = rasterLogoExtension(logo.file);
+  if (rasterMime) {
+    const dataUri = loadRasterLogoDataUri(logo.file, strategyDir, rasterMime);
+    if (!dataUri) return '';
+    const margin = GRID.sideMargin;
+    let x, y;
+    switch (position) {
+      case 'top-right':
+        x = CANVAS.width - margin - rawSize; y = margin; break;
+      case 'bottom-left':
+        x = margin; y = CANVAS.height - margin - rawSize; break;
+      case 'bottom-right':
+        x = CANVAS.width - margin - rawSize; y = CANVAS.height - margin - rawSize; break;
+      case 'top-left':
+      default:
+        x = margin; y = margin; break;
+    }
+    // href (SVG2) is supported by all modern renderers including Playwright's
+    // Chromium (used by export-png). xlink:href kept off to avoid having to
+    // add xmlns:xlink to every pattern template root.
+    return `<g aria-label="logo"><image href="${escapeXml(dataUri)}" x="${x}" y="${y}" width="${rawSize}" height="${rawSize}" preserveAspectRatio="xMidYMid meet"/></g>`;
+  }
+
+  // SVG path (original behavior): inline as <g> with currentColor stroke.
+  const inner = loadIconFromFile(logo.file, strategyDir);
+  if (!inner) return ''; // warning already logged
+
   const geo = logoTransform(position, rawSize, CANVAS.width, CANVAS.height);
 
   // Logo uses ON_SURFACE color so it reads on both light and dark brand
