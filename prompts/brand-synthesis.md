@@ -1,18 +1,61 @@
 # Brand Synthesis Prompt
 
 You are synthesizing scan signals into a complete `brand-profile.json`. You run
-at `/node-carousel:scan` time, after `scripts/scan-site.mjs` and (optionally)
-`scripts/prepare-references.mjs` + `prompts/reference-analysis.md` have
-produced:
+at `/node-carousel:scan` time, after `scripts/scan-site.mjs`,
+`prompts/screenshot-analysis.md`, `prompts/voice-niche-analysis.md`, and
+(optionally) `scripts/prepare-references.mjs` + `prompts/reference-analysis.md`
+have produced:
 
-- `<scan-dir>/scan.json` — site signals (fonts, colors, meta, text samples).
-  Schema documented in `scripts/scan-site.mjs` and `scripts/extract-brand-signals.mjs`.
+- `<scan-dir>/scan.json` — site signals (fonts, colors, meta, text samples,
+  multi-page `textContent`, `logo` descriptor, optional `brandfetch` payload).
+  Schema documented in `scripts/scan-site.mjs` and
+  `scripts/extract-brand-signals.mjs`.
+- `<scan-dir>/vision-analysis.json` — visual signals that CSS can't see
+  (hierarchy, whitespace, composition, imagery, density, mood). Always present.
+  Schema documented in `prompts/screenshot-analysis.md`.
+- `<scan-dir>/voice-niche.json` — copy-only voice + niche classification
+  (register, energy, confidence, style, warmth, industry, audience,
+  productType, `tone` string). Always present.
+  Schema documented in `prompts/voice-niche-analysis.md`.
 - `<scan-dir>/references.json` (optional) — visual patterns from user's uploaded
   carousels. Schema documented in `prompts/reference-analysis.md`.
+- `scan.brandfetch` (optional) — if BrandFetch API key was set and the domain
+  was in BrandFetch's DB, `scan.json` has a `brandfetch` field with
+  `{ available: true, data: { name, description, logos[], colors[], fonts[],
+  industries[] } }`. When absent, `{ available: false, reason }`. Authoritative
+  for logos + colors when present.
 
 Goal: pick the closest preset, layer signals on top of it, write a complete
 valid `brand-profile.json` to `./brand-profile.json`, render a 2-slide preview,
 and confirm with the user.
+
+---
+
+## Source priority
+
+When two sources disagree, resolve in this order (1 wins):
+
+1. **BrandFetch** (`scan.brandfetch.data`, when `available: true`) —
+   authoritative for **logos** and **colors**. BrandFetch hand-curates, so its
+   hex codes and logo SVGs beat CSS clustering + inline-SVG extraction.
+2. **vision-analysis.json** — authoritative for **visual hierarchy**,
+   **composition**, **whitespace**, **density**, and **mood**. The CSS scan
+   can't see pixels; this pass can.
+3. **voice-niche.json** — authoritative for **tone**, **voice register**,
+   **warmth**, and **niche**. The copy pass read the actual words; scan.json's
+   `meta.description` is a one-line summary at best.
+4. **references.json** (when the user provided references) — authoritative
+   for **composition patterns** (`cornerMarks`, `accentRule`, `numberBadges`,
+   `pullQuoteBlock`, grain/gradient/shapes toggles). The user's own carousels
+   are the clearest signal for how their carousels should look.
+5. **scan.json** — authoritative when nothing else has a signal. Fonts,
+   typography classification, and raw CSS-extracted colors come from here
+   unless BrandFetch overrides. `scan.meta.title` is still the source of truth
+   for `brand.name`.
+
+If a higher-priority source is missing or `uncertain`, fall through to the
+next one. Never overwrite a confident higher-priority signal with a
+lower-priority default.
 
 ---
 
@@ -62,8 +105,34 @@ Compute a confidence score per preset by tallying signal matches:
 - `references.color.mode === "dark"` reinforces whichever dark preset already
   leads on fonts.
 
+**Vision-analysis re-weighting (weight 2 when vision-analysis.json exists):**
+- `imagery.style === "type-only"` + `composition === "asymmetric-left"` or
+  `"asymmetric-right"` → `display-serif-bold` +2 (and mark
+  `cover-asymmetric` as a preferred pattern default).
+- `mood` contains `editorial` + `whitespace` in
+  {`airy`, `editorial-spacious`} → `editorial-serif` +2.
+- `mood` contains `tech` + `whitespace` is `tight` or `balanced` →
+  `technical-mono` or `satoshi-tech` +1 (reinforces dark-mode fonts above).
+- `mood` contains `bold` + `density` is `dense` or `maximalist` →
+  `utilitarian-bold` +2.
+
+**Voice + niche re-weighting (weight 2 when voice-niche.json exists):**
+- `voice.register === "casual"` + `voice.warmth === "warm"` →
+  `editorial-serif` +2.
+- `voice.style === "builder-voice"` + `voice.register === "technical"` →
+  `technical-mono` +2.
+- `niche.industry` contains any of (`dev tool`, `developer tool`, `API`,
+  `SDK`, `devtool`) case-insensitive → `technical-mono` +2.
+- `niche.industry` contains any of (`agency`, `studio`, `consultancy`) →
+  `neo-grotesk` +2 OR `utilitarian-bold` +1 (pick neo-grotesk unless mood
+  already points brutalist).
+- `voice.confidence === "playful"` + `voice.energy === "high"` →
+  `satoshi-tech` +1 (neon palette fits playful tech brands).
+
 Normalize the max score to 0–1 range by dividing by the theoretical max
-(about 8 across the weighted signals). That's the preset match confidence.
+(about 12 across all weighted signals when every source is present;
+8 when only scan + one extra signal exists). That's the preset match
+confidence.
 
 ### Decision
 
@@ -114,14 +183,26 @@ Priority order:
 2. If none, derive from hostname: `acme.com` → `@acme`, `node.agency` → `@node`.
 3. If the path contains `instagram.com/<name>`, extract `<name>` as handle.
 
-### brand.tone
+### brand.tone / brand.voice.tone
 
-One line, maximum 8 words. Synthesize from:
-- `scan.meta.description` — pick the voice cues (e.g. "for builders",
+Primary source: `voice-niche.json`'s `tone` field. That prompt already
+constrained its output to the brand-profile.json contract (3-4
+comma-separated adjectives, max 8 words, no em-dashes). Drop it straight in.
+
+Populate BOTH locations for backwards-compat with existing renderers:
+- `brand.tone` ← `voice-niche.json`'s `tone`
+- `brand.voice = { tone: <same string>, register, warmth }` — pass through
+  `voice.register` and `voice.warmth` too so `/node-carousel:generate` can
+  bias copy beyond the tone adjectives.
+
+Fallback when `voice-niche.json.tone` is empty or
+`voice-niche.json.confidence < 0.3`:
+- Synthesize from `scan.meta.description` voice cues (e.g. "for builders",
   "no-nonsense", "editorial").
-- `scan.textSamples.heroHeadline` / `heroSubheadline` — how do they actually
-  write? Short + punchy? Long + explanatory?
-- `references.texture.overallFeel` if available.
+- Check `scan.textSamples.heroHeadline` / `heroSubheadline` — short + punchy
+  or long + explanatory.
+- Check `references.texture.overallFeel` if available.
+- Keep it 3-4 comma-separated adjectives, max 8 words, no em-dashes.
 
 Examples that are good:
 - `direct, builder-voice, no fluff`
@@ -132,11 +213,40 @@ Examples that are bad:
 - `We help ambitious founders...` (sentence, not tone)
 - `professional` (one word, no texture)
 
+### brand.niche (optional)
+
+If `voice-niche.json.confidence >= 0.5` and `niche.industry` is non-empty,
+copy the niche block through:
+
+```json
+"niche": {
+  "industry": "<voice-niche.json's industry>",
+  "audience": "<voice-niche.json's audience>",
+  "productType": "<voice-niche.json's productType>"
+}
+```
+
+`/node-carousel:generate` reads this to bias slide copy (e.g. a dev-tool
+brand gets technical angles; an agency gets case-study angles). Omit the
+block if voice-niche confidence is too low or fields are empty.
+
 ### visual.colors
 
-Straight from scan:
+BrandFetch wins when available. Fall back to scan.
+
+**If `scan.brandfetch.available === true` and `scan.brandfetch.data.colors`
+is non-empty:**
+- Match BrandFetch colors by `type`:
+  - `type === 'light'` or `'background'` → `background`
+  - `type === 'dark'` or `'text'` → `text`
+  - `type === 'accent'` or `'brand'` → `accent` (pick the first)
+  - If a second `accent`/`brand` entry exists → `accentSecondary`
+- If BrandFetch is missing one of these roles, fall through to scan for
+  the missing slot only.
+
+**Otherwise (no BrandFetch, or BrandFetch didn't provide the slot):**
 - `background` ← `scan.colors.background` (always take this if defined;
-  it's the most reliable signal).
+  it's the most reliable CSS signal).
 - `text` ← `scan.colors.text` (default white on dark bg, near-black on light
   if scan couldn't detect).
 - `accent` ← `scan.colors.accent` (skip if null, keep preset default).
@@ -156,16 +266,22 @@ Straight from scan:
 
 ### visual.background.type
 
-Decide in this order:
+Decide in this order (references beat vision beat preset default):
 
 1. If `references.texture.hasGrain` → keep preset's solid/gradient + enable
    grain (handled in `grain` section below). Set `type = "solid"` unless
    preset's default is richer.
 2. If `references.texture.hasGradient` and no shapes → `type = "gradient"`.
 3. If `references.texture.hasShapes` → `type = "geometric-shapes"` (v0.4+).
-4. If the scan OG image shows a mesh/blob background or references note
+4. If `vision-analysis.imagery.style === "abstract"` and references didn't
+   set a type → `type = "mesh"` (gradient blobs / non-representational shapes
+   usually render well as a mesh background).
+5. If `vision-analysis.imagery.style === "type-only"` and
+   `vision-analysis.whitespace` is `airy` or `editorial-spacious` → keep
+   `type = "solid"`. Editorial brands want the headline to carry the slide.
+6. If the scan OG image shows a mesh/blob background or references note
    "mesh" explicitly → `type = "mesh"`.
-5. If none of the above → keep preset default.
+7. If none of the above → keep preset default.
 
 Keep all sub-objects (`gradient`, `mesh`, `radial`, `imagePath`) populated
 from the preset — `render-v0.4.mjs` picks based on `type`, and populated
@@ -197,17 +313,39 @@ preset says otherwise and references don't contradict it.
 
 ### visual.logo (optional)
 
-If `scan.meta.ogImage` is a logo-looking URL (has `logo`, `icon`,
-`favicon` in the path), set:
+Prefer BrandFetch's curated SVG over scan's extracted logo. Pick in this
+order:
+
+1. **BrandFetch SVG** — if `scan.brandfetch.available === true` and
+   `scan.brandfetch.data.logos` contains an entry with
+   `type === 'logo'` and `format === 'svg'`, use its `url` as the logo
+   file.
+2. **BrandFetch PNG/other** — if BrandFetch has any `type === 'logo'`
+   entry but no SVG, use its `url`.
+3. **Scan inline-svg** — if `scan.logo.type === 'inline-svg'`, use
+   `scan.logo.path` (a local file path in the scan dir).
+4. **Scan img** — if `scan.logo.type === 'img'`, use `scan.logo.path`.
+5. **Scan favicon** — if `scan.logo.type === 'favicon'`, use
+   `scan.logo.path`. Favicons are last-resort — low res, often cropped —
+   but still better than no mark.
+6. **None** — if `scan.logo.type === 'none'` and no BrandFetch logos,
+   omit the `logo` field entirely. Don't invent placeholder paths.
+
+When a logo source is picked, set:
 
 ```json
 "logo": {
-  "path": "<abs URL>",
-  "position": "top-right"
+  "file": "<logo-path-or-url>",
+  "position": "top-right",
+  "size": 48
 }
 ```
 
-Otherwise omit the `logo` field entirely. Don't invent placeholder paths.
+- `position` defaults to `"top-right"`. Valid alternatives:
+  `"top-left"`, `"bottom-left"`, `"bottom-right"`. The user can override
+  in `brand-profile.json` post-setup.
+- `size` defaults to `48` (px). Renderer scales proportionally.
+- Field is named `file` (not `path`) to match the brand-profile schema.
 
 ### visual.dimensions
 

@@ -66,7 +66,39 @@ Read `./.brand-scan/scan.json`. If:
   before continuing. Common ones: JS-rendered page, missing fonts, missing
   h1. None are fatal on their own.
 
-### Step 4: Prepare references (if `--references` passed)
+### Step 4: Analyze the hero screenshot (always)
+
+Follow `${PLUGIN_ROOT}/prompts/screenshot-analysis.md` precisely. That prompt
+tells you to:
+
+- Use your multimodal `Read` tool to load `./.brand-scan/hero.png` (or fall
+  back to `full.png` if hero is missing). Claude Code's `Read` natively
+  handles PNG, so you will actually see the image.
+- Classify six signals: hierarchy, whitespace, composition, imagery,
+  density, mood.
+- Write `./.brand-scan/vision-analysis.json`.
+
+This step always runs — every scan produces a screenshot, and the
+synthesizer depends on these visual signals.
+
+### Step 5: Analyze voice + niche from copy (always)
+
+Follow `${PLUGIN_ROOT}/prompts/voice-niche-analysis.md` precisely. That
+prompt tells you to:
+
+- Read `./.brand-scan/scan.json` and pull the `textContent` object
+  (`headings`, `mainText`, `ctas`, `metaDescription`).
+- Classify voice (register, energy, confidence, style, warmth) and niche
+  (industry, audience, productType).
+- Synthesize a single-line `tone` string (3-4 comma-separated adjectives,
+  max 8 words, no em-dashes).
+- Write `./.brand-scan/voice-niche.json`.
+
+This also always runs. If `textContent` is empty (JS-heavy site with no
+extractable copy), the prompt writes a low-confidence file with mostly
+`uncertain` values — the synthesizer handles that fallback.
+
+### Step 6: Prepare references (if `--references` passed)
 
 ```bash
 node "${PLUGIN_ROOT}/scripts/prepare-references.mjs" <refs-dir> ./.brand-scan/
@@ -76,11 +108,11 @@ This writes `./.brand-scan/references-manifest.json` listing validated image
 paths. Check `manifest.ready`:
 
 - `ready: false` (zero valid images found) → tell the user no valid
-  references were found and skip to Step 5 (site-only synthesis). Surface
-  any warnings from the manifest.
-- `ready: true` → proceed to Step 4a.
+  references were found and skip to Step 7 (synthesis without references).
+  Surface any warnings from the manifest.
+- `ready: true` → proceed to Step 6a.
 
-#### Step 4a: Visually analyze references
+#### Step 6a: Visually analyze references
 
 Follow `${PLUGIN_ROOT}/prompts/reference-analysis.md` precisely. That prompt
 tells you to:
@@ -93,22 +125,29 @@ tells you to:
 
 Do not skip reading the images — the whole point is visual analysis.
 
-### Step 5: Synthesize brand-profile.json
+### Step 7: Synthesize brand-profile.json
 
-Follow `${PLUGIN_ROOT}/prompts/brand-synthesis.md` precisely. That prompt
-tells you to:
+Follow `${PLUGIN_ROOT}/prompts/brand-synthesis.md` precisely. The synthesizer
+now consumes FIVE inputs:
 
-1. Score all 6 presets in `${PLUGIN_ROOT}/templates/presets/` against the
-   scan signals (and references if present). Pick the best match.
-2. Load the picked preset as a base.
-3. Overlay brand identity (name, handle, tone) from scan meta + text
-   samples.
-4. Overlay colors from scan directly; derive `accentSecondary` and `muted`.
-5. Overlay fonts from scan where detected; keep preset defaults otherwise.
-6. Overlay background/noise/decorations from references if available.
-7. Write the complete profile to `./brand-profile.json`.
+1. `./.brand-scan/scan.json` — fonts, colors, meta, text samples,
+   multi-page `textContent`, `logo` descriptor, optional `brandfetch`
+   payload.
+2. `./.brand-scan/vision-analysis.json` — hierarchy, composition,
+   whitespace, mood (always present after Step 4).
+3. `./.brand-scan/voice-niche.json` — voice classification + `tone` string
+   + niche (always present after Step 5).
+4. `./.brand-scan/references.json` — reference carousel patterns (optional,
+   only if Step 6 produced one).
+5. BrandFetch data nested inside `scan.brandfetch.data` (optional, only
+   when API key is set and the brand is in BrandFetch's DB).
 
-### Step 6: Render the 2-slide preview
+The synthesizer prompt handles source priority (BrandFetch > vision >
+voice > references > scan), preset re-weighting based on vision + voice
+signals, logo mapping, and tone integration. It writes
+`./brand-profile.json` when done.
+
+### Step 8: Render the 2-slide preview
 
 ```bash
 mkdir -p ./brand-preview
@@ -123,7 +162,7 @@ If the render fails, surface the error verbatim (the script has
 user-facing messages). Common causes: brand-profile.json missing
 `brand.name`, or an invalid hex code.
 
-### Step 7: Open preview
+### Step 9: Open preview
 
 ```bash
 open ./brand-preview/preview.html     # macOS
@@ -133,7 +172,7 @@ xdg-open ./brand-preview/preview.html # Linux
 If opening fails silently, print the absolute path and tell the user to open
 it manually.
 
-### Step 8: Confirm
+### Step 10: Confirm
 
 Show a plain-English summary of what was synthesized (see
 `prompts/brand-synthesis.md` Step 4 for the exact format), then ask:
@@ -153,9 +192,9 @@ Handle the response:
   > wizard. Your scanned `brand-profile.json` is still on disk; you can
   > reuse it as a starting point or delete it.
   Done.
-- **edit / e** → Enter the refinement loop (Step 9).
+- **edit / e** → Enter the refinement loop (Step 11).
 
-### Step 9: Inline refinement loop (on "edit")
+### Step 11: Inline refinement loop (on "edit")
 
 Repeat until the user says y or n:
 
@@ -194,7 +233,8 @@ Repeat until the user says y or n:
   warning.
 - **Existing `brand-profile.json`**: ask y/N overwrite. Default N to
   protect existing work.
-- **No `--references` flag**: site-only scan. Skip Step 4 entirely.
+- **No `--references` flag**: site-only scan. Skip Step 6 entirely.
+  Steps 4 (vision) + 5 (voice) still run — they only need scan outputs.
 - **References dir empty or invalid**: `prepare-references.mjs` writes
   `ready: false` — skip analysis, proceed with site-only synthesis.
 - **`brand-preview` dir already has files from a previous run**: overwrite
