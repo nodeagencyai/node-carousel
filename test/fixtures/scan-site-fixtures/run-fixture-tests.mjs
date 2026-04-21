@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { extractSignals } from '../../../scripts/extract-brand-signals.mjs';
 import { rankDiscoveredLinks, mergeSignals } from '../../../scripts/scan-site.mjs';
+import { brandfetch, normalizeBrandfetch, extractDomain } from '../../../scripts/brandfetch-client.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -321,6 +322,148 @@ async function main() {
       'mergeSignals: homepage-second iteration ALSO preserves fontshare source (order-independent)',
       mergedB.fonts.displaySource === 'fontshare',
       `got ${mergedB.fonts.displaySource}`,
+    );
+  }
+
+  // ---- v0.6 Task F.1 — BrandFetch client ----
+  console.log(`\n=== brandfetch-client (v0.6) ===`);
+
+  // Case 1: extractDomain edge cases — www. stripped, subdomain kept, port + path + trailing slash handled.
+  {
+    total += 5;
+    passed += check(
+      'extractDomain: https://nodeagency.ai/about → nodeagency.ai',
+      extractDomain('https://nodeagency.ai/about') === 'nodeagency.ai',
+      `got ${extractDomain('https://nodeagency.ai/about')}`,
+    );
+    passed += check(
+      'extractDomain: https://www.vercel.com → vercel.com (www stripped)',
+      extractDomain('https://www.vercel.com') === 'vercel.com',
+      `got ${extractDomain('https://www.vercel.com')}`,
+    );
+    passed += check(
+      'extractDomain: https://blog.stripe.com → blog.stripe.com (subdomain preserved)',
+      extractDomain('https://blog.stripe.com') === 'blog.stripe.com',
+      `got ${extractDomain('https://blog.stripe.com')}`,
+    );
+    passed += check(
+      'extractDomain: https://example.com:8080/ → example.com (port + trailing slash)',
+      extractDomain('https://example.com:8080/') === 'example.com',
+      `got ${extractDomain('https://example.com:8080/')}`,
+    );
+    passed += check(
+      'extractDomain: invalid input → null (no throw)',
+      extractDomain('not a url') === null && extractDomain(null) === null && extractDomain('') === null,
+      `got ${JSON.stringify([extractDomain('not a url'), extractDomain(null), extractDomain('')])}`,
+    );
+  }
+
+  // Case 2: normalizeBrandfetch on a realistic fixture response.
+  {
+    const sample = {
+      name: 'Vercel',
+      description: 'Develop. Preview. Ship.',
+      domain: 'vercel.com',
+      logos: [
+        {
+          type: 'logo',
+          formats: [{ format: 'svg', src: 'https://cdn.brandfetch.io/vercel.com/w/400/h/400/logo' }],
+        },
+        { type: 'icon', formats: [] },
+      ],
+      colors: [
+        { hex: '#000000', type: 'dark' },
+        { hex: '#FFFFFF', type: 'light' },
+      ],
+      fonts: [{ name: 'Inter', type: 'title' }],
+      company: {
+        industries: [{ name: 'Developer Tools' }],
+      },
+    };
+    const norm = normalizeBrandfetch(sample);
+    total += 6;
+    passed += check(
+      'normalizeBrandfetch: name + description + domain',
+      norm.name === 'Vercel' && norm.description === 'Develop. Preview. Ship.' && norm.domain === 'vercel.com',
+      `got name=${norm.name} desc=${norm.description} domain=${norm.domain}`,
+    );
+    passed += check(
+      'normalizeBrandfetch: 2 logos (svg logo + empty-formats icon) with defensive optional chaining',
+      norm.logos.length === 2
+        && norm.logos[0].type === 'logo'
+        && norm.logos[0].format === 'svg'
+        && norm.logos[0].url === 'https://cdn.brandfetch.io/vercel.com/w/400/h/400/logo'
+        && norm.logos[1].type === 'icon'
+        && norm.logos[1].format === undefined
+        && norm.logos[1].url === undefined,
+      `got ${JSON.stringify(norm.logos)}`,
+    );
+    passed += check(
+      'normalizeBrandfetch: 2 colors with hex + type',
+      norm.colors.length === 2
+        && norm.colors[0].hex === '#000000' && norm.colors[0].type === 'dark'
+        && norm.colors[1].hex === '#FFFFFF' && norm.colors[1].type === 'light',
+      `got ${JSON.stringify(norm.colors)}`,
+    );
+    passed += check(
+      'normalizeBrandfetch: 1 font (Inter / title)',
+      norm.fonts.length === 1 && norm.fonts[0].name === 'Inter' && norm.fonts[0].type === 'title',
+      `got ${JSON.stringify(norm.fonts)}`,
+    );
+    passed += check(
+      'normalizeBrandfetch: industries extracted (Developer Tools)',
+      Array.isArray(norm.industries) && norm.industries.length === 1 && norm.industries[0] === 'Developer Tools',
+      `got ${JSON.stringify(norm.industries)}`,
+    );
+    // Handle empty/malformed input without throwing.
+    const emptyNorm = normalizeBrandfetch({});
+    passed += check(
+      'normalizeBrandfetch: empty object → empty arrays (no throw)',
+      Array.isArray(emptyNorm.logos) && emptyNorm.logos.length === 0
+        && Array.isArray(emptyNorm.colors) && emptyNorm.colors.length === 0
+        && Array.isArray(emptyNorm.fonts) && emptyNorm.fonts.length === 0
+        && Array.isArray(emptyNorm.industries) && emptyNorm.industries.length === 0,
+      `got ${JSON.stringify(emptyNorm)}`,
+    );
+  }
+
+  // Case 3: brandfetch() with no API key must return {available:false} WITHOUT touching the network.
+  {
+    // null key
+    const r1 = await brandfetch('vercel.com', null);
+    // undefined key
+    const r2 = await brandfetch('vercel.com', undefined);
+    // empty string
+    const r3 = await brandfetch('vercel.com', '');
+    // whitespace-only
+    const r4 = await brandfetch('vercel.com', '   ');
+    // null domain + null key
+    const r5 = await brandfetch(null, null);
+    total += 5;
+    passed += check(
+      'brandfetch(domain, null) → {available:false, reason:"no API key"}',
+      r1.available === false && r1.reason === 'no API key',
+      `got ${JSON.stringify(r1)}`,
+    );
+    passed += check(
+      'brandfetch(domain, undefined) → {available:false, reason:"no API key"}',
+      r2.available === false && r2.reason === 'no API key',
+      `got ${JSON.stringify(r2)}`,
+    );
+    passed += check(
+      'brandfetch(domain, "") → {available:false, reason:"no API key"}',
+      r3.available === false && r3.reason === 'no API key',
+      `got ${JSON.stringify(r3)}`,
+    );
+    passed += check(
+      'brandfetch(domain, "   ") → {available:false, reason:"no API key"}',
+      r4.available === false && r4.reason === 'no API key',
+      `got ${JSON.stringify(r4)}`,
+    );
+    passed += check(
+      'brandfetch(null, null) → {available:false} without throwing',
+      r5.available === false && typeof r5.reason === 'string',
+      `got ${JSON.stringify(r5)}`,
     );
   }
 

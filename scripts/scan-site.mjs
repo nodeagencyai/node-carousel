@@ -35,6 +35,7 @@ import { resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { extractSignals, clusterColors } from './extract-brand-signals.mjs';
 import { extractLogo } from './extract-logo.mjs';
+import { brandfetch, extractDomain } from './brandfetch-client.mjs';
 
 const PAGE_TIMEOUT_MS = 15000;       // per-page goto timeout
 const TOTAL_WALL_CLOCK_MS = 45000;   // whole scan soft-cap (plan said 20s total, which is too tight with 3 pages; 15s/page x 3 + headroom)
@@ -649,6 +650,14 @@ async function attemptScan({ puppeteer, url, outDir, headless, warnings }) {
       // mirror) still see it.
       merged.logo = logo;
 
+      // --- v0.6 Task F.1: BrandFetch (opt-in, BYOK) ---
+      // Strictly augmentation. If BRANDFETCH_API_KEY is unset/empty, the
+      // client short-circuits without touching the network.
+      const apiKey = process.env.BRANDFETCH_API_KEY;
+      const bfDomain = extractDomain(url);
+      const brandfetchResult = await brandfetch(bfDomain, apiKey);
+      merged.brandfetch = brandfetchResult;
+
       const payload = {
         url,
         scannedAt: new Date().toISOString(),
@@ -670,6 +679,7 @@ async function attemptScan({ puppeteer, url, outDir, headless, warnings }) {
           full: screenshotPaths.full,
         },
         logo,
+        brandfetch: brandfetchResult,
       };
 
       return { ok: true, payload };
@@ -793,6 +803,16 @@ async function main() {
         : `${result.payload.logo.type} → ${result.payload.logo.path}`)
       : 'none';
     console.log(`  logo:       ${logoDesc}`);
+    const bf = result.payload.brandfetch;
+    if (bf) {
+      if (bf.available && bf.data) {
+        const nLogos = bf.data.logos?.length ?? 0;
+        const mColors = bf.data.colors?.length ?? 0;
+        console.log(`  brandfetch: available (${nLogos} logos, ${mColors} colors)`);
+      } else {
+        console.log(`  brandfetch: ${bf.reason || 'unavailable'}`);
+      }
+    }
     if (result.payload.merged.warnings.length) {
       console.log(`  warnings:   ${result.payload.merged.warnings.length}`);
       for (const w of result.payload.merged.warnings) console.log(`    - ${w}`);
@@ -813,6 +833,8 @@ async function main() {
   };
   const failureLogo = { type: 'none', warning: 'No logo found' };
   emptySignals.logo = failureLogo;
+  const failureBrandfetch = { available: false, reason: 'scan failed' };
+  emptySignals.brandfetch = failureBrandfetch;
   writeScan(outDir, {
     url,
     scannedAt,
@@ -828,6 +850,7 @@ async function main() {
     warnings: emptySignals.warnings,
     screenshots: { hero: null, full: null },
     logo: failureLogo,
+    brandfetch: failureBrandfetch,
   });
   process.exit(0);
 }
