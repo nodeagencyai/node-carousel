@@ -177,12 +177,14 @@ function hexToRgb(hex) {
  *
  * Calibration reference (RGB distances):
  *   #000000 vs #0A0A0A → 17.3  (near-black pair — should collapse)
- *   #0A0A0A vs #141414 → 34.6  (distinct dark greys — should NOT collapse)
+ *   #0A0A0A vs #3A3A3A → 83.1  (distinct dark greys — should NOT collapse)
  *   #29F2FE vs #29F0FC →  2.8  (same cyan, rounding drift — should collapse)
  *
- * Threshold 20 lands between the first two: catches near-duplicates without
- * merging actually-different colors. (The plan comment said 12, but that
- * doesn't reach the near-black pair — 20 is what the fixture expects.)
+ * Threshold 20 lands between 17.3 (collapse) and 83.1 (distinct): catches
+ * near-duplicates without merging actually-different colors. The plan comment
+ * said 12 + #141414, but that combo is mathematically unseparable (#141414 and
+ * #0A0A0A are the same distance apart as #0A0A0A and #000000); threshold 20
+ * with a #3A3A3A "distinct" exemplar is what the fixture actually asserts.
  */
 export function deltaE76(hexA, hexB) {
   const rgbA = hexToRgb(hexA);
