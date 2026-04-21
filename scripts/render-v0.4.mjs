@@ -462,16 +462,44 @@ function loadIconFromFile(filePath, strategyDir) {
 // ---------------------------------------------------------------------------
 
 /**
- * Compute translate(x, y) + scale(s) for a 24x24 source SVG placed in one of
- * 4 canvas corners, sized to `size` px, inset by GRID.sideMargin from both
- * edges (matches cover-asymmetric kicker inset).
+ * Parse an SVG root's viewBox into its intrinsic width/height. Used to compute
+ * a viewBox-aware scale factor so wide logos (e.g. 200x50 wordmarks extracted
+ * from a site header) render proportionally instead of being stretched to a
+ * square 24x24 assumption.
  *
- * Source viewBox is assumed 24x24 (Lucide convention + common custom logo
- * size). Non-24-viewBox logos will scale incorrectly — document in schema.
+ * Fallback = 24x24 (Lucide convention). This covers:
+ *   - Logos with no viewBox attribute (we still wrap them in `<g transform>`
+ *     and accept that width/height attrs on the source SVG may leak through).
+ *   - Malformed viewBox values.
+ *   - Legacy 24x24 icons that happen to round-trip correctly anyway.
+ *
+ * @param {string} svgText — raw SVG source
+ * @returns {{ width: number, height: number }}
  */
-function logoTransform(position, size, canvasWidth, canvasHeight) {
+export function parseViewBox(svgText) {
+  if (typeof svgText !== 'string') return { width: 24, height: 24 };
+  const m = svgText.match(/viewBox\s*=\s*["']([\d.\s-]+)["']/i);
+  if (!m) return { width: 24, height: 24 };
+  const parts = m[1].split(/\s+/).map(Number).filter(Number.isFinite);
+  if (parts.length === 4 && parts[2] > 0 && parts[3] > 0) {
+    return { width: parts[2], height: parts[3] };
+  }
+  return { width: 24, height: 24 };
+}
+
+/**
+ * Compute translate(x, y) + scale(s) for a source SVG placed in one of 4
+ * canvas corners, sized to `size` px, inset by GRID.sideMargin from both edges
+ * (matches cover-asymmetric kicker inset).
+ *
+ * `scale` is derived from the caller's viewBox so that the longest edge of the
+ * logo fits to `size`. Callers that don't know the source viewBox can pass
+ * `{ width: 24, height: 24 }` to get the legacy behavior.
+ */
+function logoTransform(position, size, canvasWidth, canvasHeight, viewBox = { width: 24, height: 24 }) {
   const margin = GRID.sideMargin; // 72 by default
-  const scale = size / 24;
+  const longestEdge = Math.max(viewBox.width || 24, viewBox.height || 24);
+  const scale = size / longestEdge;
   let x, y;
   switch (position) {
     case 'top-right':
@@ -601,7 +629,21 @@ function resolveLogo(brand, strategyDir) {
   const inner = loadIconFromFile(logo.file, strategyDir);
   if (!inner) return ''; // warning already logged
 
-  const geo = logoTransform(position, rawSize, CANVAS.width, CANVAS.height);
+  // Re-read the raw SVG to parse its viewBox — loadIconFromFile returns only
+  // the stripped inner content, so we can't pull viewBox out of that. Read
+  // failures here (file vanished between calls, permissions race) fall back
+  // to the 24x24 default, preserving legacy behavior.
+  let viewBox = { width: 24, height: 24 };
+  try {
+    const baseDir = strategyDir || process.cwd();
+    const rawSvg = readFileSync(resolve(baseDir, logo.file), 'utf8');
+    viewBox = parseViewBox(rawSvg);
+  } catch {
+    // swallowed — loadIconFromFile already succeeded, so any error here is a
+    // race. Fall back to 24x24 default (legacy behavior).
+  }
+
+  const geo = logoTransform(position, rawSize, CANVAS.width, CANVAS.height, viewBox);
 
   // Logo uses ON_SURFACE color so it reads on both light and dark brand
   // surfaces. Authors can override at CSS level by embedding fill/stroke in

@@ -25,6 +25,7 @@ import {
 } from '../../../scripts/scan-site.mjs';
 import { brandfetch, normalizeBrandfetch, extractDomain } from '../../../scripts/brandfetch-client.mjs';
 import { extractLogoFromSignals } from '../../../scripts/extract-logo.mjs';
+import { parseViewBox } from '../../../scripts/render-v0.4.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -1371,6 +1372,42 @@ async function main() {
       'printUsage: documents BRANDFETCH_API_KEY env var',
       out.includes('BRANDFETCH_API_KEY'),
       '',
+    );
+  }
+
+  // ---- v0.7 Task C.1 — parseViewBox (logo viewBox-aware scaling) ----
+  console.log(`\n=== parseViewBox (v0.7 C.1) ===`);
+  {
+    const wide = parseViewBox('<svg viewBox="0 0 100 24" xmlns="http://www.w3.org/2000/svg"><path d="M0 0h100v24H0z"/></svg>');
+    total += 1;
+    passed += check(
+      'parseViewBox: "0 0 100 24" → {width:100, height:24}',
+      wide.width === 100 && wide.height === 24,
+      `got ${JSON.stringify(wide)}`,
+    );
+
+    const wider = parseViewBox('<svg viewBox="0 0 200 50"><g/></svg>');
+    total += 1;
+    passed += check(
+      'parseViewBox: "0 0 200 50" → {width:200, height:50}',
+      wider.width === 200 && wider.height === 50,
+      `got ${JSON.stringify(wider)}`,
+    );
+
+    const none = parseViewBox('<svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0"/></svg>');
+    total += 1;
+    passed += check(
+      'parseViewBox: no viewBox attr → 24x24 default (backwards compat)',
+      none.width === 24 && none.height === 24,
+      `got ${JSON.stringify(none)}`,
+    );
+
+    const square = parseViewBox('<svg viewBox="0 0 24 24"><path/></svg>');
+    total += 1;
+    passed += check(
+      'parseViewBox: "0 0 24 24" → {width:24, height:24} (legacy icon)',
+      square.width === 24 && square.height === 24,
+      `got ${JSON.stringify(square)}`,
     );
   }
 
