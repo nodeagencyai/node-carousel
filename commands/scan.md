@@ -12,6 +12,7 @@ the user confirm before saving. Zero-question path for most users.
 /node-carousel:scan https://yourbrand.com
 /node-carousel:scan https://yourbrand.com --references ./my-carousels/
 /node-carousel:scan https://yourbrand.com --merge-with ./brand-profile.json
+/node-carousel:scan https://yourbrand.com --preset technical-mono
 ```
 
 - First positional argument: URL to scan (required).
@@ -25,6 +26,15 @@ the user confirm before saving. Zero-question path for most users.
   text samples, meta, warnings, and vision analysis, but your hand-tuned
   identity is preserved. Merge semantics: field-level precedence ("existing
   wins per leaf key"). See `prompts/brand-synthesis.md` Phase 0 for details.
+- `--preset <name>`: optional force flag (v0.7 A.4). Skips the synthesizer's
+  weighted-signal preset matching and uses the named preset as
+  `visual.preset` directly. Useful when the auto-match confidence is low
+  (the synthesizer would warn) or when your carousel brand differs from
+  your website brand. All other overrides (colors, fonts, logo, tone,
+  niche) still run. Valid names (case-insensitive):
+  `editorial-serif`, `neo-grotesk`, `technical-mono`,
+  `display-serif-bold`, `utilitarian-bold`, `satoshi-tech`. Unknown names
+  error before the scan runs. `--preset` and `--merge-with` can be combined.
 
 If the URL is missing, tell the user the usage and stop.
 
@@ -37,6 +47,11 @@ If the URL is missing, tell the user the usage and stop.
 - Parse `--merge-with <path>` if present. Resolve to an absolute path.
   Don't validate schema — `scripts/scan-site.mjs` parses it as JSON and
   errors with a clear message if malformed.
+- Parse `--preset <name>` if present. Pass through to
+  `scripts/scan-site.mjs` — that script validates against the 6 canonical
+  preset names (`editorial-serif`, `neo-grotesk`, `technical-mono`,
+  `display-serif-bold`, `utilitarian-bold`, `satoshi-tech`),
+  case-insensitive, and exits with a clear error on unknown values.
 - Create `./.brand-scan/` in CWD (this is a working directory — do not
   ship it anywhere).
 - Resolve `PLUGIN_ROOT` from `${CLAUDE_PLUGIN_ROOT}` if set, otherwise the
@@ -59,6 +74,9 @@ Default no. If no, stop and tell them to delete it first or run
 node "${PLUGIN_ROOT}/scripts/scan-site.mjs" <url> ./.brand-scan/
 # OR, when --merge-with was passed:
 node "${PLUGIN_ROOT}/scripts/scan-site.mjs" <url> ./.brand-scan/ --merge-with <abs-path-to-existing-brand-profile.json>
+# OR, when --preset was passed:
+node "${PLUGIN_ROOT}/scripts/scan-site.mjs" <url> ./.brand-scan/ --preset <name>
+# Flags can be combined — e.g. --merge-with ... --preset ...
 ```
 
 The script writes `./.brand-scan/scan.json` plus `hero.png`, `full.png`,
@@ -69,6 +87,13 @@ When `--merge-with` is passed, `scan.json` will have a `mergeWith` field
 with `{ sourcePath, content }`. The synthesizer prompt (Step 7) picks this
 up and applies `mergeProfile(existing, derived)` per the "existing wins
 per leaf key" algorithm documented in `prompts/brand-synthesis.md` Phase 0.
+
+When `--preset <name>` is passed, `scan.json` will have a top-level
+`forcedPreset: "<name>"` field (mirrored at `merged.forcedPreset`). The
+synthesizer prompt skips its weighted-signal preset matching and uses the
+forced preset directly as `visual.preset`. All other override rules
+(colors, fonts, logo, tone, niche) still run. See
+`prompts/brand-synthesis.md` → "Forced preset override (v0.7 A.4)".
 
 Read `./.brand-scan/scan.json`. If:
 

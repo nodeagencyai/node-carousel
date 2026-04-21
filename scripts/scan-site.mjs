@@ -45,22 +45,56 @@ const MAX_DISCOVERED_PAGES = 2;      // home + 2 = 3 total
 const MAX_CTA_CANDIDATES = 10;
 
 function usage() {
-  console.error('Usage: node scripts/scan-site.mjs <url> <output-dir> [--merge-with <existing-brand-profile.json>]');
+  console.error('Usage: node scripts/scan-site.mjs <url> <output-dir> [--merge-with <existing-brand-profile.json>] [--preset <name>]');
   process.exit(1);
+}
+
+/**
+ * Canonical list of valid preset names for the v0.7 A.4 --preset force flag.
+ * Mirrors the JSON files in `templates/presets/`. Keep in sync when adding a
+ * new preset.
+ */
+export const VALID_PRESETS = Object.freeze([
+  'editorial-serif',
+  'neo-grotesk',
+  'technical-mono',
+  'display-serif-bold',
+  'utilitarian-bold',
+  'satoshi-tech',
+]);
+
+/**
+ * Thrown by parseArgv when an argument fails validation (e.g. unknown preset
+ * name, or --preset supplied without a value). Carries an exit-friendly
+ * message so main() can print it verbatim.
+ */
+export class ArgvError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'ArgvError';
+  }
 }
 
 /**
  * Parse scan-site CLI argv. Accepts:
  *   - positional: <url> <output-dir>
  *   - optional:   --merge-with <path>
+ *   - optional:   --preset <name>  (v0.7 A.4)
  *
- * Returns `{ url, outDir, mergeWithPath }` or null when required args are
- * missing. Exported-flavored: internal helper, but pure + deterministic so
- * tests can exercise it directly if needed.
+ * Returns `{ urlArg, outArg, mergeWithPath, forcedPreset }` or null when
+ * required positionals are missing. Throws ArgvError on invalid flag values.
+ * Pure + deterministic — tests exercise this directly.
+ *
+ * --preset normalization: case-insensitive. `--preset TECHNICAL-MONO` and
+ * `--preset Technical-Mono` both resolve to `technical-mono`. Trims whitespace.
+ * Errors on unknown names (lists all valid presets in the error message).
+ *
+ * Exported for the v0.7 A.4 fixture tests.
  */
-function parseArgv(argv) {
+export function parseArgv(argv) {
   const positional = [];
   let mergeWithPath = null;
+  let forcedPreset = null;
   for (let i = 2; i < argv.length; i += 1) {
     const a = argv[i];
     if (a === '--merge-with') {
@@ -72,11 +106,42 @@ function parseArgv(argv) {
       mergeWithPath = a.slice('--merge-with='.length) || null;
       continue;
     }
+    if (a === '--preset') {
+      const rawVal = argv[i + 1];
+      if (rawVal === undefined || rawVal === null || rawVal === '' || rawVal.startsWith('--')) {
+        throw new ArgvError('--preset requires a value (e.g. --preset technical-mono)');
+      }
+      forcedPreset = normalizePresetName(rawVal);
+      i += 1;
+      continue;
+    }
+    if (a && a.startsWith('--preset=')) {
+      const rawVal = a.slice('--preset='.length);
+      if (!rawVal) {
+        throw new ArgvError('--preset requires a value (e.g. --preset=technical-mono)');
+      }
+      forcedPreset = normalizePresetName(rawVal);
+      continue;
+    }
     positional.push(a);
   }
   const [urlArg, outArg] = positional;
   if (!urlArg || !outArg) return null;
-  return { urlArg, outArg, mergeWithPath };
+  return { urlArg, outArg, mergeWithPath, forcedPreset };
+}
+
+/**
+ * Normalize + validate a --preset value. Case-insensitive, trimmed. Throws
+ * ArgvError with a listing of valid names on miss.
+ */
+function normalizePresetName(raw) {
+  const normalized = String(raw).trim().toLowerCase();
+  if (!VALID_PRESETS.includes(normalized)) {
+    throw new ArgvError(
+      `Unknown preset: ${raw}. Valid presets: ${VALID_PRESETS.join(', ')}`,
+    );
+  }
+  return normalized;
 }
 
 function normalizeUrl(input) {
@@ -1044,9 +1109,19 @@ async function attemptScan({ puppeteer, url, outDir, headless, warnings }) {
 }
 
 async function main() {
-  const parsed = parseArgv(process.argv);
+  let parsed;
+  try {
+    parsed = parseArgv(process.argv);
+  } catch (err) {
+    if (err instanceof ArgvError) {
+      console.error(err.message);
+      process.exit(1);
+      return;
+    }
+    throw err;
+  }
   if (!parsed) usage();
-  const { urlArg, outArg, mergeWithPath } = parsed;
+  const { urlArg, outArg, mergeWithPath, forcedPreset } = parsed;
 
   const url = normalizeUrl(urlArg);
   const outDir = resolve(outArg);
@@ -1194,10 +1269,22 @@ async function main() {
     if (mergeWith) {
       result.payload.mergeWith = mergeWith;
     }
+    // v0.7 A.4: forced-preset flag short-circuits the synthesizer's weighted
+    // preset matching. Write at top level AND mirror into merged.forcedPreset
+    // so downstream consumers that only look at merged.* still see it.
+    if (forcedPreset) {
+      result.payload.forcedPreset = forcedPreset;
+      if (result.payload.merged && typeof result.payload.merged === 'object') {
+        result.payload.merged.forcedPreset = forcedPreset;
+      }
+    }
     writeScan(outDir, result.payload);
     console.log(`\u2713 scan.json written to ${outDir}`);
     if (mergeWith) {
       console.log(`  merge-with: ${mergeWith.sourcePath}`);
+    }
+    if (forcedPreset) {
+      console.log(`  preset:     ${forcedPreset} (forced)`);
     }
     console.log(`  pages:      ${result.payload.pagesScanned.join(', ')}`);
     console.log(`  background: ${result.payload.merged.colors.background}`);
@@ -1266,6 +1353,14 @@ async function main() {
     // (e.g. a manual-fallback synthesizer) can still apply the user's
     // hand-tuned profile.
     failurePayload.mergeWith = mergeWith;
+  }
+  if (forcedPreset) {
+    // v0.7 A.4: forced preset survives total scan failure — user still wants
+    // to drive the synthesizer's preset choice even when the site scan died.
+    failurePayload.forcedPreset = forcedPreset;
+    if (failurePayload.merged && typeof failurePayload.merged === 'object') {
+      failurePayload.merged.forcedPreset = forcedPreset;
+    }
   }
   writeScan(outDir, failurePayload);
   process.exit(0);

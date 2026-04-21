@@ -11,7 +11,14 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { extractSignals } from '../../../scripts/extract-brand-signals.mjs';
-import { rankDiscoveredLinks, mergeSignals, mergeProfile } from '../../../scripts/scan-site.mjs';
+import {
+  rankDiscoveredLinks,
+  mergeSignals,
+  mergeProfile,
+  parseArgv,
+  VALID_PRESETS,
+  ArgvError,
+} from '../../../scripts/scan-site.mjs';
 import { brandfetch, normalizeBrandfetch, extractDomain } from '../../../scripts/brandfetch-client.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -774,6 +781,142 @@ async function main() {
         && bv['accent-light'] === '#FFFFFF'
         && bv['brand-color-1'] === '#FF0000',
       `got ${JSON.stringify(bv)}`,
+    );
+  }
+
+  // ---- v0.7 Task A.4 — --preset force flag (parseArgv) ----
+  console.log(`\n=== parseArgv --preset (v0.7 A.4) ===`);
+
+  // Case 1: valid preset parses + exposes forcedPreset.
+  {
+    const result = parseArgv(['node', 'scan-site.mjs', 'https://example.com', '/tmp/out', '--preset', 'technical-mono']);
+    total += 3;
+    passed += check(
+      'parseArgv: returns non-null when positionals + --preset both supplied',
+      result !== null,
+      `got ${JSON.stringify(result)}`,
+    );
+    passed += check(
+      'parseArgv: forcedPreset === "technical-mono"',
+      result && result.forcedPreset === 'technical-mono',
+      `got ${result?.forcedPreset}`,
+    );
+    passed += check(
+      'parseArgv: positionals preserved (urlArg + outArg) alongside --preset',
+      result && result.urlArg === 'https://example.com' && result.outArg === '/tmp/out',
+      `got url=${result?.urlArg} out=${result?.outArg}`,
+    );
+  }
+
+  // Case 2: invalid preset throws ArgvError — listing all 6 valid names.
+  {
+    let threw = false;
+    let thrownMessage = '';
+    let thrownType = null;
+    try {
+      parseArgv(['node', 'scan-site.mjs', 'https://example.com', '/tmp/out', '--preset', 'bogus-preset']);
+    } catch (err) {
+      threw = true;
+      thrownMessage = err?.message || '';
+      thrownType = err?.constructor?.name || null;
+    }
+    total += 3;
+    passed += check(
+      'parseArgv: unknown preset name throws',
+      threw,
+      threw ? `threw "${thrownMessage}"` : 'did not throw',
+    );
+    passed += check(
+      'parseArgv: error is ArgvError (exit-friendly, not a generic Error)',
+      thrownType === 'ArgvError',
+      `got ${thrownType}`,
+    );
+    passed += check(
+      'parseArgv: error message includes "Unknown preset" and lists all 6 valid names',
+      thrownMessage.includes('Unknown preset')
+        && VALID_PRESETS.every((p) => thrownMessage.includes(p)),
+      `got "${thrownMessage}"`,
+    );
+  }
+
+  // Case 3: case-insensitive normalization.
+  {
+    const upper = parseArgv(['node', 'scan-site.mjs', 'https://example.com', '/tmp/out', '--preset', 'TECHNICAL-MONO']);
+    const mixed = parseArgv(['node', 'scan-site.mjs', 'https://example.com', '/tmp/out', '--preset', 'Technical-Mono']);
+    const padded = parseArgv(['node', 'scan-site.mjs', 'https://example.com', '/tmp/out', '--preset', '  satoshi-tech  ']);
+    total += 3;
+    passed += check(
+      'parseArgv: uppercase --preset TECHNICAL-MONO → normalized to "technical-mono"',
+      upper && upper.forcedPreset === 'technical-mono',
+      `got ${upper?.forcedPreset}`,
+    );
+    passed += check(
+      'parseArgv: mixed-case --preset Technical-Mono → normalized to "technical-mono"',
+      mixed && mixed.forcedPreset === 'technical-mono',
+      `got ${mixed?.forcedPreset}`,
+    );
+    passed += check(
+      'parseArgv: whitespace trimmed — "  satoshi-tech  " → "satoshi-tech"',
+      padded && padded.forcedPreset === 'satoshi-tech',
+      `got "${padded?.forcedPreset}"`,
+    );
+  }
+
+  // Case 4 (bonus): --preset with no value errors; --preset=<value> form works;
+  // absent --preset returns forcedPreset === null; combo with --merge-with works.
+  {
+    // No value after --preset (end of argv)
+    let missingValThrew = false;
+    try {
+      parseArgv(['node', 'scan-site.mjs', 'https://example.com', '/tmp/out', '--preset']);
+    } catch (err) {
+      missingValThrew = err instanceof ArgvError;
+    }
+
+    // --preset followed by another flag (still "no value")
+    let nextFlagThrew = false;
+    try {
+      parseArgv(['node', 'scan-site.mjs', 'https://example.com', '/tmp/out', '--preset', '--merge-with', '/x']);
+    } catch (err) {
+      nextFlagThrew = err instanceof ArgvError;
+    }
+
+    // --preset=<value> form
+    const eqForm = parseArgv(['node', 'scan-site.mjs', 'https://example.com', '/tmp/out', '--preset=neo-grotesk']);
+
+    // Absent flag
+    const noFlag = parseArgv(['node', 'scan-site.mjs', 'https://example.com', '/tmp/out']);
+
+    // Combo with --merge-with
+    const combo = parseArgv(['node', 'scan-site.mjs', 'https://example.com', '/tmp/out', '--merge-with', '/p.json', '--preset', 'editorial-serif']);
+
+    total += 5;
+    passed += check(
+      'parseArgv: --preset with no following value throws ArgvError',
+      missingValThrew,
+      missingValThrew ? 'threw' : 'did not throw',
+    );
+    passed += check(
+      'parseArgv: --preset followed by another --flag throws (treats as missing value)',
+      nextFlagThrew,
+      nextFlagThrew ? 'threw' : 'did not throw',
+    );
+    passed += check(
+      'parseArgv: --preset=neo-grotesk equals form works',
+      eqForm && eqForm.forcedPreset === 'neo-grotesk',
+      `got ${eqForm?.forcedPreset}`,
+    );
+    passed += check(
+      'parseArgv: forcedPreset === null when --preset absent',
+      noFlag && noFlag.forcedPreset === null,
+      `got ${noFlag?.forcedPreset}`,
+    );
+    passed += check(
+      'parseArgv: --merge-with + --preset combine without conflict',
+      combo
+        && combo.forcedPreset === 'editorial-serif'
+        && combo.mergeWithPath === '/p.json',
+      `got preset=${combo?.forcedPreset} mergeWith=${combo?.mergeWithPath}`,
     );
   }
 

@@ -239,7 +239,66 @@ Keep `reason` one sentence, cite which rule fired.
 
 ---
 
+## Forced preset override (v0.7 A.4)
+
+If `scan.forcedPreset` (or equivalently `scan.merged.forcedPreset`) is set,
+the user passed `--preset <name>` on the scan command. This short-circuits
+the weighted-signal preset matching below:
+
+- Use the forced preset DIRECTLY as `visual.preset` in the output profile.
+- Load `templates/presets/<forced-name>.json` as the base and skip the Step 1
+  scoring procedure entirely.
+- Skip Step 1's "Decision" checks — the user has explicitly chosen; there's
+  no low-confidence warning to emit on preset picking.
+- All OTHER synthesizer rules still apply unchanged: background
+  reconciliation (Step 2 intro), `brand.name` / `handle` / `tone` / `niche`
+  derivation, `visual.colors` overrides (including BrandFetch + accent
+  precedence), `visual.fonts` precedence (byContext rules), logo mapping,
+  decorations, grain — every override Step 2 would apply on top of a
+  scored preset still applies on top of the forced preset.
+- The `--merge-with` flag interacts normally: existing brand-profile values
+  still win per-leaf over derived values, including over the forced preset's
+  defaults when the user has explicitly set them.
+
+Valid `scan.forcedPreset` values (must be exactly one of):
+
+- `editorial-serif`
+- `neo-grotesk`
+- `technical-mono`
+- `display-serif-bold`
+- `utilitarian-bold`
+- `satoshi-tech`
+
+(Validation happens at parse time in `scripts/scan-site.mjs` — if you see
+an unknown value here, treat it as corrupted and fall back to Step 1's
+scoring instead.)
+
+Emit a resolution note when this override fires:
+
+```json
+"resolution": {
+  "preset": {
+    "from": "forced",
+    "reason": "user passed --preset <name>; weighted-signal matching skipped"
+  }
+}
+```
+
+### When to recommend `--preset`
+
+If you detect via Step 1's scoring that the closest preset has confidence
+`< 0.6`, OR you notice that the carousel brand (from `--merge-with`)
+differs materially from the website's visual identity, suggest
+`--preset <name>` on the next scan. Low-confidence preset matches usually
+mean the site straddles two aesthetics; the user picking directly is
+faster than iterating through the edit loop.
+
+---
+
 ## Step 1 — Pick the closest preset
+
+**Skip this step entirely when `scan.forcedPreset` is set — see "Forced
+preset override" above.**
 
 There are 6 presets in `templates/presets/`:
 
