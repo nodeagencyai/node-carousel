@@ -2,6 +2,7 @@
 //
 // Detection priority order:
 //   1. Inline SVG in header/nav with class/id containing "logo"
+//   1b. Positional SVG fallback (top-left, small bbox) for JS-rendered sites
 //   2. <img alt="... logo ..."> in header/nav (also header a[href="/"] img,
 //      [class*="logo"] img)
 //   3. Favicon / apple-touch-icon (<link rel="icon">, then /favicon.ico)
@@ -21,6 +22,15 @@
 //   - 2 MB cap — rejected up-front via Content-Length, or during streaming.
 //   - Cross-origin fetches are allowed (CDN logos are common) but recorded on
 //     the returned descriptor for the caller to surface as a warning.
+//
+// Architecture (v0.7 B.4):
+//   - `collectLogoSignals(page, baseUrl)` → collects raw DOM signals via
+//     page.evaluate(). Puppeteer-coupled, not testable without a browser.
+//   - `extractLogoFromSignals(signals, outputDir, baseUrl, opts)` → pure logic
+//     that turns signals into a descriptor + writes/fetches to disk. Testable
+//     with synthetic signal objects and an injected fetchFn.
+//   - `extractLogo(page, outputDir, baseUrl)` → thin wrapper that chains the
+//     two for production use.
 //
 // TODO(v0.7): Prefer apple-touch-icon when its size exceeds the favicon — right
 // now we take whichever <link> appears first in the DOM, because the selector
@@ -123,17 +133,15 @@ export async function fetchBuffer(url) {
 }
 
 /**
- * Locate a logo on an already-loaded Puppeteer page and persist it into
- * `outputDir`. Never throws.
+ * Collect raw logo signals from a live Puppeteer page. This is the
+ * browser-coupled half of logo extraction — it runs page.evaluate() for each
+ * of the four detection branches and returns a plain-object signal bag that
+ * `extractLogoFromSignals` can turn into a descriptor.
  *
- * @param {object} page       Puppeteer Page instance (or test double with
- *                            `.evaluate(fn, ...args)`).
- * @param {string} outputDir  Absolute directory path — assumed to exist.
- * @param {string} baseUrl    URL of the loaded page, used to resolve relative
- *                            href values and build the default /favicon.ico
- *                            fallback.
+ * Separated from the pure logic so tests can drive the core with synthetic
+ * signals instead of spinning up Puppeteer.
  */
-export async function extractLogo(page, outputDir, baseUrl) {
+export async function collectLogoSignals(page, baseUrl) {
   // ---- 1. Inline SVG in header/nav ----
   let inlineSvg = null;
   try {
@@ -153,15 +161,6 @@ export async function extractLogo(page, outputDir, baseUrl) {
     // Page might be detached — fall through.
     inlineSvg = null;
   }
-  if (inlineSvg && typeof inlineSvg === 'string' && inlineSvg.trim().length > 0) {
-    const path = join(outputDir, 'logo.svg');
-    try {
-      writeFileSync(path, inlineSvg, 'utf8');
-      return { type: 'inline-svg', path };
-    } catch (err) {
-      // Fall through to <img> path if disk write fails.
-    }
-  }
 
   // ---- 1b. Positional SVG fallback (JS-rendered sites) ----
   // Framer / Next.js / React sites often render the logo SVG inside a generic
@@ -169,7 +168,6 @@ export async function extractLogo(page, outputDir, baseUrl) {
   // the top-left of the rendered page, within a plausible logo bounding box.
   // Filter out illustrations (too many paths) to avoid grabbing decorative art.
   let positionalSvg = null;
-  let usedPositionalFallback = false;
   try {
     positionalSvg = await page.evaluate(() => {
       const svgs = Array.from(document.querySelectorAll('svg'));
@@ -186,20 +184,6 @@ export async function extractLogo(page, outputDir, baseUrl) {
   } catch {
     positionalSvg = null;
   }
-  if (positionalSvg && typeof positionalSvg === 'string' && positionalSvg.trim().length > 0) {
-    const path = join(outputDir, 'logo.svg');
-    try {
-      writeFileSync(path, positionalSvg, 'utf8');
-      usedPositionalFallback = true;
-      return {
-        type: 'inline-svg',
-        path,
-        warning: "[logo] Used positional SVG fallback (no class='logo' marker found)",
-      };
-    } catch (err) {
-      // Fall through to <img> path if disk write fails.
-    }
-  }
 
   // ---- 2. <img> in header/nav ----
   let imgUrl = null;
@@ -215,20 +199,6 @@ export async function extractLogo(page, outputDir, baseUrl) {
     });
   } catch {
     imgUrl = null;
-  }
-  if (imgUrl) {
-    try {
-      const buffer = await fetchBuffer(imgUrl);
-      const ext = inferExtension(imgUrl);
-      const path = join(outputDir, `logo.${ext}`);
-      writeFileSync(path, buffer);
-      const crossOrigin = isCrossOrigin(imgUrl, baseUrl);
-      const result = { type: 'img', path, sourceUrl: imgUrl };
-      if (crossOrigin) result.crossOrigin = true;
-      return result;
-    } catch (err) {
-      // Fall through to favicon.
-    }
   }
 
   // ---- 3. Favicon / apple-touch-icon ----
@@ -254,8 +224,78 @@ export async function extractLogo(page, outputDir, baseUrl) {
   } catch {
     favUrl = null;
   }
-  // Belt-and-braces default: if evaluate() returned null, still try the base
-  // /favicon.ico path (the page might be detached but we can still fetch).
+
+  return { inlineSvg, positionalSvg, imgUrl, favUrl };
+}
+
+/**
+ * Pure logo-descriptor builder. Given already-resolved DOM signals, walks the
+ * four-branch fallback order (inline SVG → positional SVG → <img> → favicon)
+ * and writes the winning asset into `outputDir`.
+ *
+ * No Puppeteer dependency — tests can drive this directly with synthetic
+ * signal objects and an injected `fetchFn` (same contract as `fetchBuffer`).
+ * Never throws.
+ *
+ * @param {object}   signals             From `collectLogoSignals` or a test.
+ * @param {string}   signals.inlineSvg   Outer HTML of a header/nav SVG or null.
+ * @param {string}   signals.positionalSvg Outer HTML of a positional-fallback SVG or null.
+ * @param {string}   signals.imgUrl      Absolute URL of a header <img> or null.
+ * @param {string}   signals.favUrl      Absolute URL of a favicon/apple-touch-icon or null.
+ * @param {string}   outputDir           Absolute directory path — assumed to exist.
+ * @param {string}   baseUrl             URL of the loaded page (for cross-origin + favicon fallback).
+ * @param {object}   [opts]
+ * @param {Function} [opts.fetchFn]      Async fn(url) → Buffer. Defaults to fetchBuffer.
+ */
+export async function extractLogoFromSignals(signals, outputDir, baseUrl, opts = {}) {
+  const fetchFn = opts.fetchFn || fetchBuffer;
+  const { inlineSvg, positionalSvg, imgUrl } = signals || {};
+  let { favUrl } = signals || {};
+
+  // ---- 1. Inline SVG ----
+  if (inlineSvg && typeof inlineSvg === 'string' && inlineSvg.trim().length > 0) {
+    const path = join(outputDir, 'logo.svg');
+    try {
+      writeFileSync(path, inlineSvg, 'utf8');
+      return { type: 'inline-svg', path };
+    } catch (err) {
+      // Fall through to positional → <img> path if disk write fails.
+    }
+  }
+
+  // ---- 1b. Positional SVG fallback ----
+  if (positionalSvg && typeof positionalSvg === 'string' && positionalSvg.trim().length > 0) {
+    const path = join(outputDir, 'logo.svg');
+    try {
+      writeFileSync(path, positionalSvg, 'utf8');
+      return {
+        type: 'inline-svg',
+        path,
+        warning: "[logo] Used positional SVG fallback (no class='logo' marker found)",
+      };
+    } catch (err) {
+      // Fall through to <img> path if disk write fails.
+    }
+  }
+
+  // ---- 2. <img> in header/nav ----
+  if (imgUrl) {
+    try {
+      const buffer = await fetchFn(imgUrl);
+      const ext = inferExtension(imgUrl);
+      const path = join(outputDir, `logo.${ext}`);
+      writeFileSync(path, buffer);
+      const crossOrigin = isCrossOrigin(imgUrl, baseUrl);
+      const result = { type: 'img', path, sourceUrl: imgUrl };
+      if (crossOrigin) result.crossOrigin = true;
+      return result;
+    } catch (err) {
+      // Fall through to favicon.
+    }
+  }
+
+  // ---- 3. Favicon / apple-touch-icon ----
+  // Belt-and-braces default: if collector returned null, still try /favicon.ico.
   if (!favUrl) {
     try {
       favUrl = new URL('/favicon.ico', baseUrl).href;
@@ -264,7 +304,7 @@ export async function extractLogo(page, outputDir, baseUrl) {
     }
   }
   try {
-    const buffer = await fetchBuffer(favUrl);
+    const buffer = await fetchFn(favUrl);
     const ext = inferExtension(favUrl);
     const path = join(outputDir, `favicon.${ext}`);
     writeFileSync(path, buffer);
@@ -275,6 +315,25 @@ export async function extractLogo(page, outputDir, baseUrl) {
   } catch (err) {
     return { type: 'none', warning: 'No logo found' };
   }
+}
+
+/**
+ * Locate a logo on an already-loaded Puppeteer page and persist it into
+ * `outputDir`. Never throws.
+ *
+ * Thin wrapper: collects signals via Puppeteer, then hands off to the
+ * pure `extractLogoFromSignals` for the actual decision + write logic.
+ *
+ * @param {object} page       Puppeteer Page instance (or test double with
+ *                            `.evaluate(fn, ...args)`).
+ * @param {string} outputDir  Absolute directory path — assumed to exist.
+ * @param {string} baseUrl    URL of the loaded page, used to resolve relative
+ *                            href values and build the default /favicon.ico
+ *                            fallback.
+ */
+export async function extractLogo(page, outputDir, baseUrl) {
+  const signals = await collectLogoSignals(page, baseUrl);
+  return extractLogoFromSignals(signals, outputDir, baseUrl);
 }
 
 function isCrossOrigin(candidate, baseUrl) {

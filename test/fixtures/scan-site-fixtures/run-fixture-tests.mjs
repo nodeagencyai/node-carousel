@@ -23,6 +23,7 @@ import {
   computeScreenshotOptions,
 } from '../../../scripts/scan-site.mjs';
 import { brandfetch, normalizeBrandfetch, extractDomain } from '../../../scripts/brandfetch-client.mjs';
+import { extractLogoFromSignals } from '../../../scripts/extract-logo.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -1148,6 +1149,177 @@ async function main() {
       plan.options && plan.options.clip && plan.options.clip.height === 8000,
       `got ${plan.options?.clip?.height}`,
     );
+  }
+
+  // ---- v0.7 Task B.4 — extractLogo fixture coverage (audit I4) ----
+  // Drives the pure `extractLogoFromSignals` core with synthetic signals that
+  // mirror what `collectLogoSignals(page, baseUrl)` would return for each of
+  // the 4 HTML fixtures. No Puppeteer, no DOM — the fixtures exist as
+  // human-readable references; the signal extraction is hand-rolled below so
+  // we can run this on CI without a browser.
+  console.log(`\n=== extractLogo fixtures (v0.7 B.4) ===`);
+
+  const logoFixturesDir = join(__dirname, '..', 'logo-fixtures');
+
+  // Tiny regex-backed HTML → signals translator. Intentionally minimal: the
+  // production collector uses real DOM selectors; here we just need enough
+  // fidelity to emulate what each fixture's DOM would surface.
+  const htmlToSignals = (html, baseUrl) => {
+    // Branch 1: inline SVG whose opening tag carries class="...logo..." and
+    // sits inside <header> or <nav>. Case-insensitive.
+    let inlineSvg = null;
+    const headerMatch = html.match(/<header\b[^>]*>([\s\S]*?)<\/header>/i)
+      || html.match(/<nav\b[^>]*>([\s\S]*?)<\/nav>/i);
+    if (headerMatch) {
+      const svgInHeader = headerMatch[1].match(/<svg\b[^>]*class=["'][^"']*logo[^"']*["'][^>]*>[\s\S]*?<\/svg>/i);
+      if (svgInHeader) inlineSvg = svgInHeader[0];
+    }
+
+    // Branch 1b: positional SVG (anywhere, top of page, small). We don't
+    // emulate getBoundingClientRect — none of our fixtures exercise this
+    // branch, so we leave it null. (Added as a future hook.)
+    const positionalSvg = null;
+
+    // Branch 2: <img alt~="logo"> inside header/nav, or header a[href="/"] img,
+    // or [class*="logo"] img. We just look for any <img> tag with alt
+    // containing "logo" anywhere in the doc (our fixtures only put one there).
+    let imgUrl = null;
+    const imgMatch = html.match(/<img\b[^>]*alt=["'][^"']*logo[^"']*["'][^>]*>/i);
+    if (imgMatch) {
+      const srcMatch = imgMatch[0].match(/\bsrc=["']([^"']+)["']/i);
+      if (srcMatch && srcMatch[1] && !srcMatch[1].startsWith('data:')) {
+        imgUrl = srcMatch[1];
+      }
+    }
+
+    // Branch 3: <link rel="icon"|"shortcut icon"|"apple-touch-icon" href="...">
+    let favUrl = null;
+    const linkMatch = html.match(/<link\b[^>]*rel=["'](?:icon|shortcut icon|apple-touch-icon)["'][^>]*>/i);
+    if (linkMatch) {
+      const hrefMatch = linkMatch[0].match(/\bhref=["']([^"']+)["']/i);
+      if (hrefMatch && hrefMatch[1]) {
+        try {
+          favUrl = new URL(hrefMatch[1], baseUrl).href;
+        } catch {
+          favUrl = hrefMatch[1];
+        }
+      }
+    }
+
+    return { inlineSvg, positionalSvg, imgUrl, favUrl };
+  };
+
+  // Shared dummy fetch — returns a small Buffer; never hits the network.
+  const dummyFetch = async () => Buffer.from('FAKE_IMAGE_BYTES');
+
+  // --- Case 1: inline-svg-logo.html → type:'inline-svg', SVG written to disk ---
+  {
+    const html = readFileSync(join(logoFixturesDir, 'inline-svg-logo.html'), 'utf8');
+    const signals = htmlToSignals(html, 'https://example.com/');
+    const outDir = mkdtempSync(join(tmpdir(), 'carousel-logo-1-'));
+    try {
+      const result = await extractLogoFromSignals(signals, outDir, 'https://example.com/', { fetchFn: dummyFetch });
+      total += 3;
+      passed += check(
+        'inline-svg fixture → type === "inline-svg"',
+        result && result.type === 'inline-svg',
+        `got ${JSON.stringify(result)}`,
+      );
+      passed += check(
+        'inline-svg fixture → logo.svg written to outputDir',
+        typeof result.path === 'string' && existsSync(result.path) && result.path.endsWith('logo.svg'),
+        `got path=${result?.path}`,
+      );
+      const written = result.path && existsSync(result.path) ? readFileSync(result.path, 'utf8') : '';
+      passed += check(
+        'inline-svg fixture → written file contains class="site-logo"',
+        written.includes('class="site-logo"'),
+        `got ${written.slice(0, 60)}...`,
+      );
+    } finally {
+      rmSync(outDir, { recursive: true, force: true });
+    }
+  }
+
+  // --- Case 2: img-logo.html → type:'img', sourceUrl matches, cross-origin flagged ---
+  {
+    const html = readFileSync(join(logoFixturesDir, 'img-logo.html'), 'utf8');
+    const signals = htmlToSignals(html, 'https://mycompany.com/');
+    const outDir = mkdtempSync(join(tmpdir(), 'carousel-logo-2-'));
+    try {
+      const result = await extractLogoFromSignals(signals, outDir, 'https://mycompany.com/', { fetchFn: dummyFetch });
+      total += 3;
+      passed += check(
+        'img fixture → type === "img"',
+        result && result.type === 'img',
+        `got ${JSON.stringify(result)}`,
+      );
+      passed += check(
+        'img fixture → sourceUrl === "https://example.com/logo.png"',
+        result.sourceUrl === 'https://example.com/logo.png',
+        `got ${result?.sourceUrl}`,
+      );
+      passed += check(
+        'img fixture → crossOrigin flag set (example.com !== mycompany.com)',
+        result.crossOrigin === true,
+        `got ${result?.crossOrigin}`,
+      );
+    } finally {
+      rmSync(outDir, { recursive: true, force: true });
+    }
+  }
+
+  // --- Case 3: favicon-only.html → type:'favicon' ---
+  // (v0.7 B.5 adds a `fallback: true` flag; not present in current shape so we
+  // just assert type here — the B.5 task will extend this check.)
+  {
+    const html = readFileSync(join(logoFixturesDir, 'favicon-only.html'), 'utf8');
+    const signals = htmlToSignals(html, 'https://example.com/');
+    const outDir = mkdtempSync(join(tmpdir(), 'carousel-logo-3-'));
+    try {
+      const result = await extractLogoFromSignals(signals, outDir, 'https://example.com/', { fetchFn: dummyFetch });
+      total += 2;
+      passed += check(
+        'favicon-only fixture → type === "favicon"',
+        result && result.type === 'favicon',
+        `got ${JSON.stringify(result)}`,
+      );
+      passed += check(
+        'favicon-only fixture → sourceUrl resolves to https://example.com/favicon.ico',
+        result.sourceUrl === 'https://example.com/favicon.ico',
+        `got ${result?.sourceUrl}`,
+      );
+    } finally {
+      rmSync(outDir, { recursive: true, force: true });
+    }
+  }
+
+  // --- Case 4: no-logo.html → type:'none' (all branches fail) ---
+  // The favicon branch still tries /favicon.ico as a belt-and-braces default;
+  // we reject it via a fetchFn that throws. That exercises the final "none"
+  // fallthrough path — the real production behavior when the network is
+  // unreachable or the server 404s /favicon.ico.
+  {
+    const html = readFileSync(join(logoFixturesDir, 'no-logo.html'), 'utf8');
+    const signals = htmlToSignals(html, 'https://example.com/');
+    const rejectFetch = async () => { throw new Error('simulated network failure'); };
+    const outDir = mkdtempSync(join(tmpdir(), 'carousel-logo-4-'));
+    try {
+      const result = await extractLogoFromSignals(signals, outDir, 'https://example.com/', { fetchFn: rejectFetch });
+      total += 2;
+      passed += check(
+        'no-logo fixture → type === "none" when favicon fetch fails',
+        result && result.type === 'none',
+        `got ${JSON.stringify(result)}`,
+      );
+      passed += check(
+        'no-logo fixture → warning message present',
+        typeof result.warning === 'string' && result.warning.includes('No logo found'),
+        `got warning=${result?.warning}`,
+      );
+    } finally {
+      rmSync(outDir, { recursive: true, force: true });
+    }
   }
 
   console.log(`\n=== ${passed}/${total} checks passed ===`);
