@@ -134,8 +134,103 @@ export function rankDiscoveredLinks(hrefs, baseUrl, { max = MAX_DISCOVERED_PAGES
 }
 
 /**
+ * Common nav-label heuristic for viewport-based fallback. Short lowercase
+ * words that typically mark a navigation link in Framer/React/Next.js sites
+ * where semantic <nav> / <header> wrappers may be absent.
+ */
+const NAV_LABEL_WORDS = new Set([
+  'work', 'projects', 'portfolio', 'case studies', 'cases',
+  'about', 'team', 'company',
+  'pricing', 'plans',
+  'contact', 'get in touch',
+  'blog', 'journal', 'writing', 'insights', 'articles',
+  'services', 'what we do', 'process', 'how it works',
+  'features', 'product',
+]);
+
+/**
+ * Score a link text for nav-likeness. Lower is better (treated like priority).
+ * Short, lowercase, single-word or common-nav-label text wins over long URLs
+ * or generic "Read more" strings.
+ */
+function scoreLinkText(text) {
+  if (!text || typeof text !== 'string') return Infinity;
+  const t = text.trim().toLowerCase();
+  if (!t) return Infinity;
+  // Generic junk — push to the bottom.
+  if (/^(read more|learn more|view|see more|click here|more)$/i.test(t)) return 100;
+  if (NAV_LABEL_WORDS.has(t)) return 1;
+  // 1-3 word short phrases are likely nav labels.
+  const wordCount = t.split(/\s+/).length;
+  if (wordCount <= 2 && t.length <= 20) return 5;
+  if (wordCount <= 3 && t.length <= 30) return 10;
+  return 50;
+}
+
+/**
+ * Pure helper: rank viewport-visible links (from fallback) by priority-path
+ * rules first (/about etc.), then by link-text heuristic. Same {max} cap.
+ * Exported for potential test use.
+ */
+export function rankViewportLinks(candidates, baseUrl, { max = MAX_DISCOVERED_PAGES } = {}) {
+  const base = new URL(baseUrl);
+  const basePath = base.pathname === '' ? '/' : base.pathname;
+  // path -> { priority, textScore, text }
+  const seen = new Map();
+
+  for (const cand of candidates) {
+    if (!cand || !cand.href) continue;
+    const raw = String(cand.href).trim();
+    if (!raw) continue;
+    if (/^(#|mailto:|tel:|javascript:)/i.test(raw)) continue;
+
+    let abs;
+    try {
+      abs = new URL(raw, base);
+    } catch {
+      continue;
+    }
+    if (abs.protocol !== 'http:' && abs.protocol !== 'https:') continue;
+    if (abs.host !== base.host) continue;
+
+    let pathname = abs.pathname || '/';
+    if (pathname.length > 1 && pathname.endsWith('/')) {
+      pathname = pathname.replace(/\/+$/, '');
+    }
+    if (pathname === basePath || pathname === '/' || pathname === '') continue;
+
+    const priority = scorePath(pathname); // null if not in DISCOVERY_RULES
+    const textScore = scoreLinkText(cand.text);
+    // Skip links that are neither a priority-path match nor a recognizable
+    // nav label. textScore 50+ with null priority = long random link text.
+    if (priority == null && textScore >= 50) continue;
+
+    const prev = seen.get(pathname);
+    const entry = { priority: priority ?? 99, textScore, text: cand.text || '' };
+    if (!prev
+      || entry.priority < prev.priority
+      || (entry.priority === prev.priority && entry.textScore < prev.textScore)) {
+      seen.set(pathname, entry);
+    }
+  }
+
+  const ranked = Array.from(seen.entries())
+    .sort((a, b) => {
+      if (a[1].priority !== b[1].priority) return a[1].priority - b[1].priority;
+      if (a[1].textScore !== b[1].textScore) return a[1].textScore - b[1].textScore;
+      return a[0].localeCompare(b[0]);
+    })
+    .map(([path]) => path);
+
+  return ranked.slice(0, max);
+}
+
+/**
  * Extract nav/footer hrefs from an already-loaded Puppeteer page, then rank.
  * Returns at most MAX_DISCOVERED_PAGES paths.
+ *
+ * Returns `{ paths, usedFallback }` so the caller can emit the viewport-
+ * fallback warning when semantic selectors produced nothing.
  */
 async function discoverPages(page, baseUrl) {
   let hrefs = [];
@@ -149,9 +244,51 @@ async function discoverPages(page, baseUrl) {
         .filter(Boolean);
     });
   } catch {
-    return [];
+    hrefs = [];
   }
-  return rankDiscoveredLinks(hrefs, baseUrl);
+  const paths = rankDiscoveredLinks(hrefs, baseUrl);
+  if (paths.length > 0) {
+    return { paths, usedFallback: false };
+  }
+
+  // ---- Fallback: viewport-based scan ----
+  // JS-rendered sites (Framer / Next.js / React) often render nav inside
+  // generic <div>s with no <header>/<nav> semantics. Scan every <a href>
+  // that's either near the top of the viewport (above-the-fold nav) or
+  // near the top of the footer region (bottom nav).
+  let candidates = [];
+  try {
+    candidates = await page.evaluate(() => {
+      const anchors = Array.from(document.querySelectorAll('a[href]'));
+      const vh = window.innerHeight || 900;
+      const out = [];
+      for (const a of anchors) {
+        const r = a.getBoundingClientRect();
+        if (r.width <= 0 || r.height <= 0) continue;
+        const topOfViewport = r.top >= 0 && r.top < 120;
+        // Footer top 40px: last ~40px of the document's natural flow. We
+        // approximate with any link whose bottom is within 40px of the
+        // scrollable document's end.
+        const docH = Math.max(
+          document.body.scrollHeight,
+          document.documentElement.scrollHeight,
+        );
+        const absBottom = r.bottom + window.scrollY;
+        const nearFooter = docH - absBottom < 40 && r.height < vh;
+        if (!topOfViewport && !nearFooter) continue;
+        const href = a.getAttribute('href');
+        if (!href) continue;
+        // innerText is the visible text as rendered (drops hidden nodes).
+        const text = (a.innerText || a.textContent || '').trim();
+        out.push({ href, text });
+      }
+      return out;
+    });
+  } catch {
+    candidates = [];
+  }
+  const fallbackPaths = rankViewportLinks(candidates, baseUrl);
+  return { paths: fallbackPaths, usedFallback: true };
 }
 
 // ---------------- Per-page scanning ----------------
@@ -589,16 +726,25 @@ async function attemptScan({ puppeteer, url, outDir, headless, warnings }) {
       if (logo?.crossOrigin && logo?.sourceUrl) {
         warnings.push(`logo fetched cross-origin from ${logo.sourceUrl}`);
       }
+      if (logo?.warning && typeof logo.warning === 'string' && logo.warning.startsWith('[logo]')) {
+        warnings.push(logo.warning);
+      }
 
       const perPage = {};
       perPage[homepagePath] = homeResult.signals;
 
       // Discover additional pages from the already-loaded homepage.
       let discovered = [];
+      let discoveryUsedFallback = false;
       try {
-        discovered = await discoverPages(homepagePage, url);
+        const result = await discoverPages(homepagePage, url);
+        discovered = result.paths;
+        discoveryUsedFallback = result.usedFallback;
       } catch (err) {
         warnings.push(`page discovery failed: ${err?.message || err}`);
+      }
+      if (discoveryUsedFallback && discovered.length > 0) {
+        warnings.push('[page-discovery] Fell back to viewport-based link scanning (no semantic nav found)');
       }
 
       // Scan each discovered page (one tab at a time; serial keeps memory sane

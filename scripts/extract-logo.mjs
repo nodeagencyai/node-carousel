@@ -163,6 +163,44 @@ export async function extractLogo(page, outputDir, baseUrl) {
     }
   }
 
+  // ---- 1b. Positional SVG fallback (JS-rendered sites) ----
+  // Framer / Next.js / React sites often render the logo SVG inside a generic
+  // <div> with no class="logo" marker. Fall back to ANY <svg> that's near
+  // the top-left of the rendered page, within a plausible logo bounding box.
+  // Filter out illustrations (too many paths) to avoid grabbing decorative art.
+  let positionalSvg = null;
+  let usedPositionalFallback = false;
+  try {
+    positionalSvg = await page.evaluate(() => {
+      const svgs = Array.from(document.querySelectorAll('svg'));
+      for (const svg of svgs) {
+        const r = svg.getBoundingClientRect();
+        if (!(r.top < 200 && r.width > 20 && r.height > 20 && r.width < 400)) continue;
+        // Reject illustrations (lots of paths → likely not a logo).
+        const paths = svg.querySelectorAll('path');
+        if (paths.length > 10) continue;
+        return svg.outerHTML;
+      }
+      return null;
+    });
+  } catch {
+    positionalSvg = null;
+  }
+  if (positionalSvg && typeof positionalSvg === 'string' && positionalSvg.trim().length > 0) {
+    const path = join(outputDir, 'logo.svg');
+    try {
+      writeFileSync(path, positionalSvg, 'utf8');
+      usedPositionalFallback = true;
+      return {
+        type: 'inline-svg',
+        path,
+        warning: "[logo] Used positional SVG fallback (no class='logo' marker found)",
+      };
+    } catch (err) {
+      // Fall through to <img> path if disk write fails.
+    }
+  }
+
   // ---- 2. <img> in header/nav ----
   let imgUrl = null;
   try {
