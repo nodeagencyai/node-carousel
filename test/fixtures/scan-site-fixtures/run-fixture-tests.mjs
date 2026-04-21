@@ -146,6 +146,25 @@ async function main() {
     }, null, 2).replace(/\n/g, '\n  ')}`);
   }
 
+  // ---- ΔE color clustering (v0.6 Task A.1) ----
+  console.log(`\n=== near-duplicate-colors (ΔE clustering) ===`);
+  {
+    const html = readFileSync(join(__dirname, 'near-duplicate-colors.html'), 'utf8');
+    const styleMatch = html.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+    const cssDump = styleMatch ? styleMatch[1] : '';
+    const signals = extractSignals({
+      html,
+      computedStyles: { body: '', h1: '', button: '', cssDump },
+      url: 'file://near-duplicate-colors.html',
+    });
+    total += 1;
+    passed += check(
+      'allColors clustered to 4 (near-dups collapsed, distinct colors survive)',
+      signals.colors.allColors.length === 4,
+      `got ${signals.colors.allColors.length}: ${JSON.stringify(signals.colors.allColors)}`,
+    );
+  }
+
   // ---- rankDiscoveredLinks tests (v0.6 multi-page crawl scaffolding) ----
   console.log(`\n=== rankDiscoveredLinks (v0.6) ===`);
   const base = 'https://example.com';

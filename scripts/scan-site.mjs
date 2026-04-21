@@ -33,7 +33,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { extractSignals } from './extract-brand-signals.mjs';
+import { extractSignals, clusterColors } from './extract-brand-signals.mjs';
 
 const PAGE_TIMEOUT_MS = 15000;       // per-page goto timeout
 const TOTAL_WALL_CLOCK_MS = 45000;   // whole scan soft-cap (plan said 20s total, which is too tight with 3 pages; 15s/page x 3 + headroom)
@@ -409,17 +409,26 @@ export function mergeSignals(perPage, homepagePath) {
   };
 
   // --- Colors ---
-  // TODO(phase A.1): replace equality-dedupe of allColors with ΔE clustering.
-  const allColors = [];
+  // Per-page allColors are already ΔE-clustered inside extractSignals, but
+  // across pages we can still get near-dups (page A: #0A0A0A, page B: #000000).
+  // Union them (cheap equality dedup first to shrink the input), then run
+  // clusterColors again to collapse cross-page near-duplicates. Homepage
+  // colors come first so they win as cluster representatives.
+  const unionedColors = [];
   const seenColors = new Set();
-  for (const p of paths) {
+  const orderedPaths = [
+    homepagePath,
+    ...paths.filter((p) => p !== homepagePath),
+  ].filter((p) => perPage[p]);
+  for (const p of orderedPaths) {
     for (const c of perPage[p]?.colors?.allColors || []) {
       const key = typeof c === 'string' ? c.toLowerCase() : JSON.stringify(c);
       if (seenColors.has(key)) continue;
       seenColors.add(key);
-      allColors.push(c);
+      unionedColors.push(c);
     }
   }
+  const allColors = clusterColors(unionedColors);
   const colors = {
     background: home?.colors?.background ?? null,
     text: home?.colors?.text ?? null,

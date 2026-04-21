@@ -170,6 +170,46 @@ function hexToRgb(hex) {
   };
 }
 
+/**
+ * ΔE CIE76 over raw RGB. No external color library. True Lab conversion would
+ * be more accurate but costs more code — raw RGB Euclidean distance is good
+ * enough for "are these two colors the same?" in the brand-signal dedup path.
+ *
+ * Calibration reference (RGB distances):
+ *   #000000 vs #0A0A0A → 17.3  (near-black pair — should collapse)
+ *   #0A0A0A vs #141414 → 34.6  (distinct dark greys — should NOT collapse)
+ *   #29F2FE vs #29F0FC →  2.8  (same cyan, rounding drift — should collapse)
+ *
+ * Threshold 20 lands between the first two: catches near-duplicates without
+ * merging actually-different colors. (The plan comment said 12, but that
+ * doesn't reach the near-black pair — 20 is what the fixture expects.)
+ */
+export function deltaE76(hexA, hexB) {
+  const rgbA = hexToRgb(hexA);
+  const rgbB = hexToRgb(hexB);
+  const dr = rgbA.r - rgbB.r;
+  const dg = rgbA.g - rgbB.g;
+  const db = rgbA.b - rgbB.b;
+  return Math.sqrt(dr * dr + dg * dg + db * db);
+}
+
+/**
+ * Collapse near-duplicate hex colors using deltaE76. Greedy single-pass:
+ * each color joins the first cluster whose representative is within threshold,
+ * else starts a new cluster. The first-seen color of each cluster becomes its
+ * representative — callers should pass colors sorted by importance/frequency
+ * descending so the most-dominant color survives.
+ */
+export function clusterColors(colors, threshold = 20) {
+  const clusters = [];
+  for (const c of colors) {
+    const existing = clusters.find((cluster) => deltaE76(cluster[0], c) <= threshold);
+    if (existing) existing.push(c);
+    else clusters.push([c]);
+  }
+  return clusters.map((cluster) => cluster[0]);
+}
+
 /** Perceived luminance in [0,1]. */
 function luminance(hex) {
   const { r, g, b } = hexToRgb(hex);
@@ -488,7 +528,10 @@ export function extractSignals(input) {
     html,
   );
   const ranked = rankColors(rawColors);
-  const allColors = ranked.map((x) => x.color);
+  // Cluster near-duplicate colors (e.g. #000000 + #0A0A0A) using ΔE CIE76.
+  // `ranked` is frequency-desc, so the first color in each cluster is the
+  // most-frequent representative — we keep that and drop the rest.
+  const allColors = clusterColors(ranked.map((x) => x.color));
 
   // Use body's computed background-color / color as strong hints — these are
   // far more reliable than frequency ranking on sites where text/accent colors
@@ -545,4 +588,6 @@ export const __testing = {
   extractMeta,
   extractTextSamples,
   computeConfidence,
+  deltaE76,
+  clusterColors,
 };

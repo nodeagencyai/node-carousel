@@ -1,0 +1,40 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Near-duplicate colors fixture</title>
+  <!--
+    Fixture for Task A.1 — ΔE CIE76 color clustering.
+
+    NOTE ON COLOR CHOICES: the A.1 plan originally suggested #141414 as the
+    "distinct dark grey that should NOT collapse" against #0A0A0A. In practice
+    #141414 is ΔE ~17 away from #0A0A0A under raw RGB — the same distance as
+    #000000 is from #0A0A0A. True Lab ΔE is even tighter (~3.5) because
+    all three are near-black. No single threshold can separate them.
+
+    We keep the #000000/#0A0A0A collapse case (the spec's main point) and
+    change the "distinct dark grey" to #3A3A3A so the test is mathematically
+    coherent. Clustering still catches the near-duplicate accent pair.
+
+    Expected after clustering at threshold 20:
+      - #0A0A0A + #000000   → 1 (near-black collapses)
+      - #3A3A3A              → 1 (distinct dark grey survives)
+      - #FFFFFF              → 1
+      - #29F2FE + #29F0FC    → 1 (near-duplicate cyans collapse)
+      = 4 colors
+  -->
+  <style>
+    body { background: #0A0A0A; color: #FFFFFF; }
+    .hero { background: #000000; }     /* near-black, should collapse into body bg */
+    .card { background: #3A3A3A; }     /* distinct dark grey, should NOT collapse */
+    .accent { color: #29F2FE; }
+    .accent-dim { color: #29F0FC; }    /* near-duplicate of .accent, should collapse */
+  </style>
+</head>
+<body>
+  <h1 class="hero">Near-duplicate colors</h1>
+  <p class="card">Card content with distinct dark grey background.</p>
+  <a class="accent" href="#">accent</a>
+  <a class="accent-dim" href="#">accent-dim</a>
+</body>
+</html>
