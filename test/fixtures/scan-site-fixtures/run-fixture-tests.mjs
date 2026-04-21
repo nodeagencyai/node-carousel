@@ -7,7 +7,8 @@
 // No Puppeteer here — we feed the fixture HTML (with its inline <style>)
 // directly into extractSignals and check detected fonts/colors/confidence.
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdtempSync, rmSync, existsSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { extractSignals } from '../../../scripts/extract-brand-signals.mjs';
@@ -18,6 +19,7 @@ import {
   parseArgv,
   VALID_PRESETS,
   ArgvError,
+  acquireLock,
 } from '../../../scripts/scan-site.mjs';
 import { brandfetch, normalizeBrandfetch, extractDomain } from '../../../scripts/brandfetch-client.mjs';
 
@@ -918,6 +920,141 @@ async function main() {
         && combo.mergeWithPath === '/p.json',
       `got preset=${combo?.forcedPreset} mergeWith=${combo?.mergeWithPath}`,
     );
+  }
+
+  // ---- v0.7 Task B.1 — Concurrency lock on outDir (audit I1) ----
+  console.log(`\n=== acquireLock (v0.7 B.1) ===`);
+
+  // Case 1: basic acquire + release.
+  {
+    const dir = mkdtempSync(join(tmpdir(), 'carousel-lock-1-'));
+    try {
+      const release = acquireLock(dir);
+      const lockPath = join(dir, '.scan.lock');
+      total += 2;
+      passed += check(
+        'acquireLock: .scan.lock exists after acquire',
+        existsSync(lockPath),
+        '',
+      );
+      passed += check(
+        'acquireLock: returns a release function',
+        typeof release === 'function',
+        `got ${typeof release}`,
+      );
+      release();
+      total += 1;
+      passed += check(
+        'acquireLock: .scan.lock gone after release()',
+        !existsSync(lockPath),
+        '',
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }
+
+  // Case 2: double-acquire fails cleanly (without releasing first).
+  {
+    const dir = mkdtempSync(join(tmpdir(), 'carousel-lock-2-'));
+    try {
+      const release = acquireLock(dir);
+      let threw = false;
+      let msg = '';
+      try {
+        acquireLock(dir);
+      } catch (err) {
+        threw = true;
+        msg = err?.message || '';
+      }
+      total += 2;
+      passed += check(
+        'acquireLock: second call on same outDir throws',
+        threw,
+        threw ? `threw "${msg.slice(0, 80)}..."` : 'did not throw',
+      );
+      passed += check(
+        'acquireLock: error message includes "Scan already in progress" + lock path',
+        msg.includes('Scan already in progress') && msg.includes('.scan.lock'),
+        `got "${msg}"`,
+      );
+      release();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }
+
+  // Case 3: release allows re-acquire.
+  {
+    const dir = mkdtempSync(join(tmpdir(), 'carousel-lock-3-'));
+    try {
+      const r1 = acquireLock(dir);
+      r1();
+      let reacquired = false;
+      let err2;
+      try {
+        const r2 = acquireLock(dir);
+        reacquired = typeof r2 === 'function';
+        r2();
+      } catch (err) {
+        err2 = err;
+      }
+      total += 1;
+      passed += check(
+        'acquireLock: re-acquire succeeds after release',
+        reacquired && !err2,
+        err2 ? `threw ${err2.message}` : 'ok',
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }
+
+  // Case 4: stale lock auto-cleanup (PID that almost certainly isn't a running process).
+  // We pick 99999999 — above the typical PID_MAX (4_194_304 on Linux, 99_998 on macOS).
+  // process.kill(huge_pid, 0) returns ESRCH and acquireLock treats the lock as stale.
+  {
+    const dir = mkdtempSync(join(tmpdir(), 'carousel-lock-4-'));
+    try {
+      const lockPath = join(dir, '.scan.lock');
+      writeFileSync(lockPath, `99999999\n2020-01-01T00:00:00.000Z\n`, 'utf8');
+      let release;
+      let err;
+      // Capture stderr written by the stale-lock warning so it doesn't
+      // pollute the test output when the check passes.
+      const origErr = process.stderr.write.bind(process.stderr);
+      let capturedStderr = '';
+      process.stderr.write = (chunk, ...rest) => {
+        capturedStderr += typeof chunk === 'string' ? chunk : chunk.toString();
+        return true;
+      };
+      try {
+        release = acquireLock(dir);
+      } catch (e) {
+        err = e;
+      } finally {
+        process.stderr.write = origErr;
+      }
+      total += 3;
+      passed += check(
+        'acquireLock: stale lock (dead pid) is auto-reclaimed',
+        typeof release === 'function' && !err,
+        err ? `threw ${err.message}` : 'reclaimed',
+      );
+      passed += check(
+        'acquireLock: stale cleanup writes stderr warning naming the dead pid',
+        capturedStderr.includes('cleaned stale lock') && capturedStderr.includes('99999999'),
+        `got "${capturedStderr.trim()}"`,
+      );
+      passed += check(
+        'acquireLock: new lock content replaces the stale one',
+        existsSync(lockPath) && readFileSync(lockPath, 'utf8').split('\n')[0] === String(process.pid),
+        `got pid line "${existsSync(lockPath) ? readFileSync(lockPath, 'utf8').split('\n')[0] : 'no file'}"`,
+      );
+      if (typeof release === 'function') release();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   }
 
   console.log(`\n=== ${passed}/${total} checks passed ===`);

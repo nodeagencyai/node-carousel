@@ -30,7 +30,7 @@
 //   - A discovered page fails -> warning, keep the rest.
 //   - 404 / DNS fail on homepage -> scan.json with `error` field set; exit 0.
 
-import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync, unlinkSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { extractSignals, clusterColors } from './extract-brand-signals.mjs';
@@ -148,6 +148,84 @@ function normalizeUrl(input) {
   if (!input) return null;
   if (/^[a-z]+:\/\//i.test(input)) return input; // already has a scheme
   return `https://${input}`;
+}
+
+// ---------------- Concurrency lock (v0.7 B.1, audit I1) ----------------
+
+/**
+ * Check if a PID is still alive. `process.kill(pid, 0)` sends no signal but
+ * performs the permission/existence check — throws ESRCH if the process is
+ * gone, EPERM if it's alive but owned by another user (still "alive" for our
+ * purposes). We treat only ESRCH as "dead"; EPERM means a different user owns
+ * a process at that PID, which is rare on a single-user dev machine but we
+ * err on the side of "don't clobber it" to avoid wrecking an unrelated run.
+ */
+function isPidAlive(pid) {
+  if (!Number.isFinite(pid) || pid <= 0) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (err) {
+    // ESRCH = no such process (definitely dead).
+    // EPERM = process exists but we can't signal it (treat as alive).
+    if (err && err.code === 'EPERM') return true;
+    return false;
+  }
+}
+
+/**
+ * Acquire an exclusive lock on `outDir` by creating `.scan.lock` with the
+ * 'wx' flag (atomic: fails if file already exists). Returns a `release()`
+ * function that unlinks the lock file — callers MUST invoke it in a `finally`
+ * block so a crashing scan doesn't strand the lock.
+ *
+ * Stale-lock handling: if the lock file already exists, we read the PID it
+ * records and check `process.kill(pid, 0)` — if that PID is no longer
+ * running, the previous scan died without cleaning up. We unlink the stale
+ * file, emit a stderr warning so the user can see it happened, and then
+ * proceed to claim the lock ourselves. If the PID is still alive, we throw
+ * a clear error pointing at the lock path.
+ *
+ * Exported for unit tests (see fixture `concurrency-lock` block in the
+ * fixture test runner).
+ */
+export function acquireLock(outDir) {
+  const lockPath = join(outDir, '.scan.lock');
+  const payload = `${process.pid}\n${new Date().toISOString()}\n`;
+  try {
+    writeFileSync(lockPath, payload, { flag: 'wx' });
+    return () => { try { unlinkSync(lockPath); } catch { /* already gone */ } };
+  } catch (err) {
+    if (err && err.code === 'EEXIST') {
+      // Possibly stale — inspect the PID recorded in the existing file.
+      let existingContent = '';
+      try {
+        existingContent = readFileSync(lockPath, 'utf8');
+      } catch {
+        // Can't read — fall through to the "in progress" error below.
+      }
+      const [pidStr = ''] = existingContent.split('\n');
+      const pid = Number.parseInt(pidStr, 10);
+      if (Number.isFinite(pid) && pid > 0 && !isPidAlive(pid)) {
+        // Stale lock — reclaim it.
+        try { unlinkSync(lockPath); } catch { /* race with another reaper; ignore */ }
+        try {
+          writeFileSync(lockPath, payload, { flag: 'wx' });
+          console.error(`[scan-site] cleaned stale lock from pid ${pid}`);
+          return () => { try { unlinkSync(lockPath); } catch { /* already gone */ } };
+        } catch (err2) {
+          // Someone else won the race — treat as in-progress.
+          throw new Error(
+            `Scan already in progress, lock at ${lockPath} (raced with another scan after clearing stale lock from pid ${pid}).`,
+          );
+        }
+      }
+      throw new Error(
+        `Scan already in progress, lock at ${lockPath}${pid ? ` (pid ${pid})` : ''}. Delete the lock file if the previous scan crashed.`,
+      );
+    }
+    throw err;
+  }
 }
 
 function writeScan(outDir, payload) {
@@ -1127,6 +1205,45 @@ async function main() {
   const outDir = resolve(outArg);
   mkdirSync(outDir, { recursive: true });
 
+  // v0.7 B.1 (audit I1): grab an exclusive lock on outDir before doing
+  // anything else. Prevents two `scan-site` processes from racing into the
+  // same directory and mangling scan.json / screenshots / logo.svg. The
+  // SIGINT handler + process.on('exit') hook are installed ONLY after we
+  // have the lock — otherwise a failed acquireLock (e.g. EEXIST) would
+  // register a handler that tries to release a lock we never owned.
+  //
+  // Why process.on('exit'): runScan() calls process.exit() in many places
+  // (happy path, puppeteer-missing, --merge-with errors, total scan failure).
+  // A try/finally here can't catch those exits. 'exit' always fires, so the
+  // lock is released no matter which code path terminates the process.
+  let releaseLock;
+  try {
+    releaseLock = acquireLock(outDir);
+  } catch (err) {
+    console.error(`\u2717 ${err?.message || err}`);
+    process.exit(1);
+    return;
+  }
+  const doRelease = () => {
+    if (releaseLock) { try { releaseLock(); } catch { /* ignore */ } releaseLock = null; }
+  };
+  const sigintHandler = () => {
+    doRelease();
+    process.exit(130);
+  };
+  process.on('SIGINT', sigintHandler);
+  process.on('exit', doRelease);
+
+  try {
+    await runScan({ url, outArg, outDir, mergeWithPath, forcedPreset });
+  } finally {
+    // Release synchronously — 'exit' will also fire and find releaseLock=null.
+    doRelease();
+    process.removeListener('SIGINT', sigintHandler);
+  }
+}
+
+async function runScan({ url, outArg, outDir, mergeWithPath, forcedPreset }) {
   const scannedAt = new Date().toISOString();
 
   // --- v0.7 A.1: --merge-with existing brand profile ---
