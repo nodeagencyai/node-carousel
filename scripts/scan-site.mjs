@@ -43,6 +43,12 @@ const VIEWPORT_WIDTH = 1440;
 const VIEWPORT_HEIGHT = 900;
 const MAX_DISCOVERED_PAGES = 2;      // home + 2 = 3 total
 const MAX_CTA_CANDIDATES = 10;
+// v0.7 B.2 (audit I2): Cap full-page screenshot height. Tall marketing pages
+// (15000px+) produce PNGs in the 30-50 MB range when rendered at 1440 wide,
+// which blows out disk + downstream upload budgets. 8000px x 1440 stays under
+// ~10 MB for typical content and still captures 2-3 folds past the hero —
+// more than enough for brand-signal extraction.
+const MAX_FULL_PAGE_HEIGHT = 8000;
 
 function usage() {
   console.error('Usage: node scripts/scan-site.mjs <url> <output-dir> [--merge-with <existing-brand-profile.json>] [--preset <name>]');
@@ -230,6 +236,45 @@ export function acquireLock(outDir) {
 
 function writeScan(outDir, payload) {
   writeFileSync(join(outDir, 'scan.json'), JSON.stringify(payload, null, 2) + '\n', 'utf8');
+}
+
+/**
+ * Pure helper (v0.7 B.2, audit I2): pick Puppeteer screenshot options based on
+ * the measured page body height. Short pages get a `fullPage: true` capture
+ * (everything, natural height); pages taller than `maxHeight` get a fixed
+ * `clip` starting at (0, 0) with width=viewport and height=maxHeight so the
+ * PNG file size stays bounded.
+ *
+ * Returns:
+ *   {
+ *     options: { type: 'png', fullPage: true } | { type: 'png', clip: {...} },
+ *     clipped: boolean,
+ *     original: number   // the bodyHeight that was passed in (echoed for the warning)
+ *   }
+ *
+ * Exported for fixture testing. The runtime path calls page.screenshot with
+ * `options` spread onto a base `{ path }` object.
+ */
+export function computeScreenshotOptions(
+  bodyHeight,
+  viewportWidth = VIEWPORT_WIDTH,
+  maxHeight = MAX_FULL_PAGE_HEIGHT,
+) {
+  if (typeof bodyHeight === 'number' && Number.isFinite(bodyHeight) && bodyHeight > maxHeight) {
+    return {
+      options: {
+        type: 'png',
+        clip: { x: 0, y: 0, width: viewportWidth, height: maxHeight },
+      },
+      clipped: true,
+      original: bodyHeight,
+    };
+  }
+  return {
+    options: { type: 'png', fullPage: true },
+    clipped: false,
+    original: bodyHeight,
+  };
 }
 
 // ---------------- Page discovery ----------------
@@ -519,9 +564,32 @@ async function scanPage({ page, url, outDir, isHomepage, warnings }) {
     } catch (err) {
       warnings.push(`hero screenshot failed: ${err?.message || err}`);
     }
+
+    // v0.7 B.2 (audit I2): measure body height BEFORE taking the full-page
+    // screenshot so we can clip tall marketing pages. Measurement happens
+    // post-font-ready delay, so layout is settled. If measurement itself
+    // throws we fall through to an unbounded `fullPage: true` (same as the
+    // pre-B.2 behaviour) rather than skip the screenshot entirely.
+    let bodyHeight = null;
     try {
-      await page.screenshot({ path: fullPath, type: 'png', fullPage: true });
+      bodyHeight = await page.evaluate(() => Math.min(
+        document.body.scrollHeight,
+        document.documentElement.scrollHeight,
+      ));
+    } catch (err) {
+      const msg = `[screenshot] body height measurement failed: ${err?.message || err}`;
+      warnings.push(msg);
+      console.warn(msg);
+    }
+    const screenshotPlan = computeScreenshotOptions(bodyHeight);
+    try {
+      await page.screenshot({ path: fullPath, ...screenshotPlan.options });
       fullOk = true;
+      if (screenshotPlan.clipped) {
+        const msg = `[screenshot] full.png clipped at ${MAX_FULL_PAGE_HEIGHT}px (original ${screenshotPlan.original}px)`;
+        warnings.push(msg);
+        console.warn(msg);
+      }
     } catch (err) {
       warnings.push(`full screenshot failed: ${err?.message || err}`);
     }

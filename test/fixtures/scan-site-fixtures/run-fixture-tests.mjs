@@ -20,6 +20,7 @@ import {
   VALID_PRESETS,
   ArgvError,
   acquireLock,
+  computeScreenshotOptions,
 } from '../../../scripts/scan-site.mjs';
 import { brandfetch, normalizeBrandfetch, extractDomain } from '../../../scripts/brandfetch-client.mjs';
 
@@ -1055,6 +1056,98 @@ async function main() {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  }
+
+  // ---- v0.7 Task B.2 — Full-page screenshot size cap (audit I2) ----
+  console.log(`\n=== computeScreenshotOptions (v0.7 B.2) ===`);
+
+  // Case 1: small page (well under 8000px) → fullPage: true, not clipped.
+  {
+    const plan = computeScreenshotOptions(2500);
+    total += 3;
+    passed += check(
+      'computeScreenshotOptions(2500): options.fullPage === true',
+      plan.options && plan.options.fullPage === true,
+      `got ${JSON.stringify(plan.options)}`,
+    );
+    passed += check(
+      'computeScreenshotOptions(2500): clipped === false',
+      plan.clipped === false,
+      `got ${plan.clipped}`,
+    );
+    passed += check(
+      'computeScreenshotOptions(2500): options.clip is absent (no clip on short pages)',
+      plan.options && plan.options.clip === undefined,
+      `got ${JSON.stringify(plan.options.clip)}`,
+    );
+  }
+
+  // Case 2: exactly at the 8000px boundary → still fullPage (strictly-greater check).
+  {
+    const plan = computeScreenshotOptions(8000);
+    total += 2;
+    passed += check(
+      'computeScreenshotOptions(8000): boundary case is fullPage (strict >)',
+      plan.options && plan.options.fullPage === true,
+      `got ${JSON.stringify(plan.options)}`,
+    );
+    passed += check(
+      'computeScreenshotOptions(8000): clipped === false at exact boundary',
+      plan.clipped === false,
+      `got ${plan.clipped}`,
+    );
+  }
+
+  // Case 3: just over boundary → clipped with correct dimensions.
+  {
+    const plan = computeScreenshotOptions(8001);
+    total += 4;
+    passed += check(
+      'computeScreenshotOptions(8001): clipped === true',
+      plan.clipped === true,
+      `got ${plan.clipped}`,
+    );
+    passed += check(
+      'computeScreenshotOptions(8001): options.clip = {x:0, y:0, width:1440, height:8000}',
+      plan.options
+        && plan.options.clip
+        && plan.options.clip.x === 0
+        && plan.options.clip.y === 0
+        && plan.options.clip.width === 1440
+        && plan.options.clip.height === 8000,
+      `got ${JSON.stringify(plan.options.clip)}`,
+    );
+    passed += check(
+      'computeScreenshotOptions(8001): options.fullPage is absent when clipping',
+      plan.options && plan.options.fullPage === undefined,
+      `got ${JSON.stringify(plan.options.fullPage)}`,
+    );
+    passed += check(
+      'computeScreenshotOptions(8001): original = 8001 echoed back for warning',
+      plan.original === 8001,
+      `got ${plan.original}`,
+    );
+  }
+
+  // Case 4: very tall page (20000px) → clipped, options.type === 'png'.
+  {
+    const plan = computeScreenshotOptions(20000);
+    total += 3;
+    passed += check(
+      'computeScreenshotOptions(20000): clipped === true on very tall page',
+      plan.clipped === true,
+      `got ${plan.clipped}`,
+    );
+    passed += check(
+      'computeScreenshotOptions(20000): options.type === "png"',
+      plan.options && plan.options.type === 'png',
+      `got ${plan.options?.type}`,
+    );
+    passed += check(
+      'computeScreenshotOptions(20000): clip height capped at 8000 regardless of input',
+      plan.options && plan.options.clip && plan.options.clip.height === 8000,
+      `got ${plan.options?.clip?.height}`,
+    );
   }
 
   console.log(`\n=== ${passed}/${total} checks passed ===`);
