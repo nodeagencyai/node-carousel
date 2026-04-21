@@ -30,7 +30,7 @@
 //   - A discovered page fails -> warning, keep the rest.
 //   - 404 / DNS fail on homepage -> scan.json with `error` field set; exit 0.
 
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { extractSignals, clusterColors } from './extract-brand-signals.mjs';
@@ -45,8 +45,38 @@ const MAX_DISCOVERED_PAGES = 2;      // home + 2 = 3 total
 const MAX_CTA_CANDIDATES = 10;
 
 function usage() {
-  console.error('Usage: node scripts/scan-site.mjs <url> <output-dir>');
+  console.error('Usage: node scripts/scan-site.mjs <url> <output-dir> [--merge-with <existing-brand-profile.json>]');
   process.exit(1);
+}
+
+/**
+ * Parse scan-site CLI argv. Accepts:
+ *   - positional: <url> <output-dir>
+ *   - optional:   --merge-with <path>
+ *
+ * Returns `{ url, outDir, mergeWithPath }` or null when required args are
+ * missing. Exported-flavored: internal helper, but pure + deterministic so
+ * tests can exercise it directly if needed.
+ */
+function parseArgv(argv) {
+  const positional = [];
+  let mergeWithPath = null;
+  for (let i = 2; i < argv.length; i += 1) {
+    const a = argv[i];
+    if (a === '--merge-with') {
+      mergeWithPath = argv[i + 1] || null;
+      i += 1;
+      continue;
+    }
+    if (a && a.startsWith('--merge-with=')) {
+      mergeWithPath = a.slice('--merge-with='.length) || null;
+      continue;
+    }
+    positional.push(a);
+  }
+  const [urlArg, outArg] = positional;
+  if (!urlArg || !outArg) return null;
+  return { urlArg, outArg, mergeWithPath };
 }
 
 function normalizeUrl(input) {
@@ -463,6 +493,62 @@ async function scanPage({ page, url, outDir, isHomepage, warnings }) {
   };
 }
 
+// ---------------- Profile merge (v0.7 A.1) ----------------
+
+/**
+ * Deep-merge two brand-profile-shaped objects with "existing wins per leaf key"
+ * precedence. Returns a fresh object; inputs are not mutated.
+ *
+ * Algorithm:
+ *   - If either side is null/undefined, return the other.
+ *   - Non-object (or array) `existing` wins whole — we never per-index merge
+ *     arrays (e.g. `tags`, `allColors`) because partial overlays would change
+ *     semantics unpredictably.
+ *   - For plain-object `existing`: start from `derived` as the base, then walk
+ *     `existing`'s keys. If a key's existing value is another plain object,
+ *     recurse. Otherwise, the existing value wins IFF it's not null and not an
+ *     empty string. Explicit `null` or `""` in existing is treated as "let
+ *     derived fill this slot" — users can wipe an inherited value by setting
+ *     it to null.
+ *
+ * Why "existing wins": the user's hand-tuned `brand-profile.json` represents
+ * their real social identity. The scan is an approximation of their marketing
+ * site. When they differ, the user is right.
+ *
+ * Idempotency: same inputs produce byte-identical outputs — we iterate
+ * `Object.keys(existing)` deterministically and spread `derived` once.
+ *
+ * Exported for unit testing (see
+ * `test/fixtures/scan-site-fixtures/run-fixture-tests.mjs`). The scan script
+ * itself does NOT apply mergeProfile — it only records the raw existing
+ * profile in `scan.json.mergeWith` and leaves the merge to the synthesizer
+ * prompt (which follows the algorithm documented in
+ * `prompts/brand-synthesis.md`).
+ */
+export function mergeProfile(existing, derived) {
+  if (existing == null) return derived;
+  if (derived == null) return existing;
+  if (typeof existing !== 'object' || Array.isArray(existing)) return existing;
+  if (typeof derived !== 'object' || Array.isArray(derived)) {
+    // derived isn't a mergeable object — existing (an object) wins by default.
+    return existing;
+  }
+  const out = { ...derived };
+  for (const key of Object.keys(existing)) {
+    const ev = existing[key];
+    if (ev && typeof ev === 'object' && !Array.isArray(ev)) {
+      // Recurse into nested objects — per-leaf precedence.
+      out[key] = mergeProfile(ev, derived?.[key]);
+    } else if (ev != null && ev !== '') {
+      // Scalar (or array) in existing wins, but only when it's a real value.
+      // Explicit null / empty string = "let derived fill this."
+      out[key] = ev;
+    }
+    // else: leave derived's value in place (including when derived lacks the key).
+  }
+  return out;
+}
+
 // ---------------- Merging ----------------
 
 /**
@@ -843,14 +929,66 @@ async function attemptScan({ puppeteer, url, outDir, headless, warnings }) {
 }
 
 async function main() {
-  const [, , urlArg, outArg] = process.argv;
-  if (!urlArg || !outArg) usage();
+  const parsed = parseArgv(process.argv);
+  if (!parsed) usage();
+  const { urlArg, outArg, mergeWithPath } = parsed;
 
   const url = normalizeUrl(urlArg);
   const outDir = resolve(outArg);
   mkdirSync(outDir, { recursive: true });
 
   const scannedAt = new Date().toISOString();
+
+  // --- v0.7 A.1: --merge-with existing brand profile ---
+  // Load early so we can fail fast on bad paths/JSON BEFORE spinning up
+  // Puppeteer (which is the expensive part). If the file is missing or
+  // invalid JSON we emit an error scan.json and bail — same pattern as the
+  // puppeteer-missing failure mode below.
+  let mergeWith = null;
+  if (mergeWithPath) {
+    const abs = resolve(mergeWithPath);
+    let raw;
+    try {
+      raw = readFileSync(abs, 'utf8');
+    } catch (err) {
+      const msg = `--merge-with: cannot read ${abs} (${err?.code || err?.message || err})`;
+      console.error(`\u2717 ${msg}`);
+      writeScan(outDir, {
+        url,
+        scannedAt,
+        error: msg,
+        warnings: [msg],
+        pagesScanned: [],
+        perPage: {},
+        merged: null,
+        screenshots: { hero: null, full: null },
+        logo: { type: 'none', warning: 'No logo found' },
+      });
+      process.exit(0);
+      return;
+    }
+    let content;
+    try {
+      content = JSON.parse(raw);
+    } catch (err) {
+      const msg = `--merge-with: ${abs} is not valid JSON (${err?.message || err})`;
+      console.error(`\u2717 ${msg}`);
+      writeScan(outDir, {
+        url,
+        scannedAt,
+        error: msg,
+        warnings: [msg],
+        pagesScanned: [],
+        perPage: {},
+        merged: null,
+        screenshots: { hero: null, full: null },
+        logo: { type: 'none', warning: 'No logo found' },
+      });
+      process.exit(0);
+      return;
+    }
+    mergeWith = { sourcePath: abs, content };
+  }
 
   // Lazy-import puppeteer with a clear error when missing.
   let puppeteer;
@@ -934,8 +1072,18 @@ async function main() {
   }
 
   if (result.ok) {
+    // v0.7 A.1: attach raw existing brand profile so the synthesizer can apply
+    // mergeProfile(existing, derived). scan.json itself does NOT apply the
+    // merge — it just records the source so the user can inspect what the
+    // scan alone would have produced.
+    if (mergeWith) {
+      result.payload.mergeWith = mergeWith;
+    }
     writeScan(outDir, result.payload);
     console.log(`\u2713 scan.json written to ${outDir}`);
+    if (mergeWith) {
+      console.log(`  merge-with: ${mergeWith.sourcePath}`);
+    }
     console.log(`  pages:      ${result.payload.pagesScanned.join(', ')}`);
     console.log(`  background: ${result.payload.merged.colors.background}`);
     console.log(`  text:       ${result.payload.merged.colors.text}`);
@@ -981,7 +1129,7 @@ async function main() {
   emptySignals.logo = failureLogo;
   const failureBrandfetch = { available: false, reason: 'scan failed' };
   emptySignals.brandfetch = failureBrandfetch;
-  writeScan(outDir, {
+  const failurePayload = {
     url,
     scannedAt,
     error: result.reason,
@@ -997,7 +1145,14 @@ async function main() {
     screenshots: { hero: null, full: null },
     logo: failureLogo,
     brandfetch: failureBrandfetch,
-  });
+  };
+  if (mergeWith) {
+    // Even on total scan failure, preserve mergeWith so downstream tooling
+    // (e.g. a manual-fallback synthesizer) can still apply the user's
+    // hand-tuned profile.
+    failurePayload.mergeWith = mergeWith;
+  }
+  writeScan(outDir, failurePayload);
   process.exit(0);
 }
 

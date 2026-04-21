@@ -31,6 +31,130 @@ and confirm with the user.
 
 ---
 
+## Phase 0 — Merge with existing profile (if `--merge-with` was used)
+
+If `scan.mergeWith` is present in `scan.json`, the user passed
+`--merge-with <existing-brand-profile.json>` on the scan command. That field
+has shape `{ sourcePath: "/abs/path.json", content: {...} }` — the raw parsed
+existing profile, untouched by scan logic.
+
+The user did this because the scan-from-website approach inevitably misfires
+for brands whose social identity differs from their web surface. Concrete
+example: `nodeagency.ai` uses Inter + green on the web but the carousel brand
+is JetBrains Mono + cyan. `--merge-with` lets users keep their hand-tuned
+identity while still benefiting from fresh scan data (text samples, meta,
+warnings, vision analysis, logo re-extraction).
+
+### The merge algorithm — "existing wins per leaf key"
+
+After running Phase 1-4 below to produce a `derived` profile from scan +
+vision + voice + references + preset, apply this merge:
+
+```
+finalProfile = mergeProfile(scan.mergeWith.content, derived)
+```
+
+Where `mergeProfile` is defined (and unit-tested) in
+`scripts/scan-site.mjs`. The rules:
+
+1. **Null / undefined inputs** → if either side is missing, return the
+   other. A missing `mergeWith` means "no merge"; a null derived means
+   "write the existing profile as-is."
+2. **Plain-object keys recurse** — `mergeProfile` walks `existing`'s keys
+   and, when the value is a nested plain object, recurses. This is
+   field-level precedence, NOT whole-object precedence: if existing has
+   `visual.colors.background` but no `visual.colors.accent`, the existing
+   background wins AND the derived accent flows through.
+3. **Scalar / array keys in existing win** IFF the existing value is not
+   `null` and not `""`. Explicit null / empty string in existing means
+   "let derived fill this slot" — users can wipe an inherited value by
+   setting it to null.
+4. **Arrays win whole** (no per-index merge). If existing has
+   `decorations: ["corner-marks", "accent-rule"]`, those two win; derived's
+   decorations are ignored even if existing has fewer entries.
+
+### Concrete example
+
+Existing (Niek's hand-tuned `examples/5-signs-overengineered/brand-profile.json`):
+
+```json
+{
+  "brand": { "name": "Node", "handle": "@nodeagency", "tone": "direct, builder-voice, no fluff" },
+  "visual": {
+    "colors": { "background": "#0f0f0f", "text": "#FFFFFF", "accent": "#29F2FE" },
+    "fonts":  { "display": "JetBrains Mono", "body": "Inter" },
+    "background": { "type": "noise-gradient", ... }
+  }
+}
+```
+
+Derived (from scanning `nodeagency.ai`):
+
+```json
+{
+  "brand": { "name": "Node Agency", "handle": "@node", "tone": "helpful, warm, customer-first" },
+  "visual": {
+    "colors": { "background": "#FFFFFF", "text": "#0A0A0A", "accent": "#00BB7F", "muted": "#888888" },
+    "fonts":  { "display": "Inter", "body": "Inter" },
+    "background": { "type": "mesh", ... }
+  }
+}
+```
+
+Merged result:
+
+```json
+{
+  "brand": {
+    "name": "Node",                  // existing wins
+    "handle": "@nodeagency",         // existing wins
+    "tone": "direct, builder-voice, no fluff"  // existing wins
+  },
+  "visual": {
+    "colors": {
+      "background": "#0f0f0f",       // existing wins
+      "text": "#FFFFFF",             // existing wins
+      "accent": "#29F2FE",           // existing wins
+      "muted": "#888888"             // derived fills gap (existing had no muted)
+    },
+    "fonts": {
+      "display": "JetBrains Mono",   // existing wins
+      "body": "Inter"                // existing wins (tied value)
+    },
+    "background": {
+      "type": "noise-gradient",      // existing wins
+      ...
+    }
+  }
+}
+```
+
+### Conflict-resolution rule inside merged regions
+
+Conflicts INSIDE the merged result (e.g. existing specifies `colors.background`
+and Phase 2-3 below compute a different value from scan + vision) are
+resolved existing-wins. Do not run background-reconciliation or preset
+picking logic on top of the merged result — those phases produced the
+`derived` half of the merge, and their output is what mergeProfile consumes
+on the derived side.
+
+### Emit a resolution note
+
+When `--merge-with` was used, add this block to the final
+`brand-profile.json`:
+
+```json
+"resolution": {
+  "mergeWith": {
+    "from": "existing",
+    "sourcePath": "<scan.mergeWith.sourcePath>",
+    "reason": "User passed --merge-with; non-null fields from existing profile win over scan-derived."
+  }
+}
+```
+
+---
+
 ## Source priority
 
 When two sources disagree, resolve in this order (1 wins):

@@ -11,7 +11,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { extractSignals } from '../../../scripts/extract-brand-signals.mjs';
-import { rankDiscoveredLinks, mergeSignals } from '../../../scripts/scan-site.mjs';
+import { rankDiscoveredLinks, mergeSignals, mergeProfile } from '../../../scripts/scan-site.mjs';
 import { brandfetch, normalizeBrandfetch, extractDomain } from '../../../scripts/brandfetch-client.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -465,6 +465,131 @@ async function main() {
       r5.available === false && typeof r5.reason === 'string',
       `got ${JSON.stringify(r5)}`,
     );
+  }
+
+  // ---- v0.7 Task A.1 — mergeProfile helper ----
+  console.log(`\n=== mergeProfile (v0.7 A.1) ===`);
+
+  // Case 1: existing display font wins; body comes from derived (existing missing).
+  {
+    const existing = { visual: { fonts: { display: 'JetBrains Mono' } } };
+    const derived = { visual: { fonts: { display: 'Inter', body: 'Inter' } } };
+    const merged = mergeProfile(existing, derived);
+    total += 2;
+    passed += check(
+      'mergeProfile: existing fonts.display (JetBrains Mono) beats derived (Inter)',
+      merged.visual.fonts.display === 'JetBrains Mono',
+      `got ${merged.visual?.fonts?.display}`,
+    );
+    passed += check(
+      'mergeProfile: derived fonts.body (Inter) flows through when existing has no body',
+      merged.visual.fonts.body === 'Inter',
+      `got ${merged.visual?.fonts?.body}`,
+    );
+  }
+
+  // Case 2: when existing has no accent, scan's accent flows through.
+  {
+    const existing = { visual: { colors: { background: '#0f0f0f', text: '#FFFFFF' } } };
+    const derived = { visual: { colors: { background: '#FFFFFF', accent: '#00BB7F' } } };
+    const merged = mergeProfile(existing, derived);
+    total += 2;
+    passed += check(
+      'mergeProfile: per-leaf merge — existing background wins',
+      merged.visual.colors.background === '#0f0f0f',
+      `got ${merged.visual?.colors?.background}`,
+    );
+    passed += check(
+      'mergeProfile: per-leaf merge — derived accent fills gap when existing has none',
+      merged.visual.colors.accent === '#00BB7F',
+      `got ${merged.visual?.colors?.accent}`,
+    );
+  }
+
+  // Case 3: existing logo.file wins — scan's extracted logo is ignored.
+  {
+    const existing = { visual: { logo: { file: '/user/assets/my-logo.svg', position: 'top-left', size: 48 } } };
+    const derived = { visual: { logo: { file: '/tmp/scan/logo-inline.svg', position: 'top-right', size: 48 } } };
+    const merged = mergeProfile(existing, derived);
+    total += 2;
+    passed += check(
+      'mergeProfile: existing logo.file wins over scan-extracted logo',
+      merged.visual.logo.file === '/user/assets/my-logo.svg',
+      `got ${merged.visual?.logo?.file}`,
+    );
+    passed += check(
+      'mergeProfile: existing logo.position wins too (per-leaf)',
+      merged.visual.logo.position === 'top-left',
+      `got ${merged.visual?.logo?.position}`,
+    );
+  }
+
+  // Case 4: existing brand.tone wins over voice-niche-derived tone.
+  {
+    const existing = { brand: { tone: 'direct, builder-voice, no fluff' } };
+    const derived = { brand: { name: 'Node', tone: 'helpful, warm, customer-first' } };
+    const merged = mergeProfile(existing, derived);
+    total += 2;
+    passed += check(
+      'mergeProfile: existing brand.tone wins over voice-niche derived tone',
+      merged.brand.tone === 'direct, builder-voice, no fluff',
+      `got ${merged.brand?.tone}`,
+    );
+    passed += check(
+      'mergeProfile: derived brand.name flows through when existing has no name',
+      merged.brand.name === 'Node',
+      `got ${merged.brand?.name}`,
+    );
+  }
+
+  // Case 5: null/undefined/empty-string in existing does NOT block derived.
+  {
+    const existing = { visual: { colors: { background: null, accent: '' } } };
+    const derived = { visual: { colors: { background: '#FFFFFF', accent: '#00BB7F' } } };
+    const merged = mergeProfile(existing, derived);
+    total += 2;
+    passed += check(
+      'mergeProfile: explicit null in existing lets derived fill the slot',
+      merged.visual.colors.background === '#FFFFFF',
+      `got ${merged.visual?.colors?.background}`,
+    );
+    passed += check(
+      'mergeProfile: empty string in existing lets derived fill the slot',
+      merged.visual.colors.accent === '#00BB7F',
+      `got ${merged.visual?.colors?.accent}`,
+    );
+  }
+
+  // Case 6: null inputs don't throw; arrays stay as-is (not deep-merged).
+  {
+    total += 3;
+    passed += check(
+      'mergeProfile(null, derived) returns derived',
+      (() => {
+        const d = { x: 1 };
+        return mergeProfile(null, d) === d;
+      })(),
+      '',
+    );
+    passed += check(
+      'mergeProfile(existing, null) returns existing',
+      (() => {
+        const e = { x: 1 };
+        return mergeProfile(e, null) === e;
+      })(),
+      '',
+    );
+    // Arrays preserved as-is (existing wins whole array when present).
+    {
+      const existing = { tags: ['a', 'b'] };
+      const derived = { tags: ['c'], other: 'ok' };
+      const merged = mergeProfile(existing, derived);
+      passed += check(
+        'mergeProfile: arrays in existing win whole (not per-index merge)',
+        Array.isArray(merged.tags) && merged.tags.length === 2 && merged.tags[0] === 'a',
+        `got ${JSON.stringify(merged.tags)}`,
+      );
+    }
   }
 
   console.log(`\n=== ${passed}/${total} checks passed ===`);

@@ -11,12 +11,20 @@ the user confirm before saving. Zero-question path for most users.
 ```
 /node-carousel:scan https://yourbrand.com
 /node-carousel:scan https://yourbrand.com --references ./my-carousels/
+/node-carousel:scan https://yourbrand.com --merge-with ./brand-profile.json
 ```
 
 - First positional argument: URL to scan (required).
 - `--references <dir>`: optional path to a directory containing 1-5 reference
   carousel PNGs/JPGs. When provided, Claude visually analyzes them to extract
   composition, typography, color, and decoration patterns.
+- `--merge-with <path>`: optional path to an existing `brand-profile.json`
+  whose non-null fields should win over scan-derived values. Use this when
+  your carousel brand differs from your marketing-site brand (e.g. different
+  fonts / colors / background treatment) — the scan still gives you fresh
+  text samples, meta, warnings, and vision analysis, but your hand-tuned
+  identity is preserved. Merge semantics: field-level precedence ("existing
+  wins per leaf key"). See `prompts/brand-synthesis.md` Phase 0 for details.
 
 If the URL is missing, tell the user the usage and stop.
 
@@ -26,6 +34,9 @@ If the URL is missing, tell the user the usage and stop.
 
 - Normalize the URL (add `https://` if missing).
 - Parse `--references <dir>` if present. Resolve to an absolute path.
+- Parse `--merge-with <path>` if present. Resolve to an absolute path.
+  Don't validate schema — `scripts/scan-site.mjs` parses it as JSON and
+  errors with a clear message if malformed.
 - Create `./.brand-scan/` in CWD (this is a working directory — do not
   ship it anywhere).
 - Resolve `PLUGIN_ROOT` from `${CLAUDE_PLUGIN_ROOT}` if set, otherwise the
@@ -46,11 +57,18 @@ Default no. If no, stop and tell them to delete it first or run
 
 ```bash
 node "${PLUGIN_ROOT}/scripts/scan-site.mjs" <url> ./.brand-scan/
+# OR, when --merge-with was passed:
+node "${PLUGIN_ROOT}/scripts/scan-site.mjs" <url> ./.brand-scan/ --merge-with <abs-path-to-existing-brand-profile.json>
 ```
 
 The script writes `./.brand-scan/scan.json` plus `hero.png`, `full.png`,
 `page.html`, `styles.css`. It exits 0 even on failure — always check
 `scan.json` contents.
+
+When `--merge-with` is passed, `scan.json` will have a `mergeWith` field
+with `{ sourcePath, content }`. The synthesizer prompt (Step 7) picks this
+up and applies `mergeProfile(existing, derived)` per the "existing wins
+per leaf key" algorithm documented in `prompts/brand-synthesis.md` Phase 0.
 
 Read `./.brand-scan/scan.json`. If:
 
