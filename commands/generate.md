@@ -10,7 +10,7 @@ Generate a full Instagram carousel from a topic: strategy → slides → preview
 
 Check `./brand-profile.json` exists in the current working directory.
 - **If missing:** tell the user "No `brand-profile.json` found here. Run `/node-carousel:setup` first to configure your brand." Stop.
-- **If malformed:** run the render script against it once (`node ${PLUGIN_ROOT}/scripts/render.mjs ./brand-profile.json /dev/null /tmp/nc-preflight/`) to surface the user-facing validation error, then stop.
+- **If malformed:** run the render script against it once (`node ${PLUGIN_ROOT}/scripts/render-v0.4.mjs ./brand-profile.json /dev/null /tmp/nc-preflight/`) to surface the user-facing validation error, then stop.
 
 ### Step 2: Parse the topic
 
@@ -54,7 +54,7 @@ Show the strategy to the user. Ask for OK. If they request changes, iterate on t
 Once strategy is approved:
 ```bash
 mkdir -p ./output/<slug>
-node ${PLUGIN_ROOT}/scripts/render.mjs ./brand-profile.json ./output/<slug>/strategy.json ./output/<slug>/
+node ${PLUGIN_ROOT}/scripts/render-v0.4.mjs ./brand-profile.json ./output/<slug>/strategy.json ./output/<slug>/
 ```
 
 Render outputs `slide-01.svg` through `slide-NN.svg` in the output dir.
@@ -82,7 +82,7 @@ Ask the user: "How does it look? Any slide that's off?"
 
 Common feedback patterns:
 - "Slide 3 is weak" → regenerate that one slide's content, rerun render
-- "Headline on slide 1 doesn't punch" → swap it, re-render only slide 1 (`node render.mjs` on a strategy with just that slide, then copy the single SVG in)
+- "Headline on slide 1 doesn't punch" → swap it, re-render only slide 1 (`node render-v0.4.mjs` on a strategy with just that slide, then copy the single SVG in)
 - "Too long, drop slide 5" → edit strategy.json, re-render
 - "Perfect" → proceed to caption
 

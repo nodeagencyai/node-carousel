@@ -57,7 +57,7 @@ Ask for three text fields:
 - Social handle, including `@` (e.g. `@nodeagency`)
 - Tone, one line (e.g. `direct, builder-voice, no fluff`)
 
-Overlay the answers into `brand.name`, `brand.handle`, `brand.tone` on the working profile. These are the only fields that must be non-empty — `render.mjs` will reject the profile if `brand.name` is blank.
+Overlay the answers into `brand.name`, `brand.handle`, `brand.tone` on the working profile. These are the only fields that must be non-empty — `render-v0.4.mjs` will reject the profile if `brand.name` is blank.
 
 ---
 
@@ -113,7 +113,7 @@ Handling:
 - **E** → set `type = "radial"`. Use preset's `radial` config. Ask only if they want to change `radial.from` color (default: accent) and `radial.center` (default: `50% 30%`).
 - **F** → set `type = "image"`, prompt for `imagePath`. Accept absolute or relative paths. Do NOT validate the file exists (they may drop the image in later).
 
-Keep all other sub-objects (gradient, mesh, radial, imagePath) populated — render.mjs picks based on `type`, and leaving full sub-objects makes the file self-documenting.
+Keep all other sub-objects (gradient, mesh, radial, imagePath) populated — render-v0.4.mjs picks based on `type`, and leaving full sub-objects makes the file self-documenting.
 
 ---
 
@@ -198,7 +198,7 @@ Run the render and preview scripts. Resolve `PLUGIN_ROOT` from `${CLAUDE_PLUGIN_
 
 ```bash
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-<resolved-path>}"
-node "${PLUGIN_ROOT}/scripts/render.mjs" ./brand-profile.json ./brand-preview/strategy.json ./brand-preview/
+node "${PLUGIN_ROOT}/scripts/render-v0.4.mjs" ./brand-profile.json ./brand-preview/strategy.json ./brand-preview/
 node "${PLUGIN_ROOT}/scripts/preview.mjs" ./brand-preview/
 ```
 

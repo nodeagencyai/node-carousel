@@ -54,7 +54,7 @@ The reader who made it this far is the warmest audience you'll ever have. Ask fo
 If two ideas fight for space, split into two slides. A bullet slide with 5 unrelated bullets is five slides pretending to be one.
 
 ### Voice matches brand.tone
-Read `brand.tone.voice` and `brand.tone.adjectives` before writing. A warm editorial brand never says "stack", "shipping", "zero-friction". A technical-builder brand never says "journey", "unlock", "elevate".
+Read `brand.tone` before writing — it is a single-line string (e.g. `"direct, builder-voice, no-fluff"`) that sums up the brand's voice. When present, also read the optional `brand.voice.register` (one of `casual` / `formal` / `technical` / `conversational`) and `brand.voice.warmth` (one of `cold` / `neutral` / `warm` / `intimate`) to further dial in diction. A warm editorial brand never says "stack", "shipping", "zero-friction". A technical-builder brand never says "journey", "unlock", "elevate".
 
 ### Writing style (applies to every slot)
 Sentence case. No em-dashes in user-facing copy (use periods or rewrite). No emojis. No hashtags in slide content (hashtags go in the caption). Digits not spelled-out numbers (`3 steps`, not `three steps`). Active voice. Cut hedges (`maybe`, `might`, `could arguably`).
