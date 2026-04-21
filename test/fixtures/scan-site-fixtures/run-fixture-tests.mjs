@@ -23,7 +23,7 @@ import {
   computeScreenshotOptions,
   printUsage,
 } from '../../../scripts/scan-site.mjs';
-import { brandfetch, normalizeBrandfetch, extractDomain } from '../../../scripts/brandfetch-client.mjs';
+import { brandfetch, normalizeBrandfetch, extractDomain, readCache, writeCache, getCacheDir } from '../../../scripts/brandfetch-client.mjs';
 import { extractLogoFromSignals } from '../../../scripts/extract-logo.mjs';
 import { parseViewBox } from '../../../scripts/render-v0.4.mjs';
 
@@ -478,6 +478,117 @@ async function main() {
       r5.available === false && typeof r5.reason === 'string',
       `got ${JSON.stringify(r5)}`,
     );
+  }
+
+  // ---- v0.7 Task C.2 — BrandFetch 24h local cache ----
+  console.log(`\n=== brandfetch cache (v0.7 C.2) ===`);
+  {
+    // Use a tmpdir so tests never touch ~/.cache/node-carousel.
+    const tmpCache = mkdtempSync(join(tmpdir(), 'bf-cache-test-'));
+    const prevEnv = process.env.NODE_CAROUSEL_CACHE_DIR;
+    process.env.NODE_CAROUSEL_CACHE_DIR = tmpCache;
+    try {
+      // Case 1: getCacheDir() honours NODE_CAROUSEL_CACHE_DIR override.
+      total += 1;
+      passed += check(
+        'getCacheDir: NODE_CAROUSEL_CACHE_DIR override honoured',
+        getCacheDir() === tmpCache,
+        `got ${getCacheDir()}`,
+      );
+
+      // Case 2: readCache on missing file → null (no throw).
+      total += 1;
+      passed += check(
+        'readCache: missing file → null',
+        readCache('nope.example.com') === null,
+        `got non-null`,
+      );
+
+      // Case 3: writeCache → readCache round-trip returns the payload.
+      const payload = {
+        name: 'Vercel',
+        description: 'Frontend cloud',
+        domain: 'vercel.com',
+        logos: [{ type: 'logo', format: 'svg', url: 'https://cdn/vercel.svg' }],
+        colors: [{ hex: '#000000', type: 'dark' }],
+        fonts: [{ name: 'Inter', type: 'title' }],
+        industries: ['Developer Tools'],
+      };
+      writeCache('vercel.com', payload);
+      const roundtrip = readCache('vercel.com');
+      total += 2;
+      passed += check(
+        'writeCache + readCache: round-trip payload matches',
+        roundtrip && roundtrip.data && roundtrip.data.name === 'Vercel'
+          && roundtrip.data.colors[0].hex === '#000000',
+        `got ${JSON.stringify(roundtrip)}`,
+      );
+      passed += check(
+        'writeCache: cacheVersion stamped on written payload',
+        roundtrip && roundtrip.cacheVersion === 1,
+        `got ${roundtrip?.cacheVersion}`,
+      );
+
+      // Case 4: expired cache (mtime > 24h old) → readCache returns null.
+      //   We simulate expiry by using fs.utimesSync to push mtime 25h back.
+      const { utimesSync } = await import('node:fs');
+      const expiredPath = join(tmpCache, 'brandfetch-expired.example.com.json');
+      writeFileSync(expiredPath, JSON.stringify({ cacheVersion: 1, data: { name: 'Stale' } }));
+      const old = new Date(Date.now() - 25 * 60 * 60 * 1000);
+      utimesSync(expiredPath, old, old);
+      total += 1;
+      passed += check(
+        'readCache: expired file (mtime >24h) → null',
+        readCache('expired.example.com') === null,
+        `expected null for expired cache`,
+      );
+
+      // Case 5: wrong cacheVersion → readCache returns null (forward compat).
+      const wrongVerPath = join(tmpCache, 'brandfetch-wrongver.example.com.json');
+      writeFileSync(wrongVerPath, JSON.stringify({ cacheVersion: 999, data: { name: 'Future' } }));
+      total += 1;
+      passed += check(
+        'readCache: mismatched cacheVersion → null',
+        readCache('wrongver.example.com') === null,
+        `expected null for wrong cacheVersion`,
+      );
+
+      // Case 6: brandfetch() hits cache on second call without network.
+      //   Pre-seed the cache, then call brandfetch with a fake key. The call
+      //   should return cached:true immediately (no network — fake key would
+      //   otherwise produce a non-ok response).
+      writeCache('cached.example.com', {
+        name: 'Cached',
+        description: undefined,
+        domain: 'cached.example.com',
+        logos: [],
+        colors: [],
+        fonts: [],
+        industries: [],
+      });
+      const hit = await brandfetch('cached.example.com', 'fake-key-would-401');
+      total += 3;
+      passed += check(
+        'brandfetch: valid cache hit → available:true',
+        hit.available === true,
+        `got ${JSON.stringify(hit)}`,
+      );
+      passed += check(
+        'brandfetch: valid cache hit → cached:true',
+        hit.cached === true,
+        `got cached=${hit.cached}`,
+      );
+      passed += check(
+        'brandfetch: valid cache hit → data.name from cache',
+        hit.data && hit.data.name === 'Cached',
+        `got ${hit.data?.name}`,
+      );
+    } finally {
+      // Clean up: restore env + remove tmp dir.
+      if (prevEnv === undefined) delete process.env.NODE_CAROUSEL_CACHE_DIR;
+      else process.env.NODE_CAROUSEL_CACHE_DIR = prevEnv;
+      rmSync(tmpCache, { recursive: true, force: true });
+    }
   }
 
   // ---- v0.7 Task A.1 — mergeProfile helper ----
