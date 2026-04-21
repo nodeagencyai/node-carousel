@@ -51,6 +51,16 @@ Restart Claude Code. `/node-carousel:setup` should appear in the command palette
 
 **v0.5 adds `/node-carousel:scan`** — point it at your site, it takes a Playwright screenshot, extracts fonts + colors from CSS, optionally reads 3–5 of your existing carousel images via Claude's native vision, then synthesizes a `brand-profile.json` that matches your existing visual language. Picks the closest of 6 aesthetic presets with weighted confidence scoring; falls back to the manual wizard if the scan is low-confidence.
 
+### Optional: BrandFetch API key (free tier = 100 requests/month)
+
+For sharper brand data on well-known brands, set your BrandFetch API key before running `/node-carousel:scan`:
+
+```bash
+export BRANDFETCH_API_KEY=your_key_here
+```
+
+Get a free key at [brandfetch.com/developers](https://brandfetch.com/developers). When set, scans augment self-hosted extraction with BrandFetch's curated logos, colors, and metadata. When not set, everything runs zero-API as before — BrandFetch is strictly an optional accuracy booster, never a blocker.
+
 Outputs land in `./output/<topic-slug>/`:
 
 - `slide-01.svg` … `slide-NN.svg` — the slides
@@ -165,8 +175,9 @@ Yes. Strategy + content generation is well within Haiku's reach. Opus produces s
 **Is the output actually editable?**
 Yes. Every slide is standalone SVG — open in Figma / Illustrator / text editor and hand-tune. `strategy.json` is also editable — change a line, re-run `node scripts/render-v0.4.mjs <paths>` without calling Claude again.
 
-## What's planned (v0.5)
+## What's planned (v0.6)
 
+- **BrandFetch augmentation** for `/node-carousel:scan` — optional, free-tier API key boosts logo + color accuracy for well-known brands (see Quick start above)
 - **AI-generated background images** via Gemini (optional, falls back to procedural when no API key)
 - **Bundled grunge texture PNGs** for heavier analog-print aesthetics (newsprint, mimeograph, risograph)
 - **Tables + bar-chart patterns** for data-heavy topics
