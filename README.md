@@ -23,6 +23,23 @@ This one is neither. v0.4 is a **procedural design system** — not a template e
 - **8 compositional patterns, 6 aesthetic presets.** Cover, list (bullet / numbered), stat-dominant, quote-pulled, split-comparison, CTA — each pattern has multiple typographic + background variations. Presets pick from well-known brand languages (Stripe / Linear, NYT, Pentagram, Vercel, Fontshare).
 - **Deterministic seeded sampling across 6 variation axes.** Size (compact / standard / oversized), weight contrast, kicker presence, decoration flavor, background variant, noise texture — each is a controlled axis. The seeded RNG picks a coordinate in that space. Output feels hand-designed but is reproducible and version-controllable.
 
+## What's new in v0.7 — Brand Authorship
+
+v0.6 made `/node-carousel:scan` honest. v0.7 makes it yours. The scan is a strong default, but you're the brand owner — if Node's site is green and our carousels are cyan, no amount of auto-detection will guess that. v0.7 gives you the levers to override, plus a round of audit hardening.
+
+- **`--merge-with <existing.json>` flag.** Merges the scan with an existing `brand-profile.json` — existing fields win over scan-derived. Point it at last month's profile, or a hand-authored one, and the scan only fills gaps.
+- **`--preset <name>` flag.** Skip the weighted-signal preset matcher and force one of the six presets directly (e.g. `--preset technical-mono`). Useful when your carousel aesthetic is deliberately different from your website's.
+- **Per-context font extraction.** Fonts tracked separately for header / nav / h1 / body / button / logo. The synthesizer prefers header / logo fonts for `visual.fonts.display`, not whatever happened to show up most in body text.
+- **CSS variable brand colors.** `--brand`, `--primary`, `--accent`, `--color-*` are pulled from the root stylesheet and treated as authoritative over frequency-based color clustering.
+- **Raster logo rendering.** PNG / JPG logos render correctly on cover + CTA slides (was v0.6.1).
+- **Audit hardening.** `.scan.lock` concurrency guard per outDir · full-page screenshot capped at 8000px to prevent Playwright OOM on long pages · `logo.fallback` flag in descriptor so synthesizers can downweight favicon-derived logos · viewBox-aware logo scaling · BrandFetch 24h local cache at `~/.cache/node-carousel/` · `scan-site.mjs --help / -h` · [user-facing confidence threshold guide](docs/confidence-guide.md).
+
+### When your carousel brand differs from your website brand
+
+This is common. Node's website uses green; our carousels are cyan — the site targets founders looking for agencies, the carousels target operators looking for tactics, and those are different rooms. Your social presence doesn't have to be a carbon copy of your site.
+
+If the scan gives you a profile that's technically correct but tonally wrong, override it. Use `--merge-with` to keep the parts that work (logo, fonts) and hand-edit the parts that don't (colors, tone). Or use `--preset` to force an aesthetic the scanner wouldn't have picked. See [docs/confidence-guide.md](docs/confidence-guide.md) for when to trust a scan vs. take the wheel.
+
 ## What's new in v0.6 — Brand Scan Deep
 
 `/node-carousel:scan` got a major upgrade. v0.5 shipped a single-page scan with basic CSS extraction; v0.6 makes it actually reliable on real sites.
@@ -50,6 +67,10 @@ Restart Claude Code. `/node-carousel:setup` should appear in the command palette
 /node-carousel:scan https://yourbrand.com
 #    Or bring reference carousels for style matching:
 /node-carousel:scan https://yourbrand.com --references ./my-carousels/
+#    NEW in v0.7 — merge scan with your existing brand-profile (existing fields win):
+/node-carousel:scan https://yourbrand.com --merge-with ./brand-profile.json
+#    NEW in v0.7 — force a specific preset, skip auto-matching:
+/node-carousel:scan https://yourbrand.com --preset technical-mono
 
 # 1b. OR configure brand manually via wizard
 /node-carousel:setup
@@ -189,8 +210,12 @@ Yes. Strategy + content generation is well within Haiku's reach. Opus produces s
 **Is the output actually editable?**
 Yes. Every slide is standalone SVG — open in Figma / Illustrator / text editor and hand-tune. `strategy.json` is also editable — change a line, re-run `node scripts/render-v0.4.mjs <paths>` without calling Claude again.
 
-## What's planned (v0.7+)
+## What's planned (v0.8+)
 
+- **Interactive candidate picker** for `/scan` when confidence is mid-band — pick between 2–3 synthesized profiles instead of accepting or redoing
+- **Archive.org snapshots** — scan historical versions of a site to track brand evolution
+- **Competitor intel mode** — scan 3–5 competitors to surface category conventions worth breaking
+- **WCAG validation** on generated color pairs (AA minimum, AAA target for display text)
 - **AI-generated background images** via Gemini (optional, falls back to procedural when no API key)
 - **Bundled grunge texture PNGs** for heavier analog-print aesthetics (newsprint, mimeograph, risograph)
 - **Tables + bar-chart patterns** for data-heavy topics
