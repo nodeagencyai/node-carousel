@@ -56,6 +56,39 @@ function usage() {
 }
 
 /**
+ * Render the full `--help` usage message as a string. Exported so fixture
+ * tests can assert on the content without shelling out to a real process.
+ *
+ * v0.7 B.7 (audit I7): give users a single entry point that enumerates every
+ * flag, the env var that changes behavior, and a handful of ready-to-paste
+ * invocations. Printed from main() when `--help` or `-h` is anywhere in argv.
+ */
+export function printUsage() {
+  return [
+    'Usage: node scripts/scan-site.mjs <url> <output-dir> [options]',
+    '',
+    'Scans a website to extract brand signals into <output-dir>/scan.json',
+    '',
+    'Options:',
+    '  --merge-with <path>      Merge existing brand-profile.json (existing fields win)',
+    '  --preset <name>          Force preset: editorial-serif | neo-grotesk | technical-mono |',
+    '                           display-serif-bold | utilitarian-bold | satoshi-tech',
+    '  --help, -h               Show this message',
+    '',
+    'Environment:',
+    '  BRANDFETCH_API_KEY       Optional; augments scan with BrandFetch data',
+    '                           (free tier 100 req/month)',
+    '',
+    'Examples:',
+    '  node scripts/scan-site.mjs https://example.com ./.brand-scan',
+    '  node scripts/scan-site.mjs https://example.com ./.brand-scan --merge-with ./my-profile.json',
+    '  node scripts/scan-site.mjs https://example.com ./.brand-scan --preset technical-mono',
+    '  BRANDFETCH_API_KEY=xxx node scripts/scan-site.mjs https://example.com ./.brand-scan',
+    '',
+  ].join('\n');
+}
+
+/**
  * Canonical list of valid preset names for the v0.7 A.4 --preset force flag.
  * Mirrors the JSON files in `templates/presets/`. Keep in sync when adding a
  * new preset.
@@ -1255,6 +1288,18 @@ async function attemptScan({ puppeteer, url, outDir, headless, warnings }) {
 }
 
 async function main() {
+  // v0.7 B.7 (audit I7): --help / -h takes precedence over everything else.
+  // Check BEFORE parseArgv, mkdirSync, or acquireLock so `scan-site --help`
+  // works even without positional args (and with a pre-existing .scan.lock in
+  // the target dir). Scan-site has no subcommands — a single help flag is
+  // enough to cover the whole CLI surface.
+  const args = process.argv.slice(2);
+  if (args.includes('--help') || args.includes('-h')) {
+    process.stdout.write(printUsage());
+    process.exit(0);
+    return;
+  }
+
   let parsed;
   try {
     parsed = parseArgv(process.argv);

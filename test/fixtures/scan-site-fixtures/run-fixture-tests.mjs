@@ -21,6 +21,7 @@ import {
   ArgvError,
   acquireLock,
   computeScreenshotOptions,
+  printUsage,
 } from '../../../scripts/scan-site.mjs';
 import { brandfetch, normalizeBrandfetch, extractDomain } from '../../../scripts/brandfetch-client.mjs';
 import { extractLogoFromSignals } from '../../../scripts/extract-logo.mjs';
@@ -1339,6 +1340,38 @@ async function main() {
     } finally {
       rmSync(outDir, { recursive: true, force: true });
     }
+  }
+
+  // ---- v0.7 Task B.7 — printUsage (--help / -h) ----
+  console.log(`\n=== printUsage (v0.7 B.7) ===`);
+  {
+    const out = printUsage();
+    total += 5;
+    passed += check(
+      'printUsage: returns a non-empty string',
+      typeof out === 'string' && out.length > 0,
+      `got ${typeof out}, length=${typeof out === 'string' ? out.length : 'n/a'}`,
+    );
+    passed += check(
+      'printUsage: includes "Usage:" synopsis',
+      out.includes('Usage: node scripts/scan-site.mjs'),
+      '',
+    );
+    passed += check(
+      'printUsage: mentions --merge-with',
+      out.includes('--merge-with'),
+      '',
+    );
+    passed += check(
+      'printUsage: mentions --preset with at least one preset name',
+      out.includes('--preset') && out.includes('technical-mono'),
+      '',
+    );
+    passed += check(
+      'printUsage: documents BRANDFETCH_API_KEY env var',
+      out.includes('BRANDFETCH_API_KEY'),
+      '',
+    );
   }
 
   console.log(`\n=== ${passed}/${total} checks passed ===`);
