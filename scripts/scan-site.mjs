@@ -187,76 +187,101 @@ async function scanPage({ page, url, outDir, isHomepage, warnings }) {
   await new Promise((r) => setTimeout(r, 600));
 
   // Only the homepage writes its assets to disk (screenshots / html / css).
+  // Track screenshot success so the caller can surface null paths when they fail
+  // (see Issue 4 in the B.1 code review — don't publish paths to files that
+  // don't exist on disk).
+  let heroOk = false;
+  let fullOk = false;
+  let heroPath = null;
+  let fullPath = null;
   if (isHomepage) {
-    const heroPath = join(outDir, 'hero.png');
-    const fullPath = join(outDir, 'full.png');
+    heroPath = join(outDir, 'hero.png');
+    fullPath = join(outDir, 'full.png');
     try {
       await page.screenshot({
         path: heroPath,
         type: 'png',
         clip: { x: 0, y: 0, width: VIEWPORT_WIDTH, height: VIEWPORT_HEIGHT },
       });
+      heroOk = true;
     } catch (err) {
       warnings.push(`hero screenshot failed: ${err?.message || err}`);
     }
     try {
       await page.screenshot({ path: fullPath, type: 'png', fullPage: true });
+      fullOk = true;
     } catch (err) {
       warnings.push(`full screenshot failed: ${err?.message || err}`);
     }
   }
 
-  const html = await page.content();
+  // After a goto timeout the frame may be detached — calling page.content()
+  // or page.evaluate() then throws "Execution context was destroyed" which
+  // would bubble up to attemptScan's catch and mark the whole scan runtime_failed.
+  // Instead, degrade gracefully: empty html + empty CSS bundle. extractSignals
+  // handles empty input already and will produce null-ish signals, which then
+  // triggers the empty-extraction retry in main() (see Issue 1).
+  let html = '';
+  try {
+    html = await page.content();
+  } catch (err) {
+    warnings.push(`page.content() failed: ${err?.message || err}`);
+  }
 
-  const cssBundle = await page.evaluate(() => {
-    const out = {
-      stylesheetsText: [],
-      body: '',
-      h1: '',
-      button: '',
-    };
+  let cssBundle = { stylesheetsText: [], body: '', h1: '', button: '', rootVars: '' };
+  try {
+    cssBundle = await page.evaluate(() => {
+      const out = {
+        stylesheetsText: [],
+        body: '',
+        h1: '',
+        button: '',
+      };
 
-    for (const sheet of Array.from(document.styleSheets)) {
-      try {
-        const rules = sheet.cssRules;
-        if (!rules) continue;
-        for (const rule of Array.from(rules)) {
-          if (rule.cssText) out.stylesheetsText.push(rule.cssText);
+      for (const sheet of Array.from(document.styleSheets)) {
+        try {
+          const rules = sheet.cssRules;
+          if (!rules) continue;
+          for (const rule of Array.from(rules)) {
+            if (rule.cssText) out.stylesheetsText.push(rule.cssText);
+          }
+        } catch {
+          // Cross-origin stylesheets throw — skip.
         }
-      } catch {
-        // Cross-origin stylesheets throw — skip.
       }
-    }
 
-    const snapshotStyle = (el) => {
-      if (!el) return '';
-      const cs = getComputedStyle(el);
-      const props = [
-        'font-family', 'font-size', 'font-weight', 'line-height', 'letter-spacing',
-        'color', 'background-color', 'fill', 'stroke',
-        'border-color', 'border-radius',
-        'padding', 'margin',
-      ];
-      return props.map((p) => `${p}: ${cs.getPropertyValue(p)};`).join(' ');
-    };
+      const snapshotStyle = (el) => {
+        if (!el) return '';
+        const cs = getComputedStyle(el);
+        const props = [
+          'font-family', 'font-size', 'font-weight', 'line-height', 'letter-spacing',
+          'color', 'background-color', 'fill', 'stroke',
+          'border-color', 'border-radius',
+          'padding', 'margin',
+        ];
+        return props.map((p) => `${p}: ${cs.getPropertyValue(p)};`).join(' ');
+      };
 
-    out.body = snapshotStyle(document.body);
-    out.h1 = snapshotStyle(document.querySelector('h1'));
-    out.button = snapshotStyle(document.querySelector('button, a.btn, [role="button"]'));
+      out.body = snapshotStyle(document.body);
+      out.h1 = snapshotStyle(document.querySelector('h1'));
+      out.button = snapshotStyle(document.querySelector('button, a.btn, [role="button"]'));
 
-    const rootStyle = getComputedStyle(document.documentElement);
-    const rootVars = [];
-    for (let i = 0; i < rootStyle.length; i += 1) {
-      const name = rootStyle.item(i);
-      if (name.startsWith('--')) {
-        const val = rootStyle.getPropertyValue(name).trim();
-        rootVars.push(`${name}: ${val};`);
+      const rootStyle = getComputedStyle(document.documentElement);
+      const rootVars = [];
+      for (let i = 0; i < rootStyle.length; i += 1) {
+        const name = rootStyle.item(i);
+        if (name.startsWith('--')) {
+          const val = rootStyle.getPropertyValue(name).trim();
+          rootVars.push(`${name}: ${val};`);
+        }
       }
-    }
-    out.rootVars = rootVars.join('\n');
+      out.rootVars = rootVars.join('\n');
 
-    return out;
-  });
+      return out;
+    });
+  } catch (err) {
+    warnings.push(`CSS bundle extraction failed: ${err?.message || err}`);
+  }
 
   const cssDump = [
     '/* --- stylesheets --- */',
@@ -289,7 +314,14 @@ async function scanPage({ page, url, outDir, isHomepage, warnings }) {
     url,
   });
 
-  return { ok: true, signals };
+  return {
+    ok: true,
+    signals,
+    screenshotPaths: {
+      hero: heroOk ? heroPath : null,
+      full: fullOk ? fullPath : null,
+    },
+  };
 }
 
 // ---------------- Merging ----------------
@@ -302,26 +334,36 @@ async function scanPage({ page, url, outDir, isHomepage, warnings }) {
  * `homepagePath` identifies which page's values to prefer for singletons
  * (meta, heroHeadline, background/text/accent tie-breakers).
  */
-function mergeSignals(perPage, homepagePath) {
+export function mergeSignals(perPage, homepagePath) {
   const paths = Object.keys(perPage);
   const home = perPage[homepagePath] || perPage[paths[0]];
 
   // --- Fonts: most-common display + body; homepage wins on ties. ---
+  // WHY the split sources: We want homepage's source to win when the homepage
+  // uses a given family, regardless of paths-iteration order. Previously the
+  // "source" field was set in whatever order paths happened to be visited,
+  // which worked only because attemptScan inserts homepage first. We now track
+  // homepageSource and nonHomepageSource separately and resolve at pick time,
+  // so reordering paths can never silently invert source attribution.
   const voteFont = (field, sourceField) => {
-    const counts = new Map(); // family -> { count, source, homepageHit }
+    const counts = new Map(); // family -> { count, homepageSource, nonHomepageSource, homepageHit }
     for (const p of paths) {
       const s = perPage[p];
       const fam = s?.fonts?.[field];
       if (!fam) continue;
       const src = s.fonts[sourceField] || 'unknown';
-      const prev = counts.get(fam) || { count: 0, source: src, homepageHit: false };
+      const prev = counts.get(fam) || {
+        count: 0,
+        homepageSource: null,
+        nonHomepageSource: null,
+        homepageHit: false,
+      };
       prev.count += 1;
-      // Prefer the most-common source for this family, but don't overthink it.
       if (p === homepagePath) {
         prev.homepageHit = true;
-        prev.source = src; // homepage's source wins when we have one
-      } else if (!prev.homepageHit) {
-        prev.source = src;
+        prev.homepageSource = src;
+      } else if (prev.nonHomepageSource == null) {
+        prev.nonHomepageSource = src;
       }
       counts.set(fam, prev);
     }
@@ -334,7 +376,13 @@ function mergeSignals(perPage, homepagePath) {
       if (a[1].homepageHit !== b[1].homepageHit) return a[1].homepageHit ? -1 : 1;
       return a[0].localeCompare(b[0]);
     });
-    return { family: sorted[0][0], source: sorted[0][1].source };
+    const [winnerFamily, winnerEntry] = sorted[0];
+    // Homepage's source wins if homepage used this family; otherwise fall back
+    // to any non-homepage source we observed, else 'unknown'.
+    const source = winnerEntry.homepageSource
+      ?? winnerEntry.nonHomepageSource
+      ?? 'unknown';
+    return { family: winnerFamily, source };
   };
 
   const display = voteFont('display', 'displaySource');
@@ -443,111 +491,124 @@ async function attemptScan({ puppeteer, url, outDir, headless, warnings }) {
 
   try {
     const homepagePage = await browser.newPage();
-    await homepagePage.setUserAgent(
-      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
-    );
-    await homepagePage.setViewport({
-      width: VIEWPORT_WIDTH,
-      height: VIEWPORT_HEIGHT,
-      deviceScaleFactor: 1,
-    });
-
-    // Scan homepage first — this is the only page required for success.
-    const homepagePath = (() => {
-      try {
-        const p = new URL(url).pathname || '/';
-        return p === '' ? '/' : p;
-      } catch {
-        return '/';
-      }
-    })();
-
-    const homeResult = await scanPage({
-      page: homepagePage,
-      url,
-      outDir,
-      isHomepage: true,
-      warnings,
-    });
-
-    if (!homeResult.ok) {
-      return { ok: false, reason: homeResult.reason };
-    }
-
-    const perPage = {};
-    perPage[homepagePath] = homeResult.signals;
-
-    // Discover additional pages from the already-loaded homepage.
-    let discovered = [];
+    let screenshotPaths = { hero: null, full: null };
     try {
-      discovered = await discoverPages(homepagePage, url);
-    } catch (err) {
-      warnings.push(`page discovery failed: ${err?.message || err}`);
-    }
+      await homepagePage.setUserAgent(
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+      );
+      await homepagePage.setViewport({
+        width: VIEWPORT_WIDTH,
+        height: VIEWPORT_HEIGHT,
+        deviceScaleFactor: 1,
+      });
 
-    // Scan each discovered page (one tab at a time; serial keeps memory sane
-    // and respects the wall-clock budget naturally).
-    for (const path of discovered) {
-      if (timeLeft() < PAGE_TIMEOUT_MS) {
-        warnings.push(`skipping ${path}: total scan budget exhausted`);
-        break;
-      }
-      const absUrl = new URL(path, url).toString();
-      const subPage = await browser.newPage();
-      try {
-        await subPage.setUserAgent(
-          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
-        );
-        await subPage.setViewport({
-          width: VIEWPORT_WIDTH,
-          height: VIEWPORT_HEIGHT,
-          deviceScaleFactor: 1,
-        });
-        const sub = await scanPage({
-          page: subPage,
-          url: absUrl,
-          outDir,
-          isHomepage: false,
-          warnings,
-        });
-        if (sub.ok) {
-          perPage[path] = sub.signals;
-        } else {
-          warnings.push(`${path}: scan failed (${sub.reason}) — continuing`);
+      // Scan homepage first — this is the only page required for success.
+      const homepagePath = (() => {
+        try {
+          const p = new URL(url).pathname || '/';
+          return p === '' ? '/' : p;
+        } catch {
+          return '/';
         }
-      } catch (err) {
-        warnings.push(`${path}: unexpected error (${err?.message || err}) — continuing`);
-      } finally {
-        try { await subPage.close(); } catch { /* ignore */ }
+      })();
+
+      const homeResult = await scanPage({
+        page: homepagePage,
+        url,
+        outDir,
+        isHomepage: true,
+        warnings,
+      });
+
+      if (!homeResult.ok) {
+        return { ok: false, reason: homeResult.reason };
       }
+
+      screenshotPaths = homeResult.screenshotPaths || { hero: null, full: null };
+
+      const perPage = {};
+      perPage[homepagePath] = homeResult.signals;
+
+      // Discover additional pages from the already-loaded homepage.
+      let discovered = [];
+      try {
+        discovered = await discoverPages(homepagePage, url);
+      } catch (err) {
+        warnings.push(`page discovery failed: ${err?.message || err}`);
+      }
+
+      // Scan each discovered page (one tab at a time; serial keeps memory sane
+      // and respects the wall-clock budget naturally).
+      for (const path of discovered) {
+        if (timeLeft() < PAGE_TIMEOUT_MS) {
+          warnings.push(`skipping ${path}: total scan budget exhausted`);
+          break;
+        }
+        const absUrl = new URL(path, url).toString();
+        const subPage = await browser.newPage();
+        try {
+          await subPage.setUserAgent(
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+          );
+          await subPage.setViewport({
+            width: VIEWPORT_WIDTH,
+            height: VIEWPORT_HEIGHT,
+            deviceScaleFactor: 1,
+          });
+          const sub = await scanPage({
+            page: subPage,
+            url: absUrl,
+            outDir,
+            isHomepage: false,
+            warnings,
+          });
+          if (sub.ok) {
+            perPage[path] = sub.signals;
+          } else {
+            warnings.push(`${path}: scan failed (${sub.reason}) — continuing`);
+          }
+        } catch (err) {
+          warnings.push(`${path}: unexpected error (${err?.message || err}) — continuing`);
+        } finally {
+          try { await subPage.close(); } catch { /* ignore */ }
+        }
+      }
+
+      const pagesScanned = Object.keys(perPage);
+      const merged = mergeSignals(perPage, homepagePath);
+
+      // Append any navigation-level warnings accumulated in the `warnings`
+      // array into merged.warnings so they surface to the consumer.
+      merged.warnings = [...merged.warnings, ...warnings.filter((w) => !merged.warnings.includes(w))];
+
+      const payload = {
+        url,
+        scannedAt: new Date().toISOString(),
+        pagesScanned,
+        perPage,
+        merged,
+        // v0.5 backwards-compat mirror — merged.* fields at top level.
+        fonts: merged.fonts,
+        colors: merged.colors,
+        meta: merged.meta,
+        textSamples: merged.textSamples,
+        warnings: merged.warnings,
+        // Only surface paths for screenshots that actually wrote to disk;
+        // writing heroPath/fullPath unconditionally pointed consumers at
+        // nonexistent files when page.screenshot() threw.
+        screenshots: {
+          hero: screenshotPaths.hero,
+          full: screenshotPaths.full,
+        },
+      };
+
+      return { ok: true, payload };
+    } finally {
+      // Symmetric with subPage cleanup. `browser.close()` below would reap
+      // this page too, but explicit close is cheap insurance against future
+      // refactors that keep the browser alive (e.g. reuse across attempts).
+      try { await homepagePage.close(); } catch { /* ignore */ }
     }
-
-    const pagesScanned = Object.keys(perPage);
-    const merged = mergeSignals(perPage, homepagePath);
-
-    // Append any navigation-level warnings accumulated in the `warnings`
-    // array into merged.warnings so they surface to the consumer.
-    merged.warnings = [...merged.warnings, ...warnings.filter((w) => !merged.warnings.includes(w))];
-
-    const heroPath = join(outDir, 'hero.png');
-    const fullPath = join(outDir, 'full.png');
-
-    const payload = {
-      url,
-      scannedAt: new Date().toISOString(),
-      pagesScanned,
-      perPage,
-      merged,
-      // v0.5 backwards-compat mirror — merged.* fields at top level.
-      fonts: merged.fonts,
-      colors: merged.colors,
-      meta: merged.meta,
-      textSamples: merged.textSamples,
-      warnings: merged.warnings,
-      screenshots: { hero: heroPath, full: fullPath },
-    };
-
-    return { ok: true, payload };
   } catch (err) {
     return { ok: false, reason: `runtime_failed: ${err?.message || err}` };
   } finally {
@@ -593,11 +654,53 @@ async function main() {
   // First attempt: headless
   let result = await attemptScan({ puppeteer, url, outDir, headless: true, warnings });
 
-  // If the page failed to navigate entirely (e.g. blocked), retry headed.
-  if (!result.ok && /navigation_failed|launch_failed/.test(result.reason || '')) {
-    warnings.push(`first attempt failed (${result.reason}); retrying with headful browser`);
+  // Decide whether to retry headful. Two triggers:
+  //   (a) the attempt aborted hard (navigation_failed / launch_failed) — same
+  //       as before.
+  //   (b) the attempt returned ok:true but produced a useless extraction
+  //       (no background color AND no display font) — this is the shape of
+  //       bot-block / CAPTCHA / heavy-JS-with-no-CSS pages that silently pass
+  //       through to scan.json as all-nulls.
+  //   (c) all homepage warnings point at navigation problems (timeout/HTTP).
+  const shouldRetryHeadful = (() => {
+    if (!result.ok) {
+      return /navigation_failed|launch_failed/.test(result.reason || '');
+    }
+    const merged = result.payload?.merged;
+    if (!merged) return false;
+    const emptyExtraction = merged.colors?.background == null
+      && merged.fonts?.display == null;
+    if (emptyExtraction) return true;
+    // All homepage warnings indicate navigation issues (heuristic: every
+    // warning mentions navigation/timeout/HTTP).
+    const homeWarnings = merged.warnings || [];
+    if (homeWarnings.length > 0) {
+      const navRe = /navigation|timeout|HTTP \d{3}|page\.content|CSS bundle/i;
+      const allNav = homeWarnings.every((w) => navRe.test(w));
+      if (allNav) return true;
+    }
+    return false;
+  })();
+
+  if (shouldRetryHeadful) {
+    const reason = result.ok
+      ? 'empty extraction (no background color and no display font detected)'
+      : result.reason;
+    warnings.push(`first attempt produced no usable signals (${reason}); retrying with headful browser`);
     try {
-      result = await attemptScan({ puppeteer, url, outDir, headless: false, warnings });
+      const retry = await attemptScan({ puppeteer, url, outDir, headless: false, warnings });
+      // Only swap in the retry result if it's better. "Better" = ok AND has at
+      // least one of background/display populated. Otherwise keep the first
+      // attempt (which may still have partial data we don't want to discard).
+      if (retry.ok) {
+        const r = retry.payload?.merged;
+        const retryHasSignal = r && (r.colors?.background != null || r.fonts?.display != null);
+        if (retryHasSignal || !result.ok) {
+          result = retry;
+        }
+      } else if (!result.ok) {
+        result = retry;
+      }
     } catch (err) {
       warnings.push(`headful retry also failed: ${err?.message || err}`);
     }

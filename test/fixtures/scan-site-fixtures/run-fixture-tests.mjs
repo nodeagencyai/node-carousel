@@ -11,7 +11,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { extractSignals } from '../../../scripts/extract-brand-signals.mjs';
-import { rankDiscoveredLinks } from '../../../scripts/scan-site.mjs';
+import { rankDiscoveredLinks, mergeSignals } from '../../../scripts/scan-site.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -228,6 +228,47 @@ async function main() {
       'duplicates deduped (only one /about variant kept per path)',
       aboutCount <= 1 && ranked.includes('/blog'),
       `got ${JSON.stringify(ranked)}`,
+    );
+  }
+
+  // ---- mergeSignals iteration-order safety (Issue 3 regression guard) ----
+  console.log(`\n=== mergeSignals order-independence (v0.6) ===`);
+  {
+    // Build two perPage objects with IDENTICAL content but different insertion
+    // order. The merged font source MUST still come from the homepage in both.
+    const homepageSignals = {
+      fonts: { display: 'Satoshi', displaySource: 'fontshare', body: 'Inter', bodySource: 'google', allFontFaces: [] },
+      colors: { background: '#000', text: '#fff', accent: '#f00', allColors: [], confidence: 0.8 },
+      meta: { title: 'home', description: null, ogImage: null },
+      textSamples: { heroHeadline: 'Home', heroSubheadline: null, ctaCandidates: [] },
+      warnings: [],
+    };
+    // Subpage uses the SAME family but reports a different source (e.g.
+    // inferred differently). Homepage's source must win.
+    const aboutSignals = {
+      fonts: { display: 'Satoshi', displaySource: 'unknown', body: 'Inter', bodySource: 'unknown', allFontFaces: [] },
+      colors: { background: '#000', text: '#fff', accent: '#f00', allColors: [], confidence: 0.5 },
+      meta: { title: 'about', description: null, ogImage: null },
+      textSamples: { heroHeadline: 'About', heroSubheadline: null, ctaCandidates: [] },
+      warnings: [],
+    };
+
+    const homeFirst = { '/': homepageSignals, '/about': aboutSignals };
+    const homeSecond = { '/about': aboutSignals, '/': homepageSignals };
+
+    const mergedA = mergeSignals(homeFirst, '/');
+    const mergedB = mergeSignals(homeSecond, '/');
+
+    total += 2;
+    passed += check(
+      'mergeSignals: homepage-first iteration preserves fontshare source',
+      mergedA.fonts.displaySource === 'fontshare',
+      `got ${mergedA.fonts.displaySource}`,
+    );
+    passed += check(
+      'mergeSignals: homepage-second iteration ALSO preserves fontshare source (order-independent)',
+      mergedB.fonts.displaySource === 'fontshare',
+      `got ${mergedB.fonts.displaySource}`,
     );
   }
 
