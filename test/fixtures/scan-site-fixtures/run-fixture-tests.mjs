@@ -11,6 +11,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { extractSignals } from '../../../scripts/extract-brand-signals.mjs';
+import { rankDiscoveredLinks } from '../../../scripts/scan-site.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -143,6 +144,91 @@ async function main() {
       ctaCandidates: signals.textSamples.ctaCandidates,
       warnings: signals.warnings,
     }, null, 2).replace(/\n/g, '\n  ')}`);
+  }
+
+  // ---- rankDiscoveredLinks tests (v0.6 multi-page crawl scaffolding) ----
+  console.log(`\n=== rankDiscoveredLinks (v0.6) ===`);
+  const base = 'https://example.com';
+
+  // Case 1: typical nav with about + pricing + blog + services
+  {
+    const hrefs = [
+      '/',
+      '/about',
+      '/pricing',
+      '/blog',
+      '/services',
+      '/login',            // unmatched - should be dropped
+      '#hero',             // anchor - dropped
+      'mailto:a@b.com',    // scheme - dropped
+      'https://twitter.com/x', // external - dropped
+    ];
+    const ranked = rankDiscoveredLinks(hrefs, base);
+    total += 2;
+    passed += check(
+      'ranked returns 2 paths',
+      ranked.length === 2,
+      `got ${ranked.length}: ${JSON.stringify(ranked)}`,
+    );
+    passed += check(
+      'priority 1 (/about) comes first, priority 2 (/pricing) second',
+      ranked[0] === '/about' && ranked[1] === '/pricing',
+      `got ${JSON.stringify(ranked)}`,
+    );
+  }
+
+  // Case 2: /about-us variant + /team both priority 1 — dedup + top 2
+  {
+    const hrefs = ['/about-us', '/team', '/pricing', '/services'];
+    const ranked = rankDiscoveredLinks(hrefs, base);
+    total += 1;
+    const bothPriority1 = ranked.includes('/about-us') && ranked.includes('/team');
+    passed += check(
+      'both priority-1 paths selected (about-us + team) before lower priorities',
+      bothPriority1 && ranked.length === 2,
+      `got ${JSON.stringify(ranked)}`,
+    );
+  }
+
+  // Case 3: no matches -> empty array, never crashes
+  {
+    const hrefs = ['/login', '/signup', '/dashboard', '#x'];
+    const ranked = rankDiscoveredLinks(hrefs, base);
+    total += 1;
+    passed += check(
+      'returns [] when no priority paths present',
+      Array.isArray(ranked) && ranked.length === 0,
+      `got ${JSON.stringify(ranked)}`,
+    );
+  }
+
+  // Case 4: absolute URLs from the same host are accepted; external hosts rejected
+  {
+    const hrefs = [
+      'https://example.com/about',
+      'https://example.com/pricing',
+      'https://other.com/about',
+    ];
+    const ranked = rankDiscoveredLinks(hrefs, base);
+    total += 1;
+    passed += check(
+      'absolute same-host URLs normalized; cross-host rejected',
+      ranked.length === 2 && ranked[0] === '/about' && ranked[1] === '/pricing',
+      `got ${JSON.stringify(ranked)}`,
+    );
+  }
+
+  // Case 5: duplicates are deduped
+  {
+    const hrefs = ['/about', '/about', '/about/', '/blog', '/blog'];
+    const ranked = rankDiscoveredLinks(hrefs, base);
+    total += 1;
+    const aboutCount = ranked.filter((p) => p.startsWith('/about')).length;
+    passed += check(
+      'duplicates deduped (only one /about variant kept per path)',
+      aboutCount <= 1 && ranked.includes('/blog'),
+      `got ${JSON.stringify(ranked)}`,
+    );
   }
 
   console.log(`\n=== ${passed}/${total} checks passed ===`);
