@@ -34,15 +34,22 @@ Restart Claude Code. `/node-carousel:setup` should appear in the command palette
 ## Quick start
 
 ```bash
-# 1. Configure your brand (one-time — writes brand-profile.json to cwd)
+# 1a. Auto-detect brand from your website (NEW in v0.5 — fastest path)
+/node-carousel:scan https://yourbrand.com
+#    Or bring reference carousels for style matching:
+/node-carousel:scan https://yourbrand.com --references ./my-carousels/
+
+# 1b. OR configure brand manually via wizard
 /node-carousel:setup
 
 # 2. Generate a carousel
 /node-carousel:generate 5 signs your AI automation is over-engineered
 
-# 3. Export PNGs (optional — requires Playwright, bundled)
+# 3. Export PNGs (optional — requires Puppeteer, bundled)
 /node-carousel:export
 ```
+
+**v0.5 adds `/node-carousel:scan`** — point it at your site, it takes a Playwright screenshot, extracts fonts + colors from CSS, optionally reads 3–5 of your existing carousel images via Claude's native vision, then synthesizes a `brand-profile.json` that matches your existing visual language. Picks the closest of 6 aesthetic presets with weighted confidence scoring; falls back to the manual wizard if the scan is low-confidence.
 
 Outputs land in `./output/<topic-slug>/`:
 
