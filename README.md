@@ -63,6 +63,8 @@ Restart Claude Code. `/node-carousel:setup` should appear in the command palette
 
 **v0.5 adds `/node-carousel:scan`** — point it at your site, it takes a Playwright screenshot, extracts fonts + colors from CSS, optionally reads 3–5 of your existing carousel images via Claude's native vision, then synthesizes a `brand-profile.json` that matches your existing visual language. Picks the closest of 6 aesthetic presets with weighted confidence scoring; falls back to the manual wizard if the scan is low-confidence.
 
+For a plain-English guide to scan confidence scores, see [`docs/confidence-guide.md`](docs/confidence-guide.md).
+
 ### Optional: BrandFetch API key (free tier = 100 requests/month)
 
 For sharper brand data on well-known brands, set your BrandFetch API key before running `/node-carousel:scan`:

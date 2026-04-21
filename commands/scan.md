@@ -102,7 +102,8 @@ Read `./.brand-scan/scan.json`. If:
 - `scan.colors.confidence < 0.5` → warn the user:
   > Scan confidence was low (<0.5). The auto-detected colors/fonts may be
   > off. You can proceed and tweak in the edit loop, or bail with
-  > `/node-carousel:setup`.
+  > `/node-carousel:setup`. See `docs/confidence-guide.md` for what to do
+  > at your confidence level.
   Offer to proceed (y) or bail (n). Default y (the edit loop gives them
   a chance to fix it).
 - `scan.warnings` has entries — surface them to the user as a plain list
