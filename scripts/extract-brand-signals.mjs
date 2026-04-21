@@ -477,6 +477,111 @@ function extractFirstTag(html, tag) {
   return m ? stripTags(m[1]) : null;
 }
 
+/**
+ * Extract rich text content for downstream voice/niche analysis (v0.6 Task E.1).
+ *
+ * Shape:
+ *   {
+ *     headings: string[],       // up to 20 h1/h2/h3 texts in DOM order
+ *     mainText: string,          // first 500 words of <main> or largest content block
+ *     ctas: string[],            // button + short-anchor text, up to 60 chars
+ *     metaDescription: string,   // meta[name=description] content (or empty string)
+ *   }
+ *
+ * Deliberately duplicates some of what textSamples.ctaCandidates captures —
+ * the voice-analysis prompt consumes textContent in isolation and shouldn't
+ * have to stitch multiple fields together.
+ */
+function extractTextContent(html) {
+  if (!html) {
+    return { headings: [], mainText: '', ctas: [], metaDescription: '' };
+  }
+
+  // --- headings ---
+  const headings = [];
+  const headingRe = /<(h[123])\b[^>]*>([\s\S]*?)<\/\1>/gi;
+  let hMatch;
+  while ((hMatch = headingRe.exec(html)) !== null) {
+    const txt = stripTags(hMatch[2]);
+    if (txt) headings.push(txt);
+    if (headings.length >= 20) break;
+  }
+
+  // --- mainText ---
+  // Strategy: first try <main>; if missing/empty, look for <article>; then a
+  // div whose class contains content|main|article|body; finally the whole
+  // <body> minus header/nav/footer noise.
+  const extractBlockText = (blockHtml) => {
+    if (!blockHtml) return '';
+    // Strip header/nav/footer/script/style before flattening.
+    const scrubbed = blockHtml
+      .replace(/<(script|style|noscript|header|nav|footer)\b[^>]*>[\s\S]*?<\/\1>/gi, ' ');
+    return stripTags(scrubbed);
+  };
+
+  let mainText = '';
+  const mainMatch = html.match(/<main\b[^>]*>([\s\S]*?)<\/main>/i);
+  if (mainMatch) {
+    mainText = extractBlockText(mainMatch[1]);
+  }
+  if (!mainText) {
+    const articleMatch = html.match(/<article\b[^>]*>([\s\S]*?)<\/article>/i);
+    if (articleMatch) mainText = extractBlockText(articleMatch[1]);
+  }
+  if (!mainText) {
+    // Find all divs whose class hints at content/main/article/body and pick
+    // the one with the longest flattened text. Case-insensitive match handles
+    // CSS-module-mangled names like "CssModules_mainContent__abc123".
+    const divRe = /<div\b[^>]*class\s*=\s*["']([^"']*)["'][^>]*>([\s\S]*?)<\/div>/gi;
+    let divMatch;
+    let bestLen = 0;
+    let bestText = '';
+    const classRe = /content|main|article|body/i;
+    while ((divMatch = divRe.exec(html)) !== null) {
+      if (!classRe.test(divMatch[1])) continue;
+      const txt = extractBlockText(divMatch[2]);
+      if (txt.length > bestLen) {
+        bestLen = txt.length;
+        bestText = txt;
+      }
+    }
+    mainText = bestText;
+  }
+  if (!mainText) {
+    const bodyMatch = html.match(/<body\b[^>]*>([\s\S]*?)<\/body>/i);
+    if (bodyMatch) mainText = extractBlockText(bodyMatch[1]);
+  }
+
+  if (mainText) {
+    const words = mainText.split(/\s+/).filter(Boolean).slice(0, 500);
+    mainText = words.join(' ');
+  }
+
+  // --- ctas ---
+  const ctaSet = new Set();
+  const ctaRes = [
+    /<button\b[^>]*>([\s\S]*?)<\/button>/gi,
+    /<a\b[^>]*>([\s\S]*?)<\/a>/gi,
+  ];
+  for (const re of ctaRes) {
+    let match;
+    while ((match = re.exec(html)) !== null) {
+      const txt = stripTags(match[1]);
+      if (!txt) continue;
+      if (txt.length < 3 || txt.length > 60) continue;
+      if (/^https?:\/\//i.test(txt)) continue;
+      ctaSet.add(txt);
+    }
+  }
+  const ctas = [...ctaSet];
+
+  // --- metaDescription ---
+  const meta = extractMeta(html);
+  const metaDescription = meta.description || '';
+
+  return { headings, mainText, ctas, metaDescription };
+}
+
 function extractTextSamples(html) {
   const heroHeadline = extractFirstTag(html, 'h1');
   // heroSubheadline: first <h2>, else first <p> with >40 chars
@@ -613,6 +718,9 @@ export function extractSignals(input) {
   // --- text samples ---
   const textSamples = extractTextSamples(html);
 
+  // --- text content (v0.6 Task E.1 — for voice/niche analysis) ---
+  const textContent = extractTextContent(html);
+
   // --- warnings ---
   warnings.push(...jsRenderedWarnings);
   if (!fonts.display) warnings.push('Could not detect display font');
@@ -627,6 +735,7 @@ export function extractSignals(input) {
     colors,
     meta,
     textSamples,
+    textContent,
     warnings,
   };
 }
@@ -643,6 +752,7 @@ export const __testing = {
   extractAllFontFaces,
   extractMeta,
   extractTextSamples,
+  extractTextContent,
   scoreConfidence,
   deltaE76,
   clusterColors,

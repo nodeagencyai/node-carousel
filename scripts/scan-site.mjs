@@ -465,6 +465,44 @@ export function mergeSignals(perPage, homepagePath) {
     pageHeadlines,
   };
 
+  // --- Text content (v0.6 Task E.1) ---
+  // headings: concat across all pages (homepage first), dedupe, cap at 30.
+  // mainText + metaDescription: homepage wins (per-page copies live inside perPage).
+  // ctas: concat across all pages, dedupe, cap at 15.
+  const MAX_HEADINGS = 30;
+  const MAX_CTAS = 15;
+  const headingsSeen = new Set();
+  const mergedHeadings = [];
+  const ctasSeen = new Set();
+  const mergedCtas = [];
+  for (const p of orderedPaths) {
+    const tc = perPage[p]?.textContent;
+    if (!tc) continue;
+    for (const h of tc.headings || []) {
+      if (typeof h !== 'string') continue;
+      const key = h.trim();
+      if (!key || headingsSeen.has(key)) continue;
+      headingsSeen.add(key);
+      mergedHeadings.push(h);
+      if (mergedHeadings.length >= MAX_HEADINGS) break;
+    }
+    for (const c of tc.ctas || []) {
+      if (typeof c !== 'string') continue;
+      const key = c.trim().toLowerCase();
+      if (!key || ctasSeen.has(key)) continue;
+      ctasSeen.add(key);
+      mergedCtas.push(c);
+      if (mergedCtas.length >= MAX_CTAS) break;
+    }
+    if (mergedHeadings.length >= MAX_HEADINGS && mergedCtas.length >= MAX_CTAS) break;
+  }
+  const textContent = {
+    headings: mergedHeadings,
+    mainText: home?.textContent?.mainText ?? '',
+    ctas: mergedCtas,
+    metaDescription: home?.textContent?.metaDescription ?? '',
+  };
+
   // --- Warnings: tag non-homepage warnings with page path. ---
   const warnings = [];
   for (const p of paths) {
@@ -476,7 +514,7 @@ export function mergeSignals(perPage, homepagePath) {
     }
   }
 
-  return { fonts, colors, meta, textSamples, warnings };
+  return { fonts, colors, meta, textSamples, textContent, warnings };
 }
 
 // ---------------- Orchestration ----------------
@@ -622,6 +660,7 @@ async function attemptScan({ puppeteer, url, outDir, headless, warnings }) {
         colors: merged.colors,
         meta: merged.meta,
         textSamples: merged.textSamples,
+        textContent: merged.textContent,
         warnings: merged.warnings,
         // Only surface paths for screenshots that actually wrote to disk;
         // writing heroPath/fullPath unconditionally pointed consumers at
@@ -769,6 +808,7 @@ async function main() {
     colors: { background: null, text: null, accent: null, allColors: [], confidence: 0 },
     meta: { title: null, description: null, ogImage: null },
     textSamples: { heroHeadline: null, heroSubheadline: null, ctaCandidates: [], pageHeadlines: {} },
+    textContent: { headings: [], mainText: '', ctas: [], metaDescription: '' },
     warnings: [...warnings, result.reason],
   };
   const failureLogo = { type: 'none', warning: 'No logo found' };
@@ -784,6 +824,7 @@ async function main() {
     colors: emptySignals.colors,
     meta: emptySignals.meta,
     textSamples: emptySignals.textSamples,
+    textContent: emptySignals.textContent,
     warnings: emptySignals.warnings,
     screenshots: { hero: null, full: null },
     logo: failureLogo,

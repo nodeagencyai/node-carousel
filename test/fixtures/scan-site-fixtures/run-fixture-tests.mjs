@@ -146,6 +146,28 @@ async function main() {
       `got ${colors.confidence}`,
     );
 
+    // --- v0.6 Task E.1 — textContent extraction ---
+    const tc = signals.textContent || {};
+    total += 1;
+    passed += check(
+      'textContent.headings has ≥1 entry',
+      Array.isArray(tc.headings) && tc.headings.length >= 1,
+      `got ${tc.headings ? tc.headings.length : 'none'}: ${JSON.stringify((tc.headings || []).slice(0, 3))}`,
+    );
+
+    // tech-dark is the richest fixture with a full <main> block — sanity
+    // check that mainText actually picks up meaningful copy. We don't assert
+    // this on every fixture because voice analysis consumes mainText at
+    // runtime and doesn't require deterministic strings.
+    if (fx.file === 'tech-dark.html') {
+      total += 1;
+      passed += check(
+        'textContent.mainText is non-empty on tech-dark',
+        typeof tc.mainText === 'string' && tc.mainText.length > 20,
+        `got ${(tc.mainText || '').slice(0, 80)}${(tc.mainText || '').length > 80 ? '…' : ''}`,
+      );
+    }
+
     console.log(`\n  --- sample output ---`);
     console.log(`  ${JSON.stringify({
       fonts: { display: fonts.display, body: fonts.body, displaySource: fonts.displaySource, bodySource: fonts.bodySource },
