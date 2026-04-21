@@ -1219,7 +1219,7 @@ async function main() {
     const outDir = mkdtempSync(join(tmpdir(), 'carousel-logo-1-'));
     try {
       const result = await extractLogoFromSignals(signals, outDir, 'https://example.com/', { fetchFn: dummyFetch });
-      total += 3;
+      total += 4;
       passed += check(
         'inline-svg fixture → type === "inline-svg"',
         result && result.type === 'inline-svg',
@@ -1236,6 +1236,12 @@ async function main() {
         written.includes('class="site-logo"'),
         `got ${written.slice(0, 60)}...`,
       );
+      // v0.7 B.5: class-match inline-svg is the preferred branch → fallback: false
+      passed += check(
+        'inline-svg fixture → fallback === false (class-match is preferred branch)',
+        result.fallback === false,
+        `got fallback=${result?.fallback}`,
+      );
     } finally {
       rmSync(outDir, { recursive: true, force: true });
     }
@@ -1248,7 +1254,7 @@ async function main() {
     const outDir = mkdtempSync(join(tmpdir(), 'carousel-logo-2-'));
     try {
       const result = await extractLogoFromSignals(signals, outDir, 'https://mycompany.com/', { fetchFn: dummyFetch });
-      total += 3;
+      total += 4;
       passed += check(
         'img fixture → type === "img"',
         result && result.type === 'img',
@@ -1264,21 +1270,29 @@ async function main() {
         result.crossOrigin === true,
         `got ${result?.crossOrigin}`,
       );
+      // v0.7 B.5: img branch is still priority 2, no earlier branch was
+      // skipped; fallback: false.
+      passed += check(
+        'img fixture → fallback === false (alt=logo match is preferred branch)',
+        result.fallback === false,
+        `got fallback=${result?.fallback}`,
+      );
     } finally {
       rmSync(outDir, { recursive: true, force: true });
     }
   }
 
-  // --- Case 3: favicon-only.html → type:'favicon' ---
-  // (v0.7 B.5 adds a `fallback: true` flag; not present in current shape so we
-  // just assert type here — the B.5 task will extend this check.)
+  // --- Case 3: favicon-only.html → type:'favicon', fallback:true ---
+  // v0.7 B.5: reaching the favicon branch means inline-svg + img both missed,
+  // so the descriptor now carries fallback: true. The synthesizer uses this
+  // to downgrade logo confidence and write source: "favicon-fallback".
   {
     const html = readFileSync(join(logoFixturesDir, 'favicon-only.html'), 'utf8');
     const signals = htmlToSignals(html, 'https://example.com/');
     const outDir = mkdtempSync(join(tmpdir(), 'carousel-logo-3-'));
     try {
       const result = await extractLogoFromSignals(signals, outDir, 'https://example.com/', { fetchFn: dummyFetch });
-      total += 2;
+      total += 3;
       passed += check(
         'favicon-only fixture → type === "favicon"',
         result && result.type === 'favicon',
@@ -1288,6 +1302,11 @@ async function main() {
         'favicon-only fixture → sourceUrl resolves to https://example.com/favicon.ico',
         result.sourceUrl === 'https://example.com/favicon.ico',
         `got ${result?.sourceUrl}`,
+      );
+      passed += check(
+        'favicon-only fixture → fallback === true (reached after inline-svg + img missed)',
+        result.fallback === true,
+        `got fallback=${result?.fallback}`,
       );
     } finally {
       rmSync(outDir, { recursive: true, force: true });

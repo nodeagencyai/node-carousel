@@ -680,6 +680,56 @@ When a logo source is picked, set:
 - `size` defaults to `48` (px). Renderer scales proportionally.
 - Field is named `file` (not `path`) to match the brand-profile schema.
 
+#### Logo fallback confidence (v0.7 B.5)
+
+`scan.logo` carries a `fallback: boolean` field that signals pipeline
+depth. `fallback: true` means the extractor reached that branch only
+after the preferred branches missed — e.g. a favicon pulled after
+inline-svg AND img both turned up nothing, or a positional-SVG grabbed
+after no `class="logo"` match existed. `fallback: false` means the
+preferred branch for that type won on first try (a real `class="logo"`
+SVG, an `alt="logo"` img, or a header/nav img).
+
+Apply this confidence rule BEFORE the BrandFetch-vs-scan precedence above:
+
+1. **If BrandFetch has a real logo** (`scan.brandfetch.data.logos` has a
+   `type === 'logo'` entry), prefer BrandFetch over ANY scan logo —
+   including fallback: false scan logos. BrandFetch is hand-curated and
+   is strictly more authoritative.
+2. **If `scan.logo.fallback === true`**, treat the logo as LOW
+   confidence. When picked, also write:
+
+   ```json
+   "visual": {
+     "logo": {
+       "file": "<path>",
+       "position": "top-right",
+       "size": 48,
+       "source": "favicon-fallback"
+     }
+   }
+   ```
+
+   The `source` field is optional and only present when the scan fell
+   through to a fallback branch. Valid values: `"favicon-fallback"`
+   (type `favicon` with `fallback: true`), `"positional-svg-fallback"`
+   (inline-svg via positional match). Downstream render logic is
+   unchanged — the renderer reads `file` and ignores `source`; the flag
+   exists for human auditing + future auto-regen heuristics.
+3. **Emit a resolution note** when a fallback logo wins:
+
+   ```json
+   "resolution": {
+     "logo": {
+       "from": "scan-fallback",
+       "reason": "site exposed no real logo markup; using favicon (16x16 or similar) — expect low-fidelity logo rendering"
+     }
+   }
+   ```
+
+   Add a warning to the synthesizer's `warnings` array so the user
+   knows the rendered carousel may not look polished in the logo corner.
+
 ### visual.dimensions
 
 Always `{ "width": 1080, "height": 1350 }`. Never change this.

@@ -1478,12 +1478,19 @@ async function runScan({ url, outArg, outDir, mergeWithPath, forcedPreset }) {
     console.log(`  display:    ${result.payload.merged.fonts.display} (${result.payload.merged.fonts.displaySource})`);
     console.log(`  body:       ${result.payload.merged.fonts.body} (${result.payload.merged.fonts.bodySource})`);
     console.log(`  confidence: ${result.payload.merged.colors.confidence}`);
-    const logoDesc = result.payload.logo
-      ? (result.payload.logo.type === 'none'
-        ? 'none'
-        : `${result.payload.logo.type} → ${result.payload.logo.path}`)
-      : 'none';
-    console.log(`  logo:       ${logoDesc}`);
+    // v0.7 B.5 (audit I5): differentiate real logos from fallback favicons in
+    // the CLI log. `fallback: true` means we reached this branch only after
+    // the preferred branches missed (e.g. favicon after inline-svg + img both
+    // failed). Users need to know when the "logo" on disk is a 16x16 favicon
+    // so they don't expect magazine-cover-quality output.
+    const logo = result.payload.logo;
+    if (!logo || logo.type === 'none') {
+      console.log('  logo:       none (no logo detected)');
+    } else if (logo.fallback) {
+      console.log(`  logo:       ${logo.type} (fallback — no real logo found on page) → ${logo.path}`);
+    } else {
+      console.log(`  logo:       ${logo.type} (real logo) → ${logo.path}`);
+    }
     const bf = result.payload.brandfetch;
     if (bf) {
       if (bf.available && bf.data) {

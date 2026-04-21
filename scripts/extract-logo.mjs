@@ -8,10 +8,18 @@
 //   3. Favicon / apple-touch-icon (<link rel="icon">, then /favicon.ico)
 //
 // Returns one of:
-//   { type: 'inline-svg', path }
-//   { type: 'img',        path, sourceUrl, crossOrigin? }
-//   { type: 'favicon',    path, sourceUrl, crossOrigin? }
+//   { type: 'inline-svg', path, fallback: false|true }
+//   { type: 'img',        path, sourceUrl, crossOrigin?, fallback: false }
+//   { type: 'favicon',    path, sourceUrl, crossOrigin?, fallback: true }
 //   { type: 'none',       warning: 'No logo found' }
+//
+// The `fallback` field (v0.7 B.5) signals pipeline depth, NOT file format.
+// `fallback: false` = explicit win on the preferred branch for this type
+// (inline-svg via class="logo" match, img via alt="logo"/header match).
+// `fallback: true`  = reached this branch only after earlier preferred
+// branches missed (positional-SVG after class-match failed, favicon after
+// both inline-svg AND img missed). Synthesizer treats fallback=true as
+// lower-confidence.
 //
 // extractLogo NEVER throws. All failure modes are non-fatal — the caller can
 // safely `await extractLogo(...)` without a try/catch.
@@ -252,18 +260,18 @@ export async function extractLogoFromSignals(signals, outputDir, baseUrl, opts =
   const { inlineSvg, positionalSvg, imgUrl } = signals || {};
   let { favUrl } = signals || {};
 
-  // ---- 1. Inline SVG ----
+  // ---- 1. Inline SVG (preferred: class="logo" match) ----
   if (inlineSvg && typeof inlineSvg === 'string' && inlineSvg.trim().length > 0) {
     const path = join(outputDir, 'logo.svg');
     try {
       writeFileSync(path, inlineSvg, 'utf8');
-      return { type: 'inline-svg', path };
+      return { type: 'inline-svg', path, fallback: false };
     } catch (err) {
       // Fall through to positional → <img> path if disk write fails.
     }
   }
 
-  // ---- 1b. Positional SVG fallback ----
+  // ---- 1b. Positional SVG fallback (after class-match missed) ----
   if (positionalSvg && typeof positionalSvg === 'string' && positionalSvg.trim().length > 0) {
     const path = join(outputDir, 'logo.svg');
     try {
@@ -271,6 +279,7 @@ export async function extractLogoFromSignals(signals, outputDir, baseUrl, opts =
       return {
         type: 'inline-svg',
         path,
+        fallback: true,
         warning: "[logo] Used positional SVG fallback (no class='logo' marker found)",
       };
     } catch (err) {
@@ -278,7 +287,10 @@ export async function extractLogoFromSignals(signals, outputDir, baseUrl, opts =
     }
   }
 
-  // ---- 2. <img> in header/nav ----
+  // ---- 2. <img> in header/nav (preferred: alt="logo" / header match) ----
+  // Still within the img priority branch — fallback:false even when we got
+  // here via a generic <header a[href="/"] img> selector rather than an
+  // explicit alt match. Synthesizer treats this as a real logo.
   if (imgUrl) {
     try {
       const buffer = await fetchFn(imgUrl);
@@ -286,7 +298,7 @@ export async function extractLogoFromSignals(signals, outputDir, baseUrl, opts =
       const path = join(outputDir, `logo.${ext}`);
       writeFileSync(path, buffer);
       const crossOrigin = isCrossOrigin(imgUrl, baseUrl);
-      const result = { type: 'img', path, sourceUrl: imgUrl };
+      const result = { type: 'img', path, sourceUrl: imgUrl, fallback: false };
       if (crossOrigin) result.crossOrigin = true;
       return result;
     } catch (err) {
@@ -294,7 +306,10 @@ export async function extractLogoFromSignals(signals, outputDir, baseUrl, opts =
     }
   }
 
-  // ---- 3. Favicon / apple-touch-icon ----
+  // ---- 3. Favicon / apple-touch-icon (after inline + img both missed) ----
+  // Reaching this branch means the prior preferred branches had nothing — the
+  // site does not expose a real logo on the page. Mark fallback:true so the
+  // synthesizer can downgrade logo confidence.
   // Belt-and-braces default: if collector returned null, still try /favicon.ico.
   if (!favUrl) {
     try {
@@ -309,7 +324,7 @@ export async function extractLogoFromSignals(signals, outputDir, baseUrl, opts =
     const path = join(outputDir, `favicon.${ext}`);
     writeFileSync(path, buffer);
     const crossOrigin = isCrossOrigin(favUrl, baseUrl);
-    const result = { type: 'favicon', path, sourceUrl: favUrl };
+    const result = { type: 'favicon', path, sourceUrl: favUrl, fallback: true };
     if (crossOrigin) result.crossOrigin = true;
     return result;
   } catch (err) {
