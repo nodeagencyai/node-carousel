@@ -34,6 +34,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { extractSignals, clusterColors } from './extract-brand-signals.mjs';
+import { extractLogo } from './extract-logo.mjs';
 
 const PAGE_TIMEOUT_MS = 15000;       // per-page goto timeout
 const TOTAL_WALL_CLOCK_MS = 45000;   // whole scan soft-cap (plan said 20s total, which is too tight with 3 pages; 15s/page x 3 + headroom)
@@ -535,6 +536,21 @@ async function attemptScan({ puppeteer, url, outDir, headless, warnings }) {
 
       screenshotPaths = homeResult.screenshotPaths || { hero: null, full: null };
 
+      // Logo extraction runs once, on the homepage — the logo almost always
+      // lives in the header or masthead and rarely differs across sub-pages.
+      // extractLogo is engineered to never throw; we still wrap defensively so
+      // future refactors can't turn a logo failure into a whole-scan abort.
+      let logo = { type: 'none', warning: 'No logo found' };
+      try {
+        logo = await extractLogo(homepagePage, outDir, url);
+      } catch (err) {
+        warnings.push(`logo extraction failed: ${err?.message || err}`);
+        logo = { type: 'none', warning: 'No logo found' };
+      }
+      if (logo?.crossOrigin && logo?.sourceUrl) {
+        warnings.push(`logo fetched cross-origin from ${logo.sourceUrl}`);
+      }
+
       const perPage = {};
       perPage[homepagePath] = homeResult.signals;
 
@@ -590,6 +606,11 @@ async function attemptScan({ puppeteer, url, outDir, headless, warnings }) {
       // array into merged.warnings so they surface to the consumer.
       merged.warnings = [...merged.warnings, ...warnings.filter((w) => !merged.warnings.includes(w))];
 
+      // Mirror the logo descriptor into merged so downstream consumers that
+      // only look at `merged.*` (ignoring the top-level backwards-compat
+      // mirror) still see it.
+      merged.logo = logo;
+
       const payload = {
         url,
         scannedAt: new Date().toISOString(),
@@ -609,6 +630,7 @@ async function attemptScan({ puppeteer, url, outDir, headless, warnings }) {
           hero: screenshotPaths.hero,
           full: screenshotPaths.full,
         },
+        logo,
       };
 
       return { ok: true, payload };
@@ -653,6 +675,7 @@ async function main() {
       perPage: {},
       merged: null,
       screenshots: { hero: null, full: null },
+      logo: { type: 'none', warning: 'No logo found' },
     });
     process.exit(0);
     return;
@@ -725,6 +748,12 @@ async function main() {
     console.log(`  display:    ${result.payload.merged.fonts.display} (${result.payload.merged.fonts.displaySource})`);
     console.log(`  body:       ${result.payload.merged.fonts.body} (${result.payload.merged.fonts.bodySource})`);
     console.log(`  confidence: ${result.payload.merged.colors.confidence}`);
+    const logoDesc = result.payload.logo
+      ? (result.payload.logo.type === 'none'
+        ? 'none'
+        : `${result.payload.logo.type} → ${result.payload.logo.path}`)
+      : 'none';
+    console.log(`  logo:       ${logoDesc}`);
     if (result.payload.merged.warnings.length) {
       console.log(`  warnings:   ${result.payload.merged.warnings.length}`);
       for (const w of result.payload.merged.warnings) console.log(`    - ${w}`);
@@ -742,6 +771,8 @@ async function main() {
     textSamples: { heroHeadline: null, heroSubheadline: null, ctaCandidates: [], pageHeadlines: {} },
     warnings: [...warnings, result.reason],
   };
+  const failureLogo = { type: 'none', warning: 'No logo found' };
+  emptySignals.logo = failureLogo;
   writeScan(outDir, {
     url,
     scannedAt,
@@ -755,6 +786,7 @@ async function main() {
     textSamples: emptySignals.textSamples,
     warnings: emptySignals.warnings,
     screenshots: { hero: null, full: null },
+    logo: failureLogo,
   });
   process.exit(0);
 }
