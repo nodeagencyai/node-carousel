@@ -66,6 +66,20 @@ function stripQuotes(s) {
  *   - a full declaration block (font-family: "Satoshi", ...; color: #fff;)
  *     in which case we'll pull the font-family property first.
  */
+// Generic / fallback CSS font families — these are NOT real brand typefaces,
+// so they should be excluded from primary font selection AND from the
+// typographic-diversity bonus in scoreConfidence.
+const GENERIC_FONT_FAMILIES = new Set([
+  'sans-serif', 'serif', 'monospace', 'system-ui', 'cursive', 'fantasy',
+  'ui-serif', 'ui-sans-serif', 'ui-monospace', 'ui-rounded',
+  '-apple-system', 'blinkmacsystemfont',
+]);
+
+function isGenericFontFamily(family) {
+  if (!family) return true;
+  return GENERIC_FONT_FAMILIES.has(String(family).toLowerCase());
+}
+
 function firstFamily(value) {
   if (!value) return null;
   let src = String(value);
@@ -77,8 +91,7 @@ function firstFamily(value) {
   const raw = src.split(',')[0];
   const cleaned = stripQuotes(raw);
   // Reject generic CSS families as primary.
-  const generics = new Set(['sans-serif', 'serif', 'monospace', 'system-ui', 'cursive', 'fantasy', 'ui-serif', 'ui-sans-serif', 'ui-monospace', 'ui-rounded', '-apple-system', 'blinkmacsystemfont']);
-  if (generics.has(cleaned.toLowerCase())) return null;
+  if (isGenericFontFamily(cleaned)) return null;
   return cleaned || null;
 }
 
@@ -370,22 +383,43 @@ function pickRoles(ranked, hints = {}) {
 }
 
 /**
- * Rough confidence in the color detection:
- * - Base 0.4 if we have a background
- * - +0.2 if we also have a text
- * - +0.2 if we found at least one saturated accent
- * - +0.2 if background+text contrast is strong (>0.5 luminance delta)
+ * Weighted, proportional confidence in the overall brand extraction.
+ *
+ * Core color + font signals sum to 90 points; small bonuses for looking
+ * like a real designed brand (distinct-but-not-too-many colors/fonts) add
+ * up to 10. We cap at 1.0 and apply a 0.85x penalty for JS-rendered sites
+ * where we may have missed dynamically-loaded styles.
+ *
+ * Realistic output:
+ *   - well-designed brand site with static CSS → 0.85–0.95
+ *   - JS-heavy site                             → 0.6–0.8
+ *   - scrappy site with inline styles only     → 0.5–0.7
  */
-function computeConfidence({ background, text, accent }) {
-  let c = 0;
-  if (background) c += 0.4;
-  if (text) c += 0.2;
-  if (accent) c += 0.2;
-  if (background && text) {
-    const delta = Math.abs(luminance(background) - luminance(text));
-    if (delta > 0.5) c += 0.2;
-  }
-  return Math.round(c * 100) / 100;
+function scoreConfidence({
+  hasBackground,
+  hasText,
+  hasAccent,
+  hasDisplayFont,
+  hasBodyFont,
+  uniqueColors,
+  fontFaceCount,
+  hasJsRenderedWarning,
+}) {
+  let score = 0;
+  if (hasBackground) score += 20;
+  if (hasText) score += 15;
+  if (hasAccent) score += 20;
+  if (hasDisplayFont) score += 20;
+  if (hasBodyFont) score += 15;
+
+  // Bonus: "looks like a real designed brand" — 2-6 distinct colors + 2-4 fonts.
+  if (uniqueColors >= 2 && uniqueColors <= 6) score += 5;
+  if (fontFaceCount >= 2 && fontFaceCount <= 4) score += 5;
+
+  // Penalty: JS-heavy sites may have styles we couldn't see.
+  if (hasJsRenderedWarning) score = Math.round(score * 0.85);
+
+  return Math.min(1.0, Math.round(score) / 100);
 }
 
 // ---------- Meta & text-sample parsing ----------
@@ -543,7 +577,27 @@ export function extractSignals(input) {
   const hintedText = firstDeclaredColor(computedStyles.body, 'color');
 
   const roles = pickRoles(ranked, { background: hintedBg, text: hintedText });
-  const confidence = computeConfidence(roles);
+
+  // Detect JS-rendered hint before scoring so confidence can apply the penalty.
+  const jsRenderedWarnings = detectJsRendered(html);
+  const hasJsRenderedWarning = jsRenderedWarnings.length > 0;
+
+  // Count only "real" (named) font families toward the diversity bonus —
+  // generic CSS fallbacks (sans-serif, system-ui, -apple-system, etc.) don't
+  // represent a designer's typographic palette, so including them inflates
+  // confidence on sites that only declare one or two real fonts.
+  const brandedFontCount = allFontFaces.filter((f) => !isGenericFontFamily(f)).length;
+
+  const confidence = scoreConfidence({
+    hasBackground: roles.background ? 1 : 0,
+    hasText: roles.text ? 1 : 0,
+    hasAccent: roles.accent ? 1 : 0,
+    hasDisplayFont: fonts.display ? 1 : 0,
+    hasBodyFont: fonts.body ? 1 : 0,
+    uniqueColors: allColors.length,
+    fontFaceCount: brandedFontCount,
+    hasJsRenderedWarning: hasJsRenderedWarning ? 1 : 0,
+  });
 
   const colors = {
     background: roles.background,
@@ -560,7 +614,7 @@ export function extractSignals(input) {
   const textSamples = extractTextSamples(html);
 
   // --- warnings ---
-  warnings.push(...detectJsRendered(html));
+  warnings.push(...jsRenderedWarnings);
   if (!fonts.display) warnings.push('Could not detect display font');
   if (!fonts.body) warnings.push('Could not detect body font');
   if (!colors.background) warnings.push('Could not detect background color');
@@ -589,7 +643,7 @@ export const __testing = {
   extractAllFontFaces,
   extractMeta,
   extractTextSamples,
-  computeConfidence,
+  scoreConfidence,
   deltaE76,
   clusterColors,
 };

@@ -27,7 +27,10 @@ const FIXTURES = [
       background: '#0A0A0A',
       accent: '#C9FF4E',
       textLuminanceLight: true, // text is light against dark bg
-      confidenceMin: 0.7,
+      // Perfect synthetic fixture: all 5 core signals + both diversity bonuses
+      // fire → caps at 1.0. Min is the real guardrail against regressions.
+      confidenceMin: 0.85,
+      confidenceMax: 1.0,
     },
   },
   {
@@ -41,7 +44,8 @@ const FIXTURES = [
       background: '#F4EDE0',
       accent: '#C0623F',
       textLuminanceLight: false, // dark ink on cream
-      confidenceMin: 0.5,
+      confidenceMin: 0.85,
+      confidenceMax: 1.0,
     },
   },
   {
@@ -55,10 +59,17 @@ const FIXTURES = [
       background: '#FFFFFF',
       accent: '#2B5BFF',
       textLuminanceLight: false,
-      confidenceMin: 0.5,
+      // Single-font brand: fonts-diversity bonus doesn't fire → naturally
+      // lands at 0.95 (not 1.0). Narrower band than the other two fixtures.
+      confidenceMin: 0.80,
+      confidenceMax: 0.95,
     },
   },
 ];
+
+function confidenceInRange(actual, min, max) {
+  return typeof actual === 'number' && actual >= min && actual <= max;
+}
 
 function luminance(hex) {
   const s = hex.replace('#', '');
@@ -130,8 +141,8 @@ async function main() {
       `got text=${colors.text} (lum ${colors.text ? luminance(colors.text).toFixed(2) : 'n/a'})`,
     );
     passed += check(
-      `confidence >= ${fx.expect.confidenceMin}`,
-      colors.confidence >= fx.expect.confidenceMin,
+      `confidence in [${fx.expect.confidenceMin}, ${fx.expect.confidenceMax}]`,
+      confidenceInRange(colors.confidence, fx.expect.confidenceMin, fx.expect.confidenceMax),
       `got ${colors.confidence}`,
     );
 
