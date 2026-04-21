@@ -271,6 +271,14 @@ Missing field or missing `logo.file` → no logo rendered (backward compatible w
 
 Logo color defaults to `visual.colors.text` (via the `ON_SURFACE` role) so it reads on both light and dark brand surfaces.
 
+**How `visual.logo` gets populated (v0.6+).** The `/node-carousel:scan` command auto-populates this block when it finds a logo on your site, so you usually don't hand-write it.
+
+- `logo.file` — written by the scan's 4-stage extractor: inline `<svg>` in header → `<img>` logo element → `<link rel="icon">` favicon → apple-touch-icon. File lands in the scan output dir (e.g. `scan-logo.svg`, or `favicon.ico` for the favicon fallback). When BrandFetch augmentation is enabled (`BRANDFETCH_API_KEY` set) and returns a higher-fidelity SVG, that URL is preferred over the self-hosted extraction.
+- `logo.position` — defaults to `"top-right"` in scan-generated profiles (moves out of the way of the kicker at top-left). Override freely.
+- `logo.size` — defaults to `48`. Override freely if the source logo is narrower or wider than a square.
+
+When scan fails to find any logo (rare — the favicon fallback almost always succeeds), the whole `visual.logo` block is omitted and no logo is rendered. You can drop your own SVG in afterwards and set `logo.file` manually.
+
 ### `visual.dimensions` (object, required)
 
 | Field | Type | Required | Default | Notes |

@@ -23,6 +23,18 @@ This one is neither. v0.4 is a **procedural design system** — not a template e
 - **8 compositional patterns, 6 aesthetic presets.** Cover, list (bullet / numbered), stat-dominant, quote-pulled, split-comparison, CTA — each pattern has multiple typographic + background variations. Presets pick from well-known brand languages (Stripe / Linear, NYT, Pentagram, Vercel, Fontshare).
 - **Deterministic seeded sampling across 6 variation axes.** Size (compact / standard / oversized), weight contrast, kicker presence, decoration flavor, background variant, noise texture — each is a controlled axis. The seeded RNG picks a coordinate in that space. Output feels hand-designed but is reproducible and version-controllable.
 
+## What's new in v0.6 — Brand Scan Deep
+
+`/node-carousel:scan` got a major upgrade. v0.5 shipped a single-page scan with basic CSS extraction; v0.6 makes it actually reliable on real sites.
+
+- **Multi-page crawl.** Home page + up to 2 discovered subpages (prioritizes `/about`, `/pricing`, `/team`, `/work`). Font + color signals are merged across pages — one-off hero overrides don't skew the profile anymore.
+- **Logo extraction.** Four-stage fallback chain: inline `<svg>` in header → `<img>` logo → `<link rel="icon">` favicon → apple-touch-icon. Writes `scan-logo.svg` (or `.png`) into the output dir and auto-populates `visual.logo.file`.
+- **Claude-vision screenshot analysis.** Feeds the home screenshot to Claude with a structured prompt that reads visual hierarchy, whitespace discipline, mood, and imagery style. The synthesizer uses these signals to pick the closest preset — no more "all Framer sites get editorial-serif."
+- **Voice + niche classification.** Pulls real page copy (hero, body, CTAs) and asks Claude for a tone description + industry vertical. Goes straight into `brand.tone` and feeds later strategy prompts.
+- **ΔE color clustering.** Perceptual color distance (CIE76) collapses near-duplicates — `#0A0A0A` and `#0B0B0B` stop both showing up as "distinct brand colors." Output is 3–6 genuinely different colors, not 20+ CSS variables.
+- **Recalibrated confidence.** No more fake `1.0`. Real sites land `0.85–0.95`; thin or JS-heavy sites land `0.4–0.7` and honestly say so. The `/scan` command falls back to the manual wizard when confidence is low.
+- **Opt-in BrandFetch augmentation.** Free-tier API key (100 req/mo) sharpens logo + color data for well-known brands. Strictly optional — set `BRANDFETCH_API_KEY` or run fully self-hosted (see below).
+
 ## Install
 
 ```bash
@@ -175,9 +187,8 @@ Yes. Strategy + content generation is well within Haiku's reach. Opus produces s
 **Is the output actually editable?**
 Yes. Every slide is standalone SVG — open in Figma / Illustrator / text editor and hand-tune. `strategy.json` is also editable — change a line, re-run `node scripts/render-v0.4.mjs <paths>` without calling Claude again.
 
-## What's planned (v0.6)
+## What's planned (v0.7+)
 
-- **BrandFetch augmentation** for `/node-carousel:scan` — optional, free-tier API key boosts logo + color accuracy for well-known brands (see Quick start above)
 - **AI-generated background images** via Gemini (optional, falls back to procedural when no API key)
 - **Bundled grunge texture PNGs** for heavier analog-print aesthetics (newsprint, mimeograph, risograph)
 - **Tables + bar-chart patterns** for data-heavy topics
