@@ -397,7 +397,23 @@ async function scanPage({ page, url, outDir, isHomepage, warnings }) {
     warnings.push(`page.content() failed: ${err?.message || err}`);
   }
 
-  let cssBundle = { stylesheetsText: [], body: '', h1: '', button: '', rootVars: '' };
+  let cssBundle = {
+    stylesheetsText: [],
+    body: '',
+    h1: '',
+    button: '',
+    rootVars: '',
+    byContext: {
+      header: null,
+      nav: null,
+      h1: null,
+      body: null,
+      button: null,
+      logo: null,
+      kicker: null,
+      displayEl: null,
+    },
+  };
   try {
     cssBundle = await page.evaluate(() => {
       const out = {
@@ -434,6 +450,56 @@ async function scanPage({ page, url, outDir, isHomepage, warnings }) {
       out.body = snapshotStyle(document.body);
       out.h1 = snapshotStyle(document.querySelector('h1'));
       out.button = snapshotStyle(document.querySelector('button, a.btn, [role="button"]'));
+
+      // v0.7 A.2 — Per-context font extraction. Capture computed styles for
+      // 8 named contexts so extractSignals can build a fonts.byContext map.
+      // Each slot is explicit `null` when the selector found no element, so
+      // downstream can distinguish "checked and nothing found" from "didn't
+      // try". When an element exists but has no font-family override, its
+      // snapshotStyle returns the inherited (body's) font — that's expected
+      // and means no context-specific override was declared.
+      const byContext = {
+        header: null,
+        nav: null,
+        h1: null,
+        body: null,
+        button: null,
+        logo: null,
+        kicker: null,
+        displayEl: null,
+      };
+
+      // Safe querySelector — some selectors might throw on certain edge cases
+      // (invalid attribute syntax etc.); we wrap each independently so one
+      // failure doesn't lose the rest.
+      const safeQuery = (selector) => {
+        try {
+          return document.querySelector(selector);
+        } catch {
+          return null;
+        }
+      };
+
+      const headerEl = safeQuery('header');
+      const navEl = safeQuery('nav');
+      const h1El = document.querySelector('h1');
+      const buttonEl = document.querySelector('a.btn, button, [role="button"]');
+      // Exclude SVG because getComputedStyle on SVGElements is less useful
+      // for font-family and .logo is commonly a wrapper div/span.
+      const logoEl = safeQuery('.logo, [class*="logo" i]:not(svg):not(img)');
+      const kickerEl = safeQuery('.kicker, [class*="kicker" i]');
+      const displayElNode = safeQuery('[class*="display" i]');
+
+      byContext.header = snapshotStyle(headerEl) || null;
+      byContext.nav = snapshotStyle(navEl) || null;
+      byContext.h1 = snapshotStyle(h1El) || null;
+      byContext.body = snapshotStyle(document.body) || null;
+      byContext.button = snapshotStyle(buttonEl) || null;
+      byContext.logo = snapshotStyle(logoEl) || null;
+      byContext.kicker = snapshotStyle(kickerEl) || null;
+      byContext.displayEl = snapshotStyle(displayElNode) || null;
+
+      out.byContext = byContext;
 
       const rootStyle = getComputedStyle(document.documentElement);
       const rootVars = [];
@@ -479,6 +545,7 @@ async function scanPage({ page, url, outDir, isHomepage, warnings }) {
       h1: cssBundle.h1,
       button: cssBundle.button,
       cssDump,
+      byContext: cssBundle.byContext || null,
     },
     url,
   });
@@ -625,12 +692,42 @@ export function mergeSignals(perPage, homepagePath) {
     }
   }
 
+  // v0.7 A.2 — merge fonts.byContext across pages. Homepage wins per-slot
+  // (a site's header/logo font is a whole-site identity decision; the
+  // homepage is the canonical surface for it). Non-homepage pages fill in
+  // gaps only when the homepage value is null, in case the home template
+  // lacks a given element that sub-pages use consistently.
+  const mergedByContext = {};
+  const byContextKeys = new Set();
+  for (const p of paths) {
+    const bc = perPage[p]?.fonts?.byContext;
+    if (bc && typeof bc === 'object') {
+      for (const k of Object.keys(bc)) byContextKeys.add(k);
+    }
+  }
+  // Order: homepage first, then others, so homepage populates each slot first.
+  const byContextOrder = [
+    homepagePath,
+    ...paths.filter((p) => p !== homepagePath),
+  ].filter((p) => perPage[p]);
+  for (const k of byContextKeys) mergedByContext[k] = null;
+  for (const p of byContextOrder) {
+    const bc = perPage[p]?.fonts?.byContext;
+    if (!bc || typeof bc !== 'object') continue;
+    for (const k of byContextKeys) {
+      if (mergedByContext[k] == null && bc[k] != null) {
+        mergedByContext[k] = bc[k];
+      }
+    }
+  }
+
   const fonts = {
     display: display.family,
     body: body.family,
     displaySource: display.source,
     bodySource: body.source,
     allFontFaces,
+    byContext: mergedByContext,
   };
 
   // --- Colors ---
@@ -1118,7 +1215,7 @@ async function main() {
   // Total failure — write an error scan.json but DO NOT crash the caller.
   console.error(`\u2717 scan failed: ${result.reason}`);
   const emptySignals = {
-    fonts: { display: null, body: null, displaySource: 'unknown', bodySource: 'unknown', allFontFaces: [] },
+    fonts: { display: null, body: null, displaySource: 'unknown', bodySource: 'unknown', allFontFaces: [], byContext: {} },
     colors: { background: null, text: null, accent: null, allColors: [], confidence: 0 },
     meta: { title: null, description: null, ogImage: null },
     textSamples: { heroHeadline: null, heroSubheadline: null, ctaCandidates: [], pageHeadlines: {} },

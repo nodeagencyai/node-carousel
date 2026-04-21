@@ -438,11 +438,64 @@ is non-empty:**
 
 ### visual.fonts
 
-- `display` ← `scan.fonts.display` if `displaySource !== "unknown"`. Otherwise
+- `display` ← apply the **Font selection precedence** rule below. Otherwise
   keep preset default and add a warning.
 - `body` ← `scan.fonts.body` if `bodySource !== "unknown"`. Otherwise
   keep preset default.
 - Strip CSS fallbacks (e.g. `"Inter", sans-serif` → `Inter`). Strip quotes.
+
+#### Font selection precedence (v0.7 A.2)
+
+`scan.fonts.display` is derived from the homepage's `<h1>` computed
+font-family. That's a decent default, but header/logo/kicker chips often
+carry the real brand identity font. Apply this 4-level precedence to pick
+`visual.fonts.display`:
+
+1. **Header wins** — if `scan.fonts.byContext.header` exists (non-null)
+   AND differs from `scan.fonts.byContext.h1`, prefer the header font.
+   Rationale: header typography is the most brand-identity-laden surface
+   of the page and is usually distinct when the brand has an opinion.
+2. **Logo context** — else if `scan.fonts.byContext.logo` exists AND
+   differs from `scan.fonts.byContext.h1`, prefer the logo font. The
+   wordmark font is canonical brand identity when it's not the same as
+   body-aligned h1.
+3. **Vision says mono/technical** — else if
+   `vision-analysis.json.observations` / `mood` contains any of
+   `mono`, `monospace`, `technical`, `code-like`, `terminal` AND any
+   value in `scan.fonts.byContext.*` matches a known mono family
+   (`JetBrains Mono`, `Fira Code`, `Space Mono`, `Source Code Pro`,
+   `IBM Plex Mono`, `Geist Mono`), prefer that mono font. Vision pixel
+   analysis often flags "mono-styled" display even when the h1 element
+   inherited a body sans-serif.
+4. **Fall through** — else use `scan.fonts.display` (h1-derived, v0.6
+   behavior).
+
+Always require `displaySource !== "unknown"` on the chosen font; if the
+picked byContext font is unknown-source, fall through to the next level.
+
+#### Concrete example (nodeagency.ai)
+
+- `scan.fonts.display` → `Inter` (from h1)
+- `scan.fonts.byContext.header` → `Inter`
+- `scan.fonts.byContext.logo` → `Inter`
+- `scan.fonts.byContext.kicker` → `JetBrains Mono` (kicker chips)
+- `vision-analysis.observations` → "mono-styled kicker tags over bold
+  display headline"
+
+Rules 1-2 don't fire (header/logo match h1). Rule 3 fires: vision mentions
+"mono-styled" AND `byContext.kicker === "JetBrains Mono"` (mono family)
+→ pick `JetBrains Mono` for `visual.fonts.display`.
+
+Emit a resolution note when this rule fires:
+
+```json
+"resolution": {
+  "displayFont": {
+    "from": "byContext.kicker",
+    "reason": "vision observed 'mono-styled' AND byContext.kicker is JetBrains Mono — Font selection rule 3"
+  }
+}
+```
 
 ### visual.background.type
 

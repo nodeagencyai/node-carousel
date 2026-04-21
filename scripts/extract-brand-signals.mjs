@@ -647,7 +647,7 @@ function detectJsRendered(html) {
 // ---------- Public entrypoint ----------
 
 /**
- * @param {{ html: string, computedStyles?: { body?: string, h1?: string, button?: string, cssDump?: string }, url: string }} input
+ * @param {{ html: string, computedStyles?: { body?: string, h1?: string, button?: string, cssDump?: string, byContext?: Record<string, string|null> }, url: string }} input
  */
 export function extractSignals(input) {
   const { html = '', computedStyles = {}, url } = input;
@@ -666,12 +666,27 @@ export function extractSignals(input) {
   let bodyFamily = firstFamily(computedStyles.body);
   if (!bodyFamily) bodyFamily = firstFamily(computedStyles.button) || allFontFaces[0] || null;
 
+  // v0.7 A.2 — Per-context fonts. scan-site.mjs passes a `byContext` map from
+  // page.evaluate (header/nav/h1/body/button/logo/kicker/displayEl), each
+  // value being either a CSS declaration snapshot or null. firstFamily()
+  // rejects generic families (sans-serif, system-ui, etc.), so a null here
+  // is a genuine "no branded font in this context." We preserve explicit
+  // null so downstream consumers can distinguish "checked and found nothing"
+  // from "didn't try."
+  const byContext = {};
+  if (computedStyles.byContext && typeof computedStyles.byContext === 'object') {
+    for (const [ctx, decl] of Object.entries(computedStyles.byContext)) {
+      byContext[ctx] = decl ? (firstFamily(decl) || null) : null;
+    }
+  }
+
   const fonts = {
     display: displayFamily,
     body: bodyFamily,
     displaySource: classifyFontSource(displayFamily),
     bodySource: classifyFontSource(bodyFamily),
     allFontFaces,
+    byContext,
   };
 
   // --- colors ---

@@ -592,6 +592,126 @@ async function main() {
     }
   }
 
+  // ---- v0.7 Task A.2 — Per-context font extraction ----
+  console.log(`\n=== fonts.byContext (v0.7 A.2) ===`);
+
+  // Feed extractSignals a pre-built computedStyles.byContext object — this
+  // mirrors what scan-site.mjs's page.evaluate returns after the A.2 patch.
+  // Pure-object input keeps the test fast and avoids the brittle CSS-grep
+  // setup the HTML fixtures need.
+  {
+    const byContext = {
+      header: 'font-family: "JetBrains Mono", monospace; font-size: 14px;',
+      nav: 'font-family: "Inter", sans-serif; font-size: 14px;',
+      h1: 'font-family: "Inter", sans-serif; font-size: 48px;',
+      body: 'font-family: "Inter", sans-serif; font-size: 16px;',
+      button: 'font-family: "JetBrains Mono", monospace; font-size: 14px;',
+      logo: 'font-family: "JetBrains Mono", monospace; font-size: 18px;',
+      kicker: 'font-family: "JetBrains Mono", monospace; font-size: 12px;',
+      displayEl: null,
+    };
+    const signals = extractSignals({
+      html: '<h1>Test</h1>',
+      computedStyles: {
+        body: 'font-family: "Inter", sans-serif;',
+        h1: 'font-family: "Inter", sans-serif;',
+        button: 'font-family: "JetBrains Mono", monospace;',
+        cssDump: '',
+        byContext,
+      },
+      url: 'file://byContext-test',
+    });
+
+    total += 5;
+    passed += check(
+      'fonts.byContext is an object',
+      signals.fonts && typeof signals.fonts.byContext === 'object' && signals.fonts.byContext !== null,
+      `got ${JSON.stringify(signals.fonts?.byContext)}`,
+    );
+    passed += check(
+      'fonts.byContext.header = "JetBrains Mono"',
+      signals.fonts.byContext.header === 'JetBrains Mono',
+      `got ${signals.fonts.byContext.header}`,
+    );
+    passed += check(
+      'fonts.byContext.h1 = "Inter"',
+      signals.fonts.byContext.h1 === 'Inter',
+      `got ${signals.fonts.byContext.h1}`,
+    );
+    passed += check(
+      'fonts.byContext.kicker = "JetBrains Mono" (Node-style kicker chips)',
+      signals.fonts.byContext.kicker === 'JetBrains Mono',
+      `got ${signals.fonts.byContext.kicker}`,
+    );
+    // displayEl was null input → should come through as explicit null
+    // so downstream can distinguish "checked" from "not checked."
+    passed += check(
+      'fonts.byContext.displayEl = null (explicit, from null input)',
+      signals.fonts.byContext.displayEl === null,
+      `got ${signals.fonts.byContext.displayEl}`,
+    );
+  }
+
+  // Edge: generic-only declaration (sans-serif) → firstFamily returns null.
+  // Ensures we don't pollute byContext with generic CSS fallbacks.
+  {
+    const byContext = {
+      header: 'font-family: sans-serif;',
+      nav: null,
+      h1: 'font-family: "Inter", sans-serif;',
+      body: 'font-family: "Inter", sans-serif;',
+      button: null,
+      logo: null,
+      kicker: null,
+      displayEl: null,
+    };
+    const signals = extractSignals({
+      html: '<h1>Test</h1>',
+      computedStyles: {
+        body: 'font-family: "Inter", sans-serif;',
+        h1: 'font-family: "Inter", sans-serif;',
+        button: '',
+        cssDump: '',
+        byContext,
+      },
+      url: 'file://byContext-generic-test',
+    });
+    total += 2;
+    passed += check(
+      'fonts.byContext.header = null when declaration is generic-only (sans-serif)',
+      signals.fonts.byContext.header === null,
+      `got ${signals.fonts.byContext.header}`,
+    );
+    passed += check(
+      'fonts.byContext.h1 = "Inter" (real family picked over generic fallback)',
+      signals.fonts.byContext.h1 === 'Inter',
+      `got ${signals.fonts.byContext.h1}`,
+    );
+  }
+
+  // No byContext passed at all — should still produce an empty object,
+  // not undefined, so downstream can always iterate/read safely.
+  {
+    const signals = extractSignals({
+      html: '<h1>Test</h1>',
+      computedStyles: {
+        body: 'font-family: "Inter", sans-serif;',
+        h1: 'font-family: "Inter", sans-serif;',
+        button: '',
+        cssDump: '',
+      },
+      url: 'file://byContext-missing-test',
+    });
+    total += 1;
+    passed += check(
+      'fonts.byContext = {} when computedStyles.byContext absent (defensive)',
+      signals.fonts && typeof signals.fonts.byContext === 'object'
+        && signals.fonts.byContext !== null
+        && Object.keys(signals.fonts.byContext).length === 0,
+      `got ${JSON.stringify(signals.fonts?.byContext)}`,
+    );
+  }
+
   console.log(`\n=== ${passed}/${total} checks passed ===`);
   process.exit(passed === total ? 0 : 1);
 }
