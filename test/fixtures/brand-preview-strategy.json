@@ -1,0 +1,22 @@
+{
+  "topic": "Brand preview",
+  "slides": [
+    {
+      "pattern": "cover-asymmetric",
+      "data": {
+        "KICKER": "BRAND PREVIEW",
+        "HEADLINE_LINE_1": "Your brand",
+        "HEADLINE_LINE_2": "in motion",
+        "BRAND_HANDLE": "@yourbrand"
+      }
+    },
+    {
+      "pattern": "stat-dominant",
+      "data": {
+        "STAT_VALUE": "1",
+        "STAT_LABEL": "proposed brand profile",
+        "STAT_CONTEXT": "Review and confirm"
+      }
+    }
+  ]
+}
