@@ -293,6 +293,42 @@ function extractColorValues(cssText, html) {
   return colors;
 }
 
+/**
+ * Extract structured brand CSS custom properties into a `{ name: hex }` map.
+ *
+ * The existing `extractColorValues` helper (above) already dumps these vars'
+ * values into the flat `colors` list for frequency ranking. This helper runs
+ * in addition — it captures the semantic name too, so the synthesizer can
+ * prefer an explicitly-declared `--brand` / `--primary` / `--accent` over a
+ * frequency-ranked accent guess.
+ *
+ * Scope: `--brand*`, `--primary*`, `--accent*`, `--bg*`, `--fg*`, `--text*`.
+ * The existing varRe in extractColorValues also catches `--color*`, but we
+ * deliberately keep this narrower — `--color-gray-100` etc. would flood the
+ * map without any brand meaning. Tailwind's `--tw-*` vars don't match any
+ * prefix here, so they're excluded automatically.
+ *
+ * Key normalization:
+ *   --brand-primary → "brand-primary" (lowercase, hyphens preserved)
+ *   --PRIMARY       → "primary"
+ *   --accent-dark   → "accent-dark"
+ *
+ * Values that don't normalize to a real color (e.g. `--brand: var(--foo)`,
+ * `--brand: bold`) are silently dropped.
+ */
+export function extractBrandVariables(cssText) {
+  const vars = {};
+  if (!cssText) return vars;
+  const re = /--(brand[a-z0-9-]*|primary[a-z0-9-]*|accent[a-z0-9-]*|bg[a-z0-9-]*|fg[a-z0-9-]*|text[a-z0-9-]*)\s*:\s*([^;}{]+?)(?=[;}])/gi;
+  let m;
+  while ((m = re.exec(cssText)) !== null) {
+    const name = m[1].toLowerCase();
+    const normalized = normalizeColor(m[2].trim());
+    if (normalized) vars[name] = normalized;
+  }
+  return vars;
+}
+
 function rankColors(colors) {
   const counts = new Map();
   for (const c of colors) counts.set(c, (counts.get(c) || 0) + 1);
@@ -730,11 +766,20 @@ export function extractSignals(input) {
     hasJsRenderedWarning: hasJsRenderedWarning ? 1 : 0,
   });
 
+  // v0.7 A.3 — Structured CSS variable brand-color map. Runs on the same CSS
+  // blob that feeds extractColorValues; captures semantic names (`brand`,
+  // `primary`, `accent`, etc.) so the synthesizer has an authoritative accent
+  // signal when a site declares one via `--brand` / `--primary` / `--accent`.
+  const brandVariables = extractBrandVariables(
+    [cssDump, computedStyles.body, computedStyles.h1, computedStyles.button].filter(Boolean).join('\n'),
+  );
+
   const colors = {
     background: roles.background,
     text: roles.text,
     accent: roles.accent,
     allColors,
+    brandVariables,
     confidence,
   };
 
@@ -782,4 +827,5 @@ export const __testing = {
   scoreConfidence,
   deltaE76,
   clusterColors,
+  extractBrandVariables,
 };

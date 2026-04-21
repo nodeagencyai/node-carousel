@@ -751,11 +751,29 @@ export function mergeSignals(perPage, homepagePath) {
     }
   }
   const allColors = clusterColors(unionedColors);
+
+  // v0.7 A.3 — merge colors.brandVariables across pages. Homepage wins per-key
+  // (a site's `--brand`/`--primary`/`--accent` CSS declarations are whole-site
+  // identity decisions and usually live in a :root block loaded on every page).
+  // Non-homepage pages fill in gaps only — e.g. a pricing-page-scoped
+  // `--accent-secondary` that the homepage doesn't declare.
+  const mergedBrandVariables = {};
+  for (const p of orderedPaths) {
+    const bv = perPage[p]?.colors?.brandVariables;
+    if (!bv || typeof bv !== 'object') continue;
+    for (const [k, v] of Object.entries(bv)) {
+      if (mergedBrandVariables[k] === undefined && v) {
+        mergedBrandVariables[k] = v;
+      }
+    }
+  }
+
   const colors = {
     background: home?.colors?.background ?? null,
     text: home?.colors?.text ?? null,
     accent: home?.colors?.accent ?? null,
     allColors,
+    brandVariables: mergedBrandVariables,
     confidence: home?.colors?.confidence ?? 0,
   };
 
@@ -1216,7 +1234,7 @@ async function main() {
   console.error(`\u2717 scan failed: ${result.reason}`);
   const emptySignals = {
     fonts: { display: null, body: null, displaySource: 'unknown', bodySource: 'unknown', allFontFaces: [], byContext: {} },
-    colors: { background: null, text: null, accent: null, allColors: [], confidence: 0 },
+    colors: { background: null, text: null, accent: null, allColors: [], brandVariables: {}, confidence: 0 },
     meta: { title: null, description: null, ogImage: null },
     textSamples: { heroHeadline: null, heroSubheadline: null, ctaCandidates: [], pageHeadlines: {} },
     textContent: { headings: [], mainText: '', ctas: [], metaDescription: '' },

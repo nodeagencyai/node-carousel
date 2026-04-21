@@ -712,6 +712,71 @@ async function main() {
     );
   }
 
+  // ---- v0.7 Task A.3 — CSS variable brand-color extraction ----
+  console.log(`\n=== colors.brandVariables (v0.7 A.3) ===`);
+
+  // Case 1: all three common brand vars declared in :root, distinct hex values.
+  // Assert the structured map captures {brand, primary, accent} → normalized hex.
+  {
+    const cssDump = ':root { --brand: #29F2FE; --primary: #0B8AEE; --accent: #5EE9B5; }';
+    const signals = extractSignals({
+      html: '<h1>Test</h1>',
+      computedStyles: {
+        body: '', h1: '', button: '', cssDump,
+      },
+      url: 'file://brandvars-basic',
+    });
+    const bv = signals.colors.brandVariables || {};
+    total += 1;
+    passed += check(
+      'brandVariables captures {brand, primary, accent} as normalized hex',
+      bv.brand === '#29F2FE' && bv.primary === '#0B8AEE' && bv.accent === '#5EE9B5',
+      `got ${JSON.stringify(bv)}`,
+    );
+  }
+
+  // Case 2: non-color values (e.g. `--brand: bold`, `--text: var(--foo)`) are
+  // silently dropped. Only values that normalize to a real hex survive.
+  {
+    const cssDump = ':root { --brand: bold; --primary: var(--foo); --accent: #FF00AA; }';
+    const signals = extractSignals({
+      html: '<h1>Test</h1>',
+      computedStyles: {
+        body: '', h1: '', button: '', cssDump,
+      },
+      url: 'file://brandvars-invalid',
+    });
+    const bv = signals.colors.brandVariables || {};
+    total += 1;
+    passed += check(
+      'brandVariables drops non-color values (bold, var(...)); keeps valid hex',
+      bv.brand === undefined && bv.primary === undefined && bv.accent === '#FF00AA',
+      `got ${JSON.stringify(bv)}`,
+    );
+  }
+
+  // Case 3: multi-key suffixes (e.g. `--accent-dark`, `--accent-light`,
+  // `--brand-color-1`) are captured with hyphens preserved + lowercased.
+  {
+    const cssDump = ':root { --accent-dark: #000000; --accent-light: #FFFFFF; --BRAND-Color-1: #FF0000; }';
+    const signals = extractSignals({
+      html: '<h1>Test</h1>',
+      computedStyles: {
+        body: '', h1: '', button: '', cssDump,
+      },
+      url: 'file://brandvars-multikey',
+    });
+    const bv = signals.colors.brandVariables || {};
+    total += 1;
+    passed += check(
+      'brandVariables preserves multi-key names (accent-dark, accent-light, brand-color-1), lowercased',
+      bv['accent-dark'] === '#000000'
+        && bv['accent-light'] === '#FFFFFF'
+        && bv['brand-color-1'] === '#FF0000',
+      `got ${JSON.stringify(bv)}`,
+    );
+  }
+
   console.log(`\n=== ${passed}/${total} checks passed ===`);
   process.exit(passed === total ? 0 : 1);
 }

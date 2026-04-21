@@ -429,12 +429,53 @@ is non-empty:**
   it's the most reliable CSS signal).
 - `text` ← `scan.colors.text` (default white on dark bg, near-black on light
   if scan couldn't detect).
-- `accent` ← `scan.colors.accent` (skip if null, keep preset default).
+- `accent` ← apply the **Accent selection precedence** rule below.
 - `accentSecondary` ← derive ~20% darker shade of accent (multiply RGB
   channels by 0.8, clamp to 0-255). If the accent is already dark
   (luminance < 0.3), instead lighten by 20%.
 - `muted` ← derive as midpoint between background and text luminance,
   rounded to nearest neutral grey.
+
+#### Accent selection precedence (v0.7 A.3)
+
+`scan.colors.accent` is the frequency-and-saturation ranked accent from the
+CSS scan. It's a reasonable default, but many sites declare the real brand
+accent via a CSS custom property (e.g. `:root { --brand: #29F2FE; }`), and
+that declaration is strictly more authoritative than a frequency guess.
+The scan now exposes these under `scan.colors.brandVariables` (a
+`{ name: hex }` map — keys are lowercase, hyphens preserved).
+
+Apply this 5-level precedence to pick `visual.colors.accent`:
+
+1. **`scan.colors.brandVariables.brand`** — if defined and a valid hex,
+   use it. A site that declared `--brand` meant it.
+2. **`scan.colors.brandVariables.primary`** — else if defined, use it.
+   `--primary` is the next most-canonical brand signal.
+3. **`scan.colors.brandVariables.accent`** — else if defined, use it.
+   Covers sites that declare the accent separately from the brand color.
+4. **BrandFetch accent** — else if `scan.brandfetch.available === true`
+   and the BrandFetch payload provided an `accent`/`brand` entry, use
+   that (existing v0.6 rule, handled above in the BrandFetch branch).
+5. **Fall through** — else use `scan.colors.accent` (frequency-ranked
+   accent from the CSS dump, v0.6 behavior). Skip if null, keep preset
+   default.
+
+Note: `brandVariables` keys don't distinguish "accent color for CTAs"
+from "primary color for headings" — the map just captures what CSS
+declared. The ordering above (brand → primary → accent) reflects how
+brands typically use those names, not a strict semantic contract.
+
+Emit a resolution note when a brandVariable wins over the frequency-ranked
+accent:
+
+```json
+"resolution": {
+  "accent": {
+    "from": "brandVariables.brand",
+    "reason": "site declared `--brand: #29F2FE` — authoritative over frequency-ranked accent per Accent selection rule 1"
+  }
+}
+```
 
 ### visual.fonts
 
