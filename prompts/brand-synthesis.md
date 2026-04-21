@@ -59,6 +59,62 @@ lower-priority default.
 
 ---
 
+## Background color reconciliation
+
+`scan.colors.background` is extracted from computed CSS on the `<body>` or
+hero section, and many modern site builders (Framer, Webflow, Squarespace)
+ship a `#FFFFFF` body default even when the visible hero is dark — the dark
+surface is painted by an absolutely-positioned section, a canvas, or a
+full-bleed image that CSS clustering misses. Vision analysis sees pixels, so
+it's the tiebreaker when scan and vision disagree on lightness.
+
+Apply this rule before filling `visual.colors.background` in Step 2:
+
+1. **Vision says dark** — if `vision-analysis.json` is available AND its
+   `observations`, `imagery.notes`, or `mood` contains any of: `dark`,
+   `black`, `near-black`, `midnight`, `cosmic`, `deep`, `void`, `space` →
+   vision wins. Use a dark background. If vision gives a specific hex,
+   use it; otherwise default to `#0A0A0A`. Sample a closer tone from
+   vision's description when it's specific (e.g. "deep navy" → `#0A0F1E`,
+   "warm charcoal" → `#1A1714`).
+2. **Vision says light** — if vision describes `light`, `white`, `cream`,
+   `off-white`, `paper`, `bright` → scan's background is most likely
+   correct. Use `scan.colors.background` as-is.
+3. **Vision says tinted** — if vision describes a colored tint (e.g.
+   `warm cream`, `soft blue haze`, `muted peach`) → defer to
+   `scan.colors.background` if it doesn't conflict on lightness. If it
+   does conflict (scan is `#FFFFFF` but vision says `warm cream`), pick
+   the color best described by vision (`#F8F2E8` for warm cream, etc.).
+4. **No vision analysis** — use `scan.colors.background` directly.
+
+### Concrete example (nodeagency.ai, v0.6 scan)
+
+- `scan.colors.background` → `#FFFFFF` (Framer body default)
+- `vision-analysis.observations` → "Dark near-black background with
+  swirling grey vortex"
+- Rule 1 fires on `dark` + `near-black` → vision wins → resolved bg
+  `#0A0A0A`.
+
+### Resolution note (recommended, optional for v0.6.1)
+
+When a reconciliation fires, emit a resolution note on the
+`brand-profile.json` so downstream tooling and the user can audit the
+call:
+
+```json
+"resolution": {
+  "background": {
+    "from": "vision",
+    "reason": "scan reported #FFFFFF (Framer body default) but vision observed 'near-black background with swirling grey vortex' — vision wins per background reconciliation rule 1"
+  }
+}
+```
+
+Valid `from` values: `"scan"`, `"vision"`, `"brandfetch"`, `"preset"`.
+Keep `reason` one sentence, cite which rule fired.
+
+---
+
 ## Step 1 — Pick the closest preset
 
 There are 6 presets in `templates/presets/`:
