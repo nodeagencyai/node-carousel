@@ -1,0 +1,22 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "node-carousel",
+  "description": "Free Instagram carousel SVG generator for Claude Code — template-first, brand-aware, no paid APIs",
+  "owner": {
+    "name": "Node Agency",
+    "email": "hello@nodeagency.ai"
+  },
+  "plugins": [
+    {
+      "name": "node-carousel",
+      "description": "Free Instagram carousel SVG generator for Claude Code. Template-first, brand-aware, no paid APIs.",
+      "version": "0.7.0",
+      "author": {
+        "name": "Niek Huggers",
+        "email": "niek@nodeagency.ai"
+      },
+      "source": "./",
+      "category": "content"
+    }
+  ]
+}
