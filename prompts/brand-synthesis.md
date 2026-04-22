@@ -41,6 +41,12 @@ have produced:
 
   If absent, skip Phase 0.5 entirely and proceed to source priority tiers
   starting at BrandFetch. See Phase 0.5 below for full field mapping.
+- `./.brand-scan/vision-fingerprint.json` — OPTIONAL but strongly recommended.
+  Structured visual measurements (background type, gradient stops, overlays,
+  glow, atmosphere). Written by the `prompts/vision-fingerprint.md` runtime
+  prompt. Synthesizer consumes in Phase 0.75 for scan-first background
+  recipes. If absent, synthesizer falls back to preset-match for the
+  background layer.
 
 Goal: pick the closest preset, layer signals on top of it, write a complete
 valid `brand-profile.json` to `./brand-profile.json`, render a 2-slide preview,
@@ -328,32 +334,118 @@ preferences shape the derived side for users who are starting fresh
 
 ---
 
-## Source priority
+## Phase 0.75 — Scan-first synthesis (v0.8)
 
-When two sources disagree, resolve in this order (1 wins):
+When the scan produces a high-confidence, coherent visual fingerprint, the synthesizer emits `visual.background.type: "scanned"` directly from scan + vision signals — NO preset lookup for the background layer. Preset-match still runs for fonts, decorations, numbering, tone routing.
 
-1. **mergeWith** (Phase 0 — existing profile's non-null fields win per-leaf
-   key). When the user passes `--merge-with <existing-brand-profile.json>`,
-   their hand-tuned identity is the ultimate source of truth; every tier
-   below fills only the gaps existing left null/empty.
-2. **preferences** (Phase 0.5 — explicit user intent via `--ask`). Applies
-   where `mergeWith` left gaps. Outranks all inference below because the
-   user told us directly. See Phase 0.5 mapping for which fields each
-   preference controls.
-3. **BrandFetch** (`scan.brandfetch.data`, when `available: true`) —
-   authoritative for **logos** and **colors**. BrandFetch hand-curates, so its
-   hex codes and logo SVGs beat CSS clustering + inline-SVG extraction.
-4. **vision-analysis.json** — authoritative for **visual hierarchy**,
-   **composition**, **whitespace**, **density**, and **mood**. The CSS scan
-   can't see pixels; this pass can.
-5. **voice-niche.json** — authoritative for **tone**, **voice register**,
-   **warmth**, and **niche**. The copy pass read the actual words; scan.json's
-   `meta.description` is a one-line summary at best.
-6. **references + scan** — composition patterns from reference images
-   (`cornerMarks`, `accentRule`, `numberBadges`, `pullQuoteBlock`,
-   grain/gradient/shapes toggles) and CSS-derived fonts/colors from
-   `scan.json`. Authoritative only when nothing higher-priority applies.
-   `scan.meta.title` is still the source of truth for `brand.name`.
+### When does scan-first fire?
+
+ALL of these conditions must be true:
+
+1. `scan.colors.sampled.dominant.length >= 3` — pixel sampling produced a real palette
+2. `vision-fingerprint.json` exists AND has `confidence >= 0.7`
+3. `vision-fingerprint.background.type` is NOT `"uncertain"`
+4. No `--preset` was passed (no forcedPreset in scan.json)
+5. `preferences.visualStyle` (if present) is NOT one of `gradient | paper | geometric | mesh` — those are explicit preset-style choices where the user wants the canonical recipe
+
+If ALL match → emit `visual.background.type: "scanned"` with `visual.background.scanned` built from signals.
+
+### Building the scanned recipe
+
+Map signals to the `scanned` object:
+
+- `scanned.baseColor` ← `scan.colors.sampled.dominant[0].hex` (most-common pixel color)
+- `scanned.gradient` ← `vision-fingerprint.background.gradient` directly (already structured)
+- `scanned.overlays` ← `vision-fingerprint.background.overlays` directly (already structured — starfield/vortex/blob/grain)
+- `scanned.glow` ← merge of scan + vision signals:
+  - If `scan.colors.sampled.glow.detected === true` → use `scan.colors.sampled.glow.color` as glow color
+  - Else if `vision-fingerprint.effects.glow.present === true` → use vision's glow data
+  - Else → `{present: false}`
+- `scanned.atmosphere` ← `vision-fingerprint.atmosphere` directly
+
+### When does preset-fallback fire?
+
+If ANY of these:
+- Scan confidence too low (fewer than 3 dominant clusters OR vision-fingerprint confidence < 0.7)
+- Vision fingerprint says `type: "uncertain"` or `null`
+- User passed `--preset <name>` → use that preset's background recipe
+- User preferences specify a canonical visualStyle → use that mapped preset
+- `vision-fingerprint.json` is absent (scan failed or vision step didn't run)
+
+Fall back to existing preset-match flow (Step 1 onward). Emit a resolution note explaining why scan-first didn't fire.
+
+### What preset still contributes when scan-first fires
+
+Scan-first ONLY governs the background layer. Preset still contributes:
+- `visual.fonts` (unless scan detected a recognizable family with high confidence)
+- `visual.decorations` defaults
+- `visual.numbering` style
+- `visual.colors.text` and `visual.colors.accent` when scan's CSS-derived colors are more authoritative than sampled
+
+Think of preset as the "scaffolding" for parts scan can't confidently produce. Scan-first takes over where scan has strong visual signal (background composition).
+
+### Resolution notes when scan-first fires
+
+```json
+{
+  "resolution": {
+    "background": {
+      "from": "scan-first",
+      "reason": "Sampled 4 dominant colors + vision fingerprint confidence 0.85; no preset forced; no paper/gradient preference",
+      "scannedRecipe": { ... full scanned object ... }
+    },
+    "fonts": {
+      "from": "preset-fallback",
+      "reason": "Scan fonts.displaySource=unknown, vision didn't resolve — preset editorial-serif supplied Instrument Serif"
+    }
+  }
+}
+```
+
+### Resolution notes when preset-fallback fires
+
+```json
+{
+  "resolution": {
+    "background": {
+      "from": "preset",
+      "reason": "Vision fingerprint confidence 0.45 below 0.7 threshold — falling back to preset neo-grotesk",
+      "presetUsed": "neo-grotesk"
+    }
+  }
+}
+```
+
+### Integration with Phase 0 (mergeWith) and Phase 0.5 (preferences)
+
+Order of application (earliest wins):
+
+1. Phase 0 — mergeWith existing profile fields (existing wins per-leaf-key)
+2. Phase 0.5 — preferences override (user intent)
+3. **Phase 0.75 — scan-first recipe** (if gate conditions met)
+4. Source priority tiers for any fields not yet determined
+
+If Phase 0 supplied `visual.background.type` already (user has a hand-tuned profile), Phase 0.75 does NOT overwrite. Existing wins.
+
+If Phase 0.5 preferences said `visualStyle: paper` → scan-first gate fails → preset-map paper recipe wins.
+
+If Phase 0.5 preferences said `visualStyle: match-scan` → scan-first gate passes (match-scan is permissive).
+
+---
+
+## Source priority (v0.8 — 7 tiers)
+
+When multiple sources supply a value for the same brand-profile field, priority order (earliest wins):
+
+1. **mergeWith** (Phase 0) — existing profile's non-null fields win per leaf key
+2. **preferences** (Phase 0.5) — explicit user intent from the `--ask` questionnaire
+3. **scanned recipe** (Phase 0.75) — data-driven background from high-confidence scan + vision fingerprint; applies to `visual.background` only
+4. **BrandFetch** — authoritative for logos + colors when API key available AND scan-first didn't fire OR the field isn't governed by scan-first
+5. **vision-analysis** (abstract enums) — mood routing, informs preset-fallback selection
+6. **voice-niche** — tone synthesis, niche classification
+7. **scan CSS-derived + references** — fallback for non-background fields; composition hints from reference carousels when provided
+
+Scanned recipe sits at tier 3 because it's the PRODUCT of scan + vision — when high-confidence, it's more reliable than any individual signal at tiers 5-7.
 
 If a higher-priority source is missing or `uncertain`, fall through to the
 next one. Never overwrite a confident higher-priority signal with a
