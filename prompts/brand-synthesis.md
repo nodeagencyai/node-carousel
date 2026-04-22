@@ -24,6 +24,23 @@ have produced:
   `{ available: true, data: { name, description, logos[], colors[], fonts[],
   industries[] } }`. When absent, `{ available: false, reason }`. Authoritative
   for logos + colors when present.
+- `./.brand-scan/preferences.json` (optional, v0.7.1) — OPTIONAL. Present only
+  if user passed `--ask` to the scan command. Shape:
+
+  ```json
+  {
+    "density": "minimalist" | "standard" | "dense" | "match-scan",
+    "visualStyle": "paper" | "geometric" | "mesh" | "gradient" | "photo" | "match-scan",
+    "contentWeight": "text-heavy" | "balanced" | "icon-heavy",
+    "moodOverride": "editorial" | "clinical" | "playful" | "premium" | "scrappy" | "match-scan",
+    "logoPlacement": "none" | "top-left" | "top-right" | "bottom-right" | "match-scan",
+    "customNotes": { "<field>": "free-text guidance" },
+    "warnings": [ ... ]
+  }
+  ```
+
+  If absent, skip Phase 0.5 entirely and proceed to source priority tiers
+  starting at BrandFetch. See Phase 0.5 below for full field mapping.
 
 Goal: pick the closest preset, layer signals on top of it, write a complete
 valid `brand-profile.json` to `./brand-profile.json`, render a 2-slide preview,
@@ -155,31 +172,193 @@ When `--merge-with` was used, add this block to the final
 
 ---
 
+## Phase 0.5 — Preferences override (v0.7.1)
+
+If `./.brand-scan/preferences.json` exists, the user passed `--ask` to the
+scan command and answered a short interactive questionnaire. Those answers
+express **USER INTENT** — the user told us directly what they want. That
+outranks scan-derived inference for the specific fields each preference
+controls.
+
+### Where Phase 0.5 sits in the priority chain
+
+Preferences are a SIXTH input source, but they do NOT outrank Phase 0's
+`mergeWith`:
+
+- **mergeWith still wins per-leaf-key.** If the user has both an existing
+  profile (`--merge-with`) AND answered preferences (`--ask`), the existing
+  profile wins for fields it specifies. Preferences only fill gaps that
+  the existing profile left null or empty.
+- **Preferences outrank BrandFetch, vision, voice, references, and scan**
+  for the specific fields they control (listed in the mapping below).
+- **Preferences do NOT invent data.** If `visualStyle: photo` is set but
+  nothing in the render pipeline supports photo backgrounds, warn the user
+  and fall back to the nearest supported type (see mapping).
+
+### Custom-note handling
+
+Entries under `preferences.customNotes.<field>` are **free-text guidance**,
+not hard overrides. Example entries:
+
+- `customNotes.density = "actually I want the Lenny's Newsletter density"`
+- `customNotes.visualStyle = "notebook paper aesthetic with grid lines"`
+- `customNotes.moodOverride = "academic but still warm"`
+
+Synthesizer rules:
+
+1. Read the note as additional context when picking preset, background,
+   fonts, and decorations.
+2. Do NOT regex-extract specific numbers or hex codes from free text. The
+   canonical preference value (e.g. `density: minimalist`) is still the
+   one that drives the mapping table below.
+3. Emit a resolution note documenting the interpretation, e.g.:
+
+   ```json
+   "resolution": {
+     "density": {
+       "from": "preferences.customNotes",
+       "reason": "density applied from custom note: 'Lenny\u2019s Newsletter density' \u2192 mapped to minimalist density + editorial-serif preset bias"
+     }
+   }
+   ```
+
+### Mapping — preferences → brand-profile fields
+
+#### `density`
+
+- `minimalist` → `visual.background.noise.intensity` ≤ 0.08; bump type
+  scale step up one notch (larger display, larger body); prefer patterns
+  with breathing room (`quote-pulled`, `cover-centered`, `cover-asymmetric`).
+- `standard` → no override; use preset defaults.
+- `dense` → tighten line heights (~0.05 decrement); smaller type scale
+  step; prefer patterns with more slots (`list-bullet`, `list-numbered`,
+  `split-comparison`).
+- `match-scan` → no override.
+
+#### `visualStyle`
+
+- `paper` → `visual.background.type: "noise-gradient"` with
+  `noiseType: "grit"`. If scan background is near-neutral (`#F5F0E8`..`#FFFFFF`
+  range or lightness > 0.92), lean cream (`#F8F2E8`).
+- `geometric` → `visual.background.type: "geometric-shapes"` OR
+  `"dot-grid"`. Pick `dot-grid` when mood is clinical/technical; pick
+  `geometric-shapes` when mood is editorial/playful.
+- `mesh` → `visual.background.type: "mesh"` with 3–4 blobs using
+  `accent` + `accentSecondary`.
+- `gradient` → `visual.background.type: "gradient"`, two-stop from
+  background color to accent.
+- `photo` → **no direct mapping exists** (renderer has no photo-bg type).
+  Warn the user via `warnings` array, fall back to `mesh` with
+  hero-aligned blobs, and emit a resolution note:
+  ```json
+  "resolution": {
+    "background": {
+      "from": "preferences (fallback)",
+      "reason": "visualStyle: photo has no direct renderer mapping \u2014 fell back to mesh with accent blobs"
+    }
+  }
+  ```
+- `match-scan` → no override; use vision-derived background.
+
+#### `contentWeight`
+
+- `text-heavy` → prefer patterns `quote-pulled`, `stat-dominant`,
+  `cover-centered`; deprioritize `list-bullet` + `split-comparison`.
+- `balanced` → preset defaults.
+- `icon-heavy` → set `visual.decorations.numberBadges = true`; prefer
+  patterns `list-numbered` and `stat-dominant`.
+
+#### `moodOverride`
+
+Applied as a weight boost during Step 1's preset scoring. If `forcedPreset`
+is set, the weight boost is ignored (user already picked explicitly).
+
+- `editorial` → `editorial-serif` +3 weight in preset matching.
+- `clinical` → `utilitarian-bold` +3 weight.
+- `playful` → `satoshi-tech` +3 weight; bias accent toward lime / electric
+  hues when resolving accent conflicts.
+- `premium` → `display-serif-bold` +2 AND `editorial-serif` +2.
+- `scrappy` → `technical-mono` +3; accept preset-match confidence
+  thresholds as low as 0.45 (default is 0.6).
+- `match-scan` → no override.
+
+#### `logoPlacement`
+
+- `none` → omit the entire `visual.logo` block from the output profile.
+  Do not emit an empty object.
+- `top-left` | `top-right` | `bottom-right` → set
+  `visual.logo.position` directly. If no logo source was picked
+  (BrandFetch absent AND scan.logo.type is none), still omit the block.
+- `match-scan` → no override; use the default position (`top-right`).
+
+### Resolution notes
+
+For every preference that fires, emit a resolution note under
+`resolution.<field>`:
+
+```json
+"resolution": {
+  "visualStyle": {
+    "from": "preferences",
+    "reason": "user answered visualStyle: mesh \u2014 overrode scan-derived background.type 'solid' with 'mesh'"
+  },
+  "density": {
+    "from": "preferences.customNotes",
+    "reason": "density applied from custom note: 'Lenny\u2019s Newsletter density' \u2192 mapped to minimalist density"
+  }
+}
+```
+
+### Interaction with Phase 0 (mergeWith)
+
+Run phase order:
+
+1. Produce a `derived` profile via Phases 1–4 (scan + vision + voice +
+   references + preset).
+2. Apply preferences on top of `derived` (Phase 0.5) — this mutates
+   `derived`.
+3. If `scan.mergeWith` is present, run `mergeProfile(mergeWith.content,
+   derived)` — existing still wins per-leaf over the preference-adjusted
+   derived. Preferences fill only the slots the existing profile left
+   null/empty.
+
+This ordering keeps `mergeWith` as the top tier while still letting
+preferences shape the derived side for users who are starting fresh
+(no `--merge-with`).
+
+---
+
 ## Source priority
 
 When two sources disagree, resolve in this order (1 wins):
 
-1. **BrandFetch** (`scan.brandfetch.data`, when `available: true`) —
+1. **mergeWith** (Phase 0 — existing profile's non-null fields win per-leaf
+   key). When the user passes `--merge-with <existing-brand-profile.json>`,
+   their hand-tuned identity is the ultimate source of truth; every tier
+   below fills only the gaps existing left null/empty.
+2. **preferences** (Phase 0.5 — explicit user intent via `--ask`). Applies
+   where `mergeWith` left gaps. Outranks all inference below because the
+   user told us directly. See Phase 0.5 mapping for which fields each
+   preference controls.
+3. **BrandFetch** (`scan.brandfetch.data`, when `available: true`) —
    authoritative for **logos** and **colors**. BrandFetch hand-curates, so its
    hex codes and logo SVGs beat CSS clustering + inline-SVG extraction.
-2. **vision-analysis.json** — authoritative for **visual hierarchy**,
+4. **vision-analysis.json** — authoritative for **visual hierarchy**,
    **composition**, **whitespace**, **density**, and **mood**. The CSS scan
    can't see pixels; this pass can.
-3. **voice-niche.json** — authoritative for **tone**, **voice register**,
+5. **voice-niche.json** — authoritative for **tone**, **voice register**,
    **warmth**, and **niche**. The copy pass read the actual words; scan.json's
    `meta.description` is a one-line summary at best.
-4. **references.json** (when the user provided references) — authoritative
-   for **composition patterns** (`cornerMarks`, `accentRule`, `numberBadges`,
-   `pullQuoteBlock`, grain/gradient/shapes toggles). The user's own carousels
-   are the clearest signal for how their carousels should look.
-5. **scan.json** — authoritative when nothing else has a signal. Fonts,
-   typography classification, and raw CSS-extracted colors come from here
-   unless BrandFetch overrides. `scan.meta.title` is still the source of truth
-   for `brand.name`.
+6. **references + scan** — composition patterns from reference images
+   (`cornerMarks`, `accentRule`, `numberBadges`, `pullQuoteBlock`,
+   grain/gradient/shapes toggles) and CSS-derived fonts/colors from
+   `scan.json`. Authoritative only when nothing higher-priority applies.
+   `scan.meta.title` is still the source of truth for `brand.name`.
 
 If a higher-priority source is missing or `uncertain`, fall through to the
 next one. Never overwrite a confident higher-priority signal with a
-lower-priority default.
+lower-priority default. Preferences sit at tier 2 because they're explicit
+user intent; scan sits lowest because it's derived inference.
 
 ---
 
