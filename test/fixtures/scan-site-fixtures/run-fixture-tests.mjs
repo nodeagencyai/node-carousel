@@ -1819,6 +1819,107 @@ async function main() {
     passed += check('default style normal', cssDefault.includes('font-style: normal'));
   }
 
+  // ---- v0.7.1 Task A.2 — --ask flag pass-through (parseArgv) ----
+  console.log(`\n=== --ask flag (v0.7.1 A.2) ===`);
+
+  // Case 1: --ask before positionals → askPreferences=true, url+out parsed.
+  {
+    const result = parseArgv(['node', 'scan-site.mjs', '--ask', 'https://example.com', './out']);
+    total += 3;
+    passed += check(
+      'parseArgv: --ask before positionals returns non-null',
+      result !== null,
+      `got ${JSON.stringify(result)}`,
+    );
+    passed += check(
+      'parseArgv: askPreferences === true when --ask passed (leading)',
+      result && result.askPreferences === true,
+      `got ${result?.askPreferences}`,
+    );
+    passed += check(
+      'parseArgv: positionals preserved (urlArg + outArg) alongside --ask',
+      result && result.urlArg === 'https://example.com' && result.outArg === './out',
+      `got url=${result?.urlArg} out=${result?.outArg}`,
+    );
+  }
+
+  // Case 2: no --ask → askPreferences defaults to false.
+  {
+    const result = parseArgv(['node', 'scan-site.mjs', 'https://example.com', './out']);
+    total += 2;
+    passed += check(
+      'parseArgv: askPreferences === false by default (flag absent)',
+      result && result.askPreferences === false,
+      `got ${result?.askPreferences}`,
+    );
+    passed += check(
+      'parseArgv: askPreferences is a strict boolean (not undefined)',
+      result && typeof result.askPreferences === 'boolean',
+      `typeof askPreferences = ${typeof result?.askPreferences}`,
+    );
+  }
+
+  // Case 3: --ask + --merge-with coexist without conflict.
+  {
+    const result = parseArgv(['node', 'scan-site.mjs', '--ask', '--merge-with', './p.json', 'https://example.com', './out']);
+    total += 3;
+    passed += check(
+      'parseArgv: --ask + --merge-with both set askPreferences and mergeWithPath',
+      result
+        && result.askPreferences === true
+        && result.mergeWithPath === './p.json',
+      `ask=${result?.askPreferences} merge=${result?.mergeWithPath}`,
+    );
+    passed += check(
+      'parseArgv: positionals still parse when both flags + positionals mixed',
+      result && result.urlArg === 'https://example.com' && result.outArg === './out',
+      `got url=${result?.urlArg} out=${result?.outArg}`,
+    );
+    passed += check(
+      'parseArgv: forcedPreset still null when --ask+--merge-with passed without --preset',
+      result && result.forcedPreset === null,
+      `got ${result?.forcedPreset}`,
+    );
+  }
+
+  // Case 4: --ask at trailing position (after positionals) still works.
+  {
+    const result = parseArgv(['node', 'scan-site.mjs', 'https://example.com', './out', '--ask']);
+    total += 2;
+    passed += check(
+      'parseArgv: --ask at trailing position → askPreferences === true',
+      result && result.askPreferences === true,
+      `got ${result?.askPreferences}`,
+    );
+    passed += check(
+      'parseArgv: positionals intact when --ask trails',
+      result && result.urlArg === 'https://example.com' && result.outArg === './out',
+      `got url=${result?.urlArg} out=${result?.outArg}`,
+    );
+  }
+
+  // Case 5 (bonus): triple-combo --ask + --merge-with + --preset.
+  {
+    const result = parseArgv([
+      'node', 'scan-site.mjs',
+      '--ask',
+      '--merge-with', './p.json',
+      '--preset', 'neo-grotesk',
+      'https://example.com', './out',
+    ]);
+    total += 1;
+    passed += check(
+      'parseArgv: --ask + --merge-with + --preset all coexist',
+      result
+        && result.askPreferences === true
+        && result.mergeWithPath === './p.json'
+        && result.forcedPreset === 'neo-grotesk'
+        && result.urlArg === 'https://example.com'
+        && result.outArg === './out',
+      `got ${JSON.stringify(result)}`,
+    );
+  }
+
   console.log(`\n=== ${passed}/${total} checks passed ===`);
   process.exit(passed === total ? 0 : 1);
 }

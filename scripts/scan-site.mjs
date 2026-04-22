@@ -51,7 +51,7 @@ const MAX_CTA_CANDIDATES = 10;
 const MAX_FULL_PAGE_HEIGHT = 8000;
 
 function usage() {
-  console.error('Usage: node scripts/scan-site.mjs <url> <output-dir> [--merge-with <existing-brand-profile.json>] [--preset <name>]');
+  console.error('Usage: node scripts/scan-site.mjs <url> <output-dir> [--merge-with <existing-brand-profile.json>] [--preset <name>] [--ask]');
   process.exit(1);
 }
 
@@ -73,6 +73,8 @@ export function printUsage() {
     '  --merge-with <path>      Merge existing brand-profile.json (existing fields win)',
     '  --preset <name>          Force preset: editorial-serif | neo-grotesk | technical-mono |',
     '                           display-serif-bold | utilitarian-bold | satoshi-tech',
+    '  --ask                    Record interactive-mode flag in scan.json (v0.7.1);',
+    '                           command-runtime asks 5 preference questions before synthesis',
     '  --help, -h               Show this message',
     '',
     'Environment:',
@@ -119,21 +121,28 @@ export class ArgvError extends Error {
  *   - positional: <url> <output-dir>
  *   - optional:   --merge-with <path>
  *   - optional:   --preset <name>  (v0.7 A.4)
+ *   - optional:   --ask            (v0.7.1 A.2) — boolean flag, no value
  *
- * Returns `{ urlArg, outArg, mergeWithPath, forcedPreset }` or null when
- * required positionals are missing. Throws ArgvError on invalid flag values.
- * Pure + deterministic — tests exercise this directly.
+ * Returns `{ urlArg, outArg, mergeWithPath, forcedPreset, askPreferences }` or
+ * null when required positionals are missing. Throws ArgvError on invalid flag
+ * values. Pure + deterministic — tests exercise this directly.
  *
  * --preset normalization: case-insensitive. `--preset TECHNICAL-MONO` and
  * `--preset Technical-Mono` both resolve to `technical-mono`. Trims whitespace.
  * Errors on unknown names (lists all valid presets in the error message).
  *
- * Exported for the v0.7 A.4 fixture tests.
+ * --ask: boolean pass-through. scan-site.mjs does NOT execute the prompt — it
+ * just records `askPreferences: true` in scan.json so the command-runtime
+ * (commands/scan.md Step 6.5) knows to run the interactive questionnaire
+ * before synthesis. Absent flag = false (v0.7 zero-question behavior).
+ *
+ * Exported for the v0.7 A.4 + v0.7.1 A.2 fixture tests.
  */
 export function parseArgv(argv) {
   const positional = [];
   let mergeWithPath = null;
   let forcedPreset = null;
+  let askPreferences = false;
   for (let i = 2; i < argv.length; i += 1) {
     const a = argv[i];
     if (a === '--merge-with') {
@@ -162,11 +171,15 @@ export function parseArgv(argv) {
       forcedPreset = normalizePresetName(rawVal);
       continue;
     }
+    if (a === '--ask') {
+      askPreferences = true;
+      continue;
+    }
     positional.push(a);
   }
   const [urlArg, outArg] = positional;
   if (!urlArg || !outArg) return null;
-  return { urlArg, outArg, mergeWithPath, forcedPreset };
+  return { urlArg, outArg, mergeWithPath, forcedPreset, askPreferences };
 }
 
 /**
@@ -1312,7 +1325,7 @@ async function main() {
     throw err;
   }
   if (!parsed) usage();
-  const { urlArg, outArg, mergeWithPath, forcedPreset } = parsed;
+  const { urlArg, outArg, mergeWithPath, forcedPreset, askPreferences } = parsed;
 
   const url = normalizeUrl(urlArg);
   const outDir = resolve(outArg);
@@ -1348,7 +1361,7 @@ async function main() {
   process.on('exit', doRelease);
 
   try {
-    await runScan({ url, outArg, outDir, mergeWithPath, forcedPreset });
+    await runScan({ url, outArg, outDir, mergeWithPath, forcedPreset, askPreferences });
   } finally {
     // Release synchronously — 'exit' will also fire and find releaseLock=null.
     doRelease();
@@ -1356,7 +1369,7 @@ async function main() {
   }
 }
 
-async function runScan({ url, outArg, outDir, mergeWithPath, forcedPreset }) {
+async function runScan({ url, outArg, outDir, mergeWithPath, forcedPreset, askPreferences }) {
   const scannedAt = new Date().toISOString();
 
   // --- v0.7 A.1: --merge-with existing brand profile ---
@@ -1508,6 +1521,14 @@ async function runScan({ url, outArg, outDir, mergeWithPath, forcedPreset }) {
         result.payload.merged.forcedPreset = forcedPreset;
       }
     }
+    // v0.7.1 A.2: record --ask flag so command-runtime (commands/scan.md Step
+    // 6.5) knows to run the interactive preference questionnaire before
+    // synthesis. scan-site itself never prompts; it just carries the signal.
+    // Top-level + merged mirror matches forcedPreset's pattern.
+    result.payload.askPreferences = !!askPreferences;
+    if (result.payload.merged && typeof result.payload.merged === 'object') {
+      result.payload.merged.askPreferences = !!askPreferences;
+    }
     writeScan(outDir, result.payload);
     console.log(`\u2713 scan.json written to ${outDir}`);
     if (mergeWith) {
@@ -1598,6 +1619,13 @@ async function runScan({ url, outArg, outDir, mergeWithPath, forcedPreset }) {
     if (failurePayload.merged && typeof failurePayload.merged === 'object') {
       failurePayload.merged.forcedPreset = forcedPreset;
     }
+  }
+  // v0.7.1 A.2: --ask also survives total scan failure. If synthesis runs at
+  // all (e.g. via --merge-with which can salvage a failed scan), the command
+  // runtime should still honor the user's interactive-mode request.
+  failurePayload.askPreferences = !!askPreferences;
+  if (failurePayload.merged && typeof failurePayload.merged === 'object') {
+    failurePayload.merged.askPreferences = !!askPreferences;
   }
   writeScan(outDir, failurePayload);
   process.exit(0);

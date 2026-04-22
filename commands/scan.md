@@ -13,6 +13,7 @@ the user confirm before saving. Zero-question path for most users.
 /node-carousel:scan https://yourbrand.com --references ./my-carousels/
 /node-carousel:scan https://yourbrand.com --merge-with ./brand-profile.json
 /node-carousel:scan https://yourbrand.com --preset technical-mono
+/node-carousel:scan https://yourbrand.com --ask
 ```
 
 - First positional argument: URL to scan (required).
@@ -35,6 +36,13 @@ the user confirm before saving. Zero-question path for most users.
   `editorial-serif`, `neo-grotesk`, `technical-mono`,
   `display-serif-bold`, `utilitarian-bold`, `satoshi-tech`. Unknown names
   error before the scan runs. `--preset` and `--merge-with` can be combined.
+- `--ask`: optional interactive questionnaire (v0.7.1). After the scan runs, before
+  synthesis, Claude asks 5 quick questions about style preferences that can't be
+  inferred from CSS (density, visual style, content weight, mood override, logo
+  placement). Every question has a "Custom: type your own answer" escape for free
+  text. Preferences get written to `./.brand-scan/preferences.json` and consumed by
+  the synthesizer as a SIXTH input source. When not passed, scan proceeds zero-question
+  (v0.7 behavior).
 
 If the URL is missing, tell the user the usage and stop.
 
@@ -52,6 +60,11 @@ If the URL is missing, tell the user the usage and stop.
   preset names (`editorial-serif`, `neo-grotesk`, `technical-mono`,
   `display-serif-bold`, `utilitarian-bold`, `satoshi-tech`),
   case-insensitive, and exits with a clear error on unknown values.
+- Parse `--ask` if present (boolean, no value). Pass through to
+  `scripts/scan-site.mjs` — the script records
+  `askPreferences: true` in `scan.json`. The interactive questionnaire
+  itself runs at command-runtime in Step 6.5 below (scan-site.mjs never
+  prompts).
 - Create `./.brand-scan/` in CWD (this is a working directory — do not
   ship it anywhere).
 - Resolve `PLUGIN_ROOT` from `${CLAUDE_PLUGIN_ROOT}` if set, otherwise the
@@ -76,7 +89,9 @@ node "${PLUGIN_ROOT}/scripts/scan-site.mjs" <url> ./.brand-scan/
 node "${PLUGIN_ROOT}/scripts/scan-site.mjs" <url> ./.brand-scan/ --merge-with <abs-path-to-existing-brand-profile.json>
 # OR, when --preset was passed:
 node "${PLUGIN_ROOT}/scripts/scan-site.mjs" <url> ./.brand-scan/ --preset <name>
-# Flags can be combined — e.g. --merge-with ... --preset ...
+# OR, when --ask was passed:
+node "${PLUGIN_ROOT}/scripts/scan-site.mjs" <url> ./.brand-scan/ --ask
+# Flags can be combined — e.g. --merge-with ... --preset ... --ask
 ```
 
 The script writes `./.brand-scan/scan.json` plus `hero.png`, `full.png`,
@@ -168,6 +183,56 @@ tells you to:
   `./.brand-scan/references.json`.
 
 Do not skip reading the images — the whole point is visual analysis.
+
+### Step 6.5: Ask preferences (if `--ask` passed)
+
+If `scan.json.askPreferences === true` (set when user passed `--ask`), run the interactive questionnaire BEFORE synthesis. This captures style preferences that scan/vision/voice can't infer from CSS.
+
+Ask questions one at a time, present each as a numbered list with "Custom" option:
+
+**1. Density — how much content per slide?**
+  1. Minimalist (big type, lots of space, 2-3 lines per slide)
+  2. Standard (default)
+  3. Dense (more content per slide, smaller type)
+  4. Custom: type your own direction
+
+**2. Visual style — what's the background feel?**
+  1. Clean gradient (smooth color wash)
+  2. Paper (warm noise texture, editorial)
+  3. Geometric (shapes, grids, technical)
+  4. Photo-heavy (hero imagery)
+  5. Mesh (blurred color blobs)
+  6. Match the scan (use what was auto-detected)
+  7. Custom: type your own direction
+
+**3. Content weight — text or visual priority?**
+  1. Text-heavy (headlines do the work)
+  2. Balanced
+  3. Icon + number heavy (data viz, stats, icons)
+  4. Custom
+
+**4. Mood override** (optional, skip with enter):
+  1. Playful / 2. Premium / 3. Clinical / 4. Scrappy / 5. Editorial / 6. Match scan / 7. Custom
+
+**5. Logo placement**:
+  1. Top-right (default) / 2. Top-left / 3. Bottom-right / 4. None / 5. Custom
+
+For each answer, map the user's numeric selection to the canonical enum value. When they pick "Custom", capture their free text and store it under `customNotes.<key>`.
+
+Use `scripts/preferences.mjs` `parsePreferences` to normalize the final object:
+- Pass the raw collected answers (as an object keyed by field name) to `parsePreferences`
+- Write the parsed result to `./.brand-scan/preferences.json`
+
+Enum value mapping (for the synthesizer's later consumption):
+- density: `minimalist` | `standard` | `dense`
+- visualStyle: `gradient` | `paper` | `geometric` | `photo` | `mesh` | `match-scan`
+- contentWeight: `text-heavy` | `balanced` | `icon-heavy`
+- moodOverride: `playful` | `premium` | `clinical` | `scrappy` | `editorial` | `match-scan`
+- logoPlacement: `top-right` | `top-left` | `bottom-right` | `none`
+
+If the user skips all questions (pressing enter through all), write preferences.json with all DEFAULTS — signals to synthesizer "no strong preferences", treat as match-scan everywhere.
+
+If the user passed `--no-ask` OR the flag is absent, don't write preferences.json. Synthesizer proceeds without this sixth input.
 
 ### Step 7: Synthesize brand-profile.json
 
@@ -279,6 +344,15 @@ Repeat until the user says y or n:
   protect existing work.
 - **No `--references` flag**: site-only scan. Skip Step 6 entirely.
   Steps 4 (vision) + 5 (voice) still run — they only need scan outputs.
+- **No `--ask` flag**: skip Step 6.5 entirely; synthesis uses 5 inputs
+  (v0.7 behavior). `preferences.json` is NOT written.
+- **User skips all questions** (hits enter through the questionnaire):
+  `preferences.json` written with DEFAULTS; synthesizer treats as "no
+  strong preferences" (match-scan everywhere).
+- **User picks "Custom" on a question**: captured under
+  `customNotes.<key>`; synthesizer uses as guidance, not hard override.
+- **Preferences conflict with scan signals**: preferences sit BELOW
+  `mergeWith` but ABOVE scan/vision/voice in the source priority tiers.
 - **References dir empty or invalid**: `prepare-references.mjs` writes
   `ready: false` — skip analysis, proceed with site-only synthesis.
 - **`brand-preview` dir already has files from a previous run**: overwrite
