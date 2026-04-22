@@ -7,7 +7,7 @@
 // No Puppeteer here — we feed the fixture HTML (with its inline <style>)
 // directly into extractSignals and check detected fonts/colors/confidence.
 
-import { readFileSync, mkdtempSync, rmSync, existsSync, writeFileSync } from 'node:fs';
+import { readFileSync, mkdtempSync, rmSync, existsSync, writeFileSync, unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -27,6 +27,7 @@ import { brandfetch, normalizeBrandfetch, extractDomain, readCache, writeCache, 
 import { extractLogoFromSignals } from '../../../scripts/extract-logo.mjs';
 import { parseViewBox } from '../../../scripts/render-v0.4.mjs';
 import { parsePreferences, validatePreferences, DEFAULTS } from '../../../scripts/preferences.mjs';
+import { loadFont, embedFontAsDataUri, inferFontFormat } from '../../../scripts/load-font.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -1697,6 +1698,125 @@ async function main() {
       nonObjErrs.length > 0 && nonObjErrs[0] === 'preferences must be an object',
       `got ${JSON.stringify(nonObjErrs)}`,
     );
+  }
+
+  // ============================================================
+  // load-font (v0.7.1 B.2)
+  // ============================================================
+  {
+    console.log(`\n=== load-font (v0.7.1 B.2) ===`);
+
+    // inferFontFormat — extension detection
+    total += 1;
+    passed += check('woff2 detected', inferFontFormat('/tmp/foo.woff2') === 'woff2');
+
+    total += 1;
+    passed += check('ttf detected', inferFontFormat('/tmp/foo.ttf') === 'truetype');
+
+    total += 1;
+    passed += check('otf detected', inferFontFormat('/tmp/foo.otf') === 'opentype');
+
+    total += 1;
+    passed += check('woff detected', inferFontFormat('/tmp/foo.woff') === 'woff');
+
+    total += 1;
+    passed += check(
+      'uppercase extension works',
+      inferFontFormat('/tmp/FOO.WOFF2') === 'woff2',
+    );
+
+    total += 1;
+    passed += check(
+      'unknown extension throws',
+      (() => { try { inferFontFormat('/tmp/foo.pdf'); return false; } catch { return true; } })(),
+    );
+
+    // loadFont — happy path (tiny fixture file)
+    const fixturePath = join(__dirname, '..', 'custom-fonts', 'test-font.woff2');
+    const loaded = loadFont(fixturePath);
+
+    total += 1;
+    passed += check('loaded returns buffer', Buffer.isBuffer(loaded.buffer));
+
+    total += 1;
+    passed += check('format populated', loaded.format === 'woff2');
+
+    total += 1;
+    passed += check('mime populated', loaded.mime === 'font/woff2');
+
+    total += 1;
+    passed += check('no size warning on tiny', loaded.warnings.length === 0);
+
+    // loadFont — medium file triggers warning (generate + clean up)
+    const medPath = '/tmp/test-font-med.woff2';
+    writeFileSync(medPath, Buffer.alloc(260 * 1024, 0));
+    try {
+      const med = loadFont(medPath);
+      total += 1;
+      passed += check(
+        'size warning at 260KB',
+        med.warnings.some((w) => w.includes('large')),
+      );
+    } finally {
+      try { unlinkSync(medPath); } catch {}
+    }
+
+    // loadFont — over cap rejected (generate + clean up)
+    const bigPath = '/tmp/test-font-big.woff2';
+    writeFileSync(bigPath, Buffer.alloc(600 * 1024, 0));
+    try {
+      let threw = false;
+      let msg = '';
+      try {
+        loadFont(bigPath);
+      } catch (err) {
+        threw = true;
+        msg = err.message;
+      }
+      total += 1;
+      passed += check(
+        'rejects >500KB',
+        threw && msg.includes('500'),
+        `threw=${threw} msg="${msg}"`,
+      );
+    } finally {
+      try { unlinkSync(bigPath); } catch {}
+    }
+
+    // embedFontAsDataUri — custom weight/style
+    const css = embedFontAsDataUri({
+      family: 'Test',
+      file: fixturePath,
+      weight: 700,
+      style: 'normal',
+    });
+
+    total += 1;
+    passed += check('emits @font-face', css.includes('@font-face'));
+
+    total += 1;
+    passed += check('emits font-family', css.includes("font-family: 'Test'"));
+
+    total += 1;
+    passed += check('emits weight', css.includes('font-weight: 700'));
+
+    total += 1;
+    passed += check('emits base64 data URI', css.includes('data:font/woff2;base64,'));
+
+    total += 1;
+    passed += check('emits format hint', css.includes("format('woff2')"));
+
+    total += 1;
+    passed += check('emits font-display swap', css.includes('font-display: swap'));
+
+    // embedFontAsDataUri — default weight/style
+    const cssDefault = embedFontAsDataUri({ family: 'Foo', file: fixturePath });
+
+    total += 1;
+    passed += check('default weight 400', cssDefault.includes('font-weight: 400'));
+
+    total += 1;
+    passed += check('default style normal', cssDefault.includes('font-style: normal'));
   }
 
   console.log(`\n=== ${passed}/${total} checks passed ===`);
