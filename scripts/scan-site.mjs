@@ -36,6 +36,7 @@ import { pathToFileURL } from 'node:url';
 import { extractSignals, clusterColors } from './extract-brand-signals.mjs';
 import { extractLogo } from './extract-logo.mjs';
 import { brandfetch, extractDomain } from './brandfetch-client.mjs';
+import { samplePixelsFromHero, clusterDominantColors, detectGlow } from './sample-pixels.mjs';
 
 const PAGE_TIMEOUT_MS = 15000;       // per-page goto timeout
 const TOTAL_WALL_CLOCK_MS = 45000;   // whole scan soft-cap (plan said 20s total, which is too tight with 3 pages; 15s/page x 3 + headroom)
@@ -597,6 +598,9 @@ async function scanPage({ page, url, outDir, isHomepage, warnings }) {
   let fullOk = false;
   let heroPath = null;
   let fullPath = null;
+  // v0.8 A — pixel-sampled colors + glow detection from the hero viewport.
+  // Populated only on the homepage, only if hero screenshot succeeded.
+  let sampledColors = null;
   if (isHomepage) {
     heroPath = join(outDir, 'hero.png');
     fullPath = join(outDir, 'full.png');
@@ -609,6 +613,24 @@ async function scanPage({ page, url, outDir, isHomepage, warnings }) {
       heroOk = true;
     } catch (err) {
       warnings.push(`hero screenshot failed: ${err?.message || err}`);
+    }
+
+    // v0.8 A.1 + A.2 — Grid-sample 13 points across the hero, cluster by
+    // deltaE76, detect glow regions. Only run when hero screenshot succeeded:
+    // if the viewport never rendered we've got nothing to sample. Any failure
+    // inside sampling is captured as a warning — never aborts the scan.
+    if (heroOk) {
+      try {
+        const points = await samplePixelsFromHero(page, {
+          width: VIEWPORT_WIDTH,
+          height: VIEWPORT_HEIGHT,
+        });
+        const dominant = clusterDominantColors(points);
+        const glow = detectGlow(points);
+        sampledColors = { points, dominant, glow };
+      } catch (err) {
+        warnings.push(`[pixel-sample] ${err?.message || err}`);
+      }
     }
 
     // v0.7 B.2 (audit I2): measure body height BEFORE taking the full-page
@@ -806,6 +828,15 @@ async function scanPage({ page, url, outDir, isHomepage, warnings }) {
     },
     url,
   });
+
+  // v0.8 A — attach pixel-sampled colors into signals.colors.sampled so they
+  // survive the per-page → merged flow. extractSignals returns a colors{}
+  // object but doesn't see the Puppeteer page, so we splice the sampled field
+  // in here. Non-homepage pages (sampledColors stays null) also get a null
+  // slot so the key is always present in the shape.
+  if (signals && signals.colors && typeof signals.colors === 'object') {
+    signals.colors.sampled = sampledColors;
+  }
 
   return {
     ok: true,
@@ -1031,6 +1062,11 @@ export function mergeSignals(perPage, homepagePath) {
     accent: home?.colors?.accent ?? null,
     allColors,
     brandVariables: mergedBrandVariables,
+    // v0.8 A — homepage-sampled pixel dominants + glow. Only the homepage
+    // runs sampling (see scanPage), so there's nothing to merge — just mirror
+    // the homepage's result. Explicit null when homepage didn't sample so
+    // downstream consumers see a consistent key.
+    sampled: home?.colors?.sampled ?? null,
     confidence: home?.colors?.confidence ?? 0,
   };
 
@@ -1579,7 +1615,7 @@ async function runScan({ url, outArg, outDir, mergeWithPath, forcedPreset, askPr
   console.error(`\u2717 scan failed: ${result.reason}`);
   const emptySignals = {
     fonts: { display: null, body: null, displaySource: 'unknown', bodySource: 'unknown', allFontFaces: [], byContext: {} },
-    colors: { background: null, text: null, accent: null, allColors: [], brandVariables: {}, confidence: 0 },
+    colors: { background: null, text: null, accent: null, allColors: [], brandVariables: {}, sampled: null, confidence: 0 },
     meta: { title: null, description: null, ogImage: null },
     textSamples: { heroHeadline: null, heroSubheadline: null, ctaCandidates: [], pageHeadlines: {} },
     textContent: { headings: [], mainText: '', ctas: [], metaDescription: '' },

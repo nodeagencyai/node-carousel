@@ -28,6 +28,8 @@ import { extractLogoFromSignals } from '../../../scripts/extract-logo.mjs';
 import { parseViewBox } from '../../../scripts/render-v0.4.mjs';
 import { parsePreferences, validatePreferences, DEFAULTS } from '../../../scripts/preferences.mjs';
 import { loadFont, embedFontAsDataUri, inferFontFormat } from '../../../scripts/load-font.mjs';
+import { parsePngPixel, clusterDominantColors, detectGlow } from '../../../scripts/sample-pixels.mjs';
+import zlib from 'node:zlib';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -1917,6 +1919,266 @@ async function main() {
         && result.urlArg === 'https://example.com'
         && result.outArg === './out',
       `got ${JSON.stringify(result)}`,
+    );
+  }
+
+  // ------------------------------------------------------------------
+  // === pixel sampling + glow (v0.8 A) ===
+  // ------------------------------------------------------------------
+  console.log(`\n=== pixel sampling + glow (v0.8 A) ===`);
+
+  // Build a valid 1×1 PNG in memory (RGB, no alpha). Uses the same stdlib
+  // zlib pipeline parsePngPixel will reverse, so this exercises the full
+  // encode→decode roundtrip. CRCs are zeroed out — PNG decoders generally
+  // tolerate that, and parsePngPixel doesn't validate CRC.
+  function make1x1Png(r, g, b) {
+    const sig = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+    // IHDR: length=13, type=IHDR, 1×1 RGB 8-bit, no interlace
+    const ihdrData = Buffer.from([
+      0, 0, 0, 1, // width = 1
+      0, 0, 0, 1, // height = 1
+      8,          // bit depth
+      2,          // color type 2 = RGB (truecolor, no alpha)
+      0, 0, 0,    // compression, filter, interlace
+    ]);
+    const ihdr = Buffer.concat([
+      Buffer.from([0, 0, 0, 13]),
+      Buffer.from('IHDR'),
+      ihdrData,
+      Buffer.from([0, 0, 0, 0]), // CRC placeholder
+    ]);
+    const rawData = Buffer.from([0, r, g, b]); // filter byte 0, then RGB
+    const idatData = zlib.deflateSync(rawData);
+    const lenBuf = Buffer.alloc(4);
+    lenBuf.writeUInt32BE(idatData.length, 0);
+    const idat = Buffer.concat([
+      lenBuf,
+      Buffer.from('IDAT'),
+      idatData,
+      Buffer.from([0, 0, 0, 0]), // CRC placeholder
+    ]);
+    const iend = Buffer.from([
+      0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130,
+    ]);
+    return Buffer.concat([sig, ihdr, idat, iend]).toString('base64');
+  }
+
+  // -------- parsePngPixel (6) --------
+  {
+    const px = parsePngPixel(make1x1Png(255, 0, 0));
+    total += 1;
+    passed += check(
+      'parsePngPixel: red PNG → {r:255,g:0,b:0}',
+      px && px.r === 255 && px.g === 0 && px.b === 0,
+      `got ${JSON.stringify(px)}`,
+    );
+  }
+  {
+    const px = parsePngPixel(make1x1Png(0, 255, 0));
+    total += 1;
+    passed += check(
+      'parsePngPixel: green PNG → {r:0,g:255,b:0}',
+      px && px.r === 0 && px.g === 255 && px.b === 0,
+      `got ${JSON.stringify(px)}`,
+    );
+  }
+  {
+    const px = parsePngPixel(make1x1Png(0, 0, 255));
+    total += 1;
+    passed += check(
+      'parsePngPixel: blue PNG → {r:0,g:0,b:255}',
+      px && px.r === 0 && px.g === 0 && px.b === 255,
+      `got ${JSON.stringify(px)}`,
+    );
+  }
+  {
+    const px = parsePngPixel(make1x1Png(0, 0, 0));
+    total += 1;
+    passed += check(
+      'parsePngPixel: black PNG → {r:0,g:0,b:0}',
+      px && px.r === 0 && px.g === 0 && px.b === 0,
+      `got ${JSON.stringify(px)}`,
+    );
+  }
+  {
+    const px = parsePngPixel(make1x1Png(255, 255, 255));
+    total += 1;
+    passed += check(
+      'parsePngPixel: white PNG → {r:255,g:255,b:255}',
+      px && px.r === 255 && px.g === 255 && px.b === 255,
+      `got ${JSON.stringify(px)}`,
+    );
+  }
+  {
+    // Malformed: only the 8-byte PNG signature — no IDAT chunk at all.
+    const sigOnly = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]).toString('base64');
+    const px = parsePngPixel(sigOnly);
+    total += 1;
+    passed += check(
+      'parsePngPixel: malformed PNG (no IDAT) → null',
+      px === null,
+      `got ${JSON.stringify(px)}`,
+    );
+  }
+
+  // -------- clusterDominantColors (5) --------
+  {
+    // 5 samples all near #0A0A0A → single cluster, role=background.
+    const samples = Array.from({ length: 5 }, (_, i) => ({
+      x: i, y: i, hex: '#0A0A0A', rgb: { r: 10, g: 10, b: 10 },
+    }));
+    const out = clusterDominantColors(samples);
+    total += 1;
+    passed += check(
+      'clusterDominantColors: 5 samples #0A0A0A → 1 cluster, role=background',
+      out.length === 1 && out[0].count === 5 && out[0].role === 'background',
+      `got ${JSON.stringify(out)}`,
+    );
+  }
+  {
+    // 3 dark + 2 saturated blue + 1 white → dark=background, blue=accent.
+    const samples = [
+      { x: 0, y: 0, hex: '#0A0A0A', rgb: { r: 10, g: 10, b: 10 } },
+      { x: 1, y: 1, hex: '#0A0A0A', rgb: { r: 10, g: 10, b: 10 } },
+      { x: 2, y: 2, hex: '#0A0A0A', rgb: { r: 10, g: 10, b: 10 } },
+      { x: 3, y: 3, hex: '#2B5BFF', rgb: { r: 43, g: 91, b: 255 } },
+      { x: 4, y: 4, hex: '#2B5BFF', rgb: { r: 43, g: 91, b: 255 } },
+      { x: 5, y: 5, hex: '#FFFFFF', rgb: { r: 255, g: 255, b: 255 } },
+    ];
+    const out = clusterDominantColors(samples);
+    const bg = out.find((c) => c.role === 'background');
+    const accent = out.find((c) => c.role === 'accent');
+    total += 1;
+    passed += check(
+      'clusterDominantColors: mixed dark+blue+white → background=dark, accent=blue',
+      bg && bg.hex === '#0A0A0A' && accent && accent.hex === '#2B5BFF',
+      `got ${JSON.stringify(out)}`,
+    );
+  }
+  {
+    const out = clusterDominantColors([]);
+    total += 1;
+    passed += check(
+      'clusterDominantColors: empty array → empty output',
+      Array.isArray(out) && out.length === 0,
+      `got ${JSON.stringify(out)}`,
+    );
+  }
+  {
+    // 4 grey background + 2 high-sat blue → accent assigned to blue (count>=2, sat>=0.5).
+    const samples = [
+      { x: 0, y: 0, hex: '#888888', rgb: { r: 136, g: 136, b: 136 } },
+      { x: 1, y: 1, hex: '#888888', rgb: { r: 136, g: 136, b: 136 } },
+      { x: 2, y: 2, hex: '#888888', rgb: { r: 136, g: 136, b: 136 } },
+      { x: 3, y: 3, hex: '#888888', rgb: { r: 136, g: 136, b: 136 } },
+      { x: 4, y: 4, hex: '#1A4EFF', rgb: { r: 26, g: 78, b: 255 } },
+      { x: 5, y: 5, hex: '#1A4EFF', rgb: { r: 26, g: 78, b: 255 } },
+    ];
+    const out = clusterDominantColors(samples);
+    const accent = out.find((c) => c.role === 'accent');
+    total += 1;
+    passed += check(
+      'clusterDominantColors: high-sat blue (count>=2) → role=accent',
+      accent && accent.hex === '#1A4EFF',
+      `got ${JSON.stringify(out)}`,
+    );
+  }
+  {
+    // Only grey clusters — no cluster should be tagged accent (all sat<0.12).
+    const samples = [
+      { x: 0, y: 0, hex: '#0A0A0A', rgb: { r: 10, g: 10, b: 10 } },
+      { x: 1, y: 1, hex: '#0A0A0A', rgb: { r: 10, g: 10, b: 10 } },
+      { x: 2, y: 2, hex: '#888888', rgb: { r: 136, g: 136, b: 136 } },
+      { x: 3, y: 3, hex: '#888888', rgb: { r: 136, g: 136, b: 136 } },
+    ];
+    const out = clusterDominantColors(samples);
+    const hasAccent = out.some((c) => c.role === 'accent');
+    total += 1;
+    passed += check(
+      'clusterDominantColors: low-sat grey clusters → no accent assigned',
+      !hasAccent,
+      `got ${JSON.stringify(out)}`,
+    );
+  }
+
+  // -------- detectGlow (5) --------
+  {
+    // 4 bright saturated points at flanking positions (left + right).
+    // On a 1440×900-shaped grid, x<0.3 of max and x>0.7 of max = flanking.
+    const samples = [
+      { x: 144, y: 450, hex: '#4FA8FF', rgb: { r: 79, g: 168, b: 255 } },
+      { x: 144, y: 900, hex: '#4FA8FF', rgb: { r: 79, g: 168, b: 255 } },
+      { x: 1296, y: 450, hex: '#4FA8FF', rgb: { r: 79, g: 168, b: 255 } },
+      { x: 1296, y: 900, hex: '#4FA8FF', rgb: { r: 79, g: 168, b: 255 } },
+    ];
+    const g = detectGlow(samples);
+    total += 1;
+    passed += check(
+      'detectGlow: 4 bright saturated flanking points → detected + position=flanking + confidence=1.0',
+      g.detected && g.position === 'flanking' && g.confidence === 1.0 && g.color === '#4FA8FF',
+      `got ${JSON.stringify(g)}`,
+    );
+  }
+  {
+    // All dark → no eligible points, not detected.
+    const samples = Array.from({ length: 13 }, (_, i) => ({
+      x: i * 100, y: i * 60, hex: '#0A0A0A', rgb: { r: 10, g: 10, b: 10 },
+    }));
+    const g = detectGlow(samples);
+    total += 1;
+    passed += check(
+      'detectGlow: all dark points → detected=false',
+      g.detected === false,
+      `got ${JSON.stringify(g)}`,
+    );
+  }
+  {
+    // 1 eligible point only → below threshold (>=2).
+    const samples = [
+      { x: 144, y: 450, hex: '#4FA8FF', rgb: { r: 79, g: 168, b: 255 } },
+      ...Array.from({ length: 12 }, (_, i) => ({
+        x: (i + 1) * 100, y: (i + 1) * 60, hex: '#0A0A0A', rgb: { r: 10, g: 10, b: 10 },
+      })),
+    ];
+    const g = detectGlow(samples);
+    total += 1;
+    passed += check(
+      'detectGlow: only 1 eligible point → detected=false (threshold >=2)',
+      g.detected === false,
+      `got ${JSON.stringify(g)}`,
+    );
+  }
+  {
+    // 3 eligible points all on left side (x < 30% of max).
+    // maxX will be 200 (last point), so 30% of 200 = 60. All three at x<=40 qualify as "left".
+    const samples = [
+      { x: 20, y: 100, hex: '#4FA8FF', rgb: { r: 79, g: 168, b: 255 } },
+      { x: 30, y: 300, hex: '#4FA8FF', rgb: { r: 79, g: 168, b: 255 } },
+      { x: 40, y: 500, hex: '#4FA8FF', rgb: { r: 79, g: 168, b: 255 } },
+      { x: 200, y: 800, hex: '#0A0A0A', rgb: { r: 10, g: 10, b: 10 } },
+    ];
+    const g = detectGlow(samples);
+    total += 1;
+    passed += check(
+      'detectGlow: 3 eligible points all at left → position=left',
+      g.detected && g.position === 'left',
+      `got ${JSON.stringify(g)}`,
+    );
+  }
+  {
+    // 2 eligible points concentrated at center (40-60% on both axes).
+    // maxX=1000, maxY=1000 → center band = [400,600] on each axis.
+    const samples = [
+      { x: 500, y: 500, hex: '#4FA8FF', rgb: { r: 79, g: 168, b: 255 } },
+      { x: 550, y: 450, hex: '#4FA8FF', rgb: { r: 79, g: 168, b: 255 } },
+      { x: 1000, y: 1000, hex: '#0A0A0A', rgb: { r: 10, g: 10, b: 10 } },
+    ];
+    const g = detectGlow(samples);
+    total += 1;
+    passed += check(
+      'detectGlow: 2 eligible points at center grid → position=center',
+      g.detected && g.position === 'center',
+      `got ${JSON.stringify(g)}`,
     );
   }
 
