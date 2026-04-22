@@ -133,6 +133,7 @@ Controls how the slide background renders. Must specify `type`; each type has it
 | `"geometric-shapes"` | 3–5 floating circles at low opacity for compositional rhythm. v0.4.1+. |
 | `"glow-sphere"` | Radial gradient with off-canvas origin producing a half-glow. Apple-keynote hero vignette. v0.4.1+. |
 | `"noise-gradient"` | Linear gradient with noise texture baked in via `mix-blend-mode: multiply`. Premium dark-aesthetic default. v0.4.3+. |
+| `"scanned"` | Data-driven recipe composed directly from scan signals (pixel sampling + vision fingerprint). Renderer emits SVG filter + gradient primitives from the recipe — no preset lookup. v0.8+. |
 
 #### Core fields
 
@@ -220,6 +221,153 @@ Linear gradient with a noise texture baked in via `mix-blend-mode: multiply`. Di
 | `noiseGradient.angle` | number | no | `135` | Gradient angle in degrees. |
 | `noiseGradient.noiseType` | enum (see below) | no | `"organic"` | Which of the 6 noise texture families to bake into the gradient. |
 | `noiseGradient.noiseIntensity` | number 0–1 | no | `0.18` | Opacity of the noise layer inside the gradient. Keep ≤ `0.25` — higher makes text harder to read. |
+
+#### `background.scanned` (used when `type === "scanned"`) — v0.8+
+
+Data-driven background recipe composed directly from scan signals (pixel sampling + vision fingerprint). The renderer emits SVG filter + gradient primitives from the recipe — no preset lookup. Use this when scan confidence is high AND you want the carousel to match the scanned brand's actual aesthetic rather than mapping to one of the 6 canonical presets.
+
+Typical use: the synthesizer (Phase 0.75) emits `type: "scanned"` when scan + vision produce a coherent recipe. Users can also write this type by hand in brand-profile.json for full custom control.
+
+| Field | Type | Required | Default | Notes |
+|---|---|---|---|---|
+| `scanned.baseColor` | hex string | yes | — | Dominant background color. Typically from pixel sampling (`scan.colors.sampled.dominant[0].hex`). |
+| `scanned.gradient` | object | no | `null` | If set, a linear gradient overlays the baseColor. Shape: `{from, to, angle, stops}`. See below. |
+| `scanned.overlays` | array | no | `[]` | Ordered list of overlay layers composed on top of base + gradient. Supported types: `starfield`, `vortex`, `blob`, `grain`. See below. |
+| `scanned.glow` | object | no | `null` | Bloom effect. Shape: `{present, color, radius, position, opacity}`. |
+| `scanned.atmosphere` | object | no | — | Renderer tunes overall filter parameters from these hints. Shape: `{temperature, contrast, vibrancy}`. |
+
+#### `background.scanned.gradient` sub-object
+
+| Field | Type | Required | Default | Notes |
+|---|---|---|---|---|
+| `gradient.from` | hex | yes | — | Gradient start color. |
+| `gradient.to` | hex | yes | — | Gradient end color. |
+| `gradient.angle` | number | no | `135` | Degrees. 0=top-to-bottom, 90=left-to-right, 135=diagonal. |
+| `gradient.stops` | array | no | `[[0, from], [100, to]]` | Multi-stop list: `[[percent, hex], ...]`. Must include 0% and 100% stops. |
+
+#### `background.scanned.overlays` — 4 supported types
+
+Each overlay has `type` + type-specific params. Rendered in array order (later overlays appear on top).
+
+##### `starfield`
+Scattered bright points. Good for cosmic/dark hero aesthetics.
+
+| Field | Type | Default | Notes |
+|---|---|---|---|
+| `density` | `"low" \| "medium" \| "high"` | `"low"` | Approximate point count: low=30, medium=80, high=180. |
+| `opacity` | number 0-1 | `0.3` | Per-point opacity. |
+| `color` | hex | `"#FFFFFF"` | Star color. |
+
+Points are deterministically placed via the existing seeded-random token so a given brand+topic always produces the same starfield.
+
+##### `vortex`
+Blurred circular gradient overlay. Good for cosmic hero signatures.
+
+| Field | Type | Default | Notes |
+|---|---|---|---|
+| `position` | enum | `"center"` | One of: `"top-center"`, `"center"`, `"left"`, `"right"`, `"flanking"`, `"top-left"`, `"top-right"`, `"bottom-left"`, `"bottom-right"`. `"flanking"` emits two mirrored vortices at `left` + `right`. |
+| `color` | hex | — | Required. |
+| `radius` | number px | `120` | Blur radius in screen pixels. Renderer clamps to 20-300. |
+| `opacity` | number 0-1 | `0.25` | Peak opacity at center; fades to 0 at edges. |
+
+##### `blob`
+Soft radial gradient at a specific position. Good for mesh-style backgrounds.
+
+| Field | Type | Default | Notes |
+|---|---|---|---|
+| `cx` | percent string | — | Required. e.g. `"20%"`. |
+| `cy` | percent string | — | Required. e.g. `"30%"`. |
+| `r` | percent string | `"45%"` | Radius as percent of canvas. |
+| `color` | hex | — | Required. |
+| `opacity` | number 0-1 | `0.3` | |
+| `blur` | number px | `0` | Optional extra Gaussian blur on top of the radial fade. |
+
+##### `grain`
+Noise texture overlay. Good for analog/film/paper aesthetics.
+
+| Field | Type | Default | Notes |
+|---|---|---|---|
+| `textureType` | `"film" \| "digital" \| "paper" \| "ink"` | `"film"` | Controls feTurbulence baseFrequency + octaves. Renderer maps each type to concrete filter values. |
+| `intensity` | number 0-0.25 | `0.08` | Opacity of the noise layer. Keep ≤ 0.2 — higher ruins text legibility. |
+
+#### `background.scanned.glow` sub-object
+
+| Field | Type | Default | Notes |
+|---|---|---|---|
+| `glow.present` | boolean | — | Required. |
+| `glow.color` | hex | — | Required if present. |
+| `glow.radius` | number px | `80` | Blur radius. |
+| `glow.position` | enum | `"center"` | Same position enum as vortex. |
+| `glow.opacity` | number 0-1 | `0.4` | Peak opacity. |
+
+Glow is rendered after all overlays, as a final bloom layer.
+
+#### `background.scanned.atmosphere` sub-object
+
+| Field | Type | Default | Notes |
+|---|---|---|---|
+| `atmosphere.temperature` | `"warm" \| "neutral" \| "cool" \| "icy"` | `"neutral"` | Renderer nudges overall color balance. `"cool"` / `"icy"` slightly desaturate warm tones. |
+| `atmosphere.contrast` | `"high" \| "medium" \| "low"` | `"medium"` | Affects decoration opacity + text-shadow intensity. |
+| `atmosphere.vibrancy` | `"muted" \| "balanced" \| "saturated" \| "electric"` | `"balanced"` | Renderer adjusts saturation multiplier on overlays. `"electric"` boosts accent saturation by ~10%. |
+
+#### Fallback behavior
+
+If `type === "scanned"` but `baseColor` is missing OR `overlays` has unknown types, the renderer:
+1. Emits a `<!-- warning: scanned-bg fallback -->` comment in the SVG
+2. Falls back to a solid background using any available color (baseColor → gradient.from → fallback black)
+3. Skips unknown overlays silently
+4. Preserves known overlays
+
+This keeps output valid even on partial or malformed scanned recipes.
+
+#### Example: TPS cosmic-dark recipe
+
+Fully worked example of what the synthesizer produces for theproducerschool.com:
+
+```json
+{
+  "visual": {
+    "background": {
+      "type": "scanned",
+      "color": "#070708",
+      "scanned": {
+        "baseColor": "#070708",
+        "gradient": {
+          "from": "#070708",
+          "to": "#0F1F3A",
+          "angle": 180,
+          "stops": [[0, "#070708"], [100, "#0F1F3A"]]
+        },
+        "overlays": [
+          { "type": "starfield", "density": "low", "opacity": 0.15, "color": "#FFFFFF" },
+          { "type": "vortex", "position": "top-center", "color": "#2767F6", "opacity": 0.2, "radius": 140 },
+          { "type": "blob", "cx": "15%", "cy": "50%", "r": "30%", "color": "#2767F6", "opacity": 0.18, "blur": 60 },
+          { "type": "blob", "cx": "85%", "cy": "50%", "r": "30%", "color": "#2767F6", "opacity": 0.18, "blur": 60 }
+        ],
+        "glow": {
+          "present": true,
+          "color": "#4A90E8",
+          "radius": 80,
+          "position": "flanking",
+          "opacity": 0.4
+        },
+        "atmosphere": {
+          "temperature": "cool",
+          "contrast": "high",
+          "vibrancy": "electric"
+        }
+      }
+    }
+  }
+}
+```
+
+#### Relationship to other background types
+
+- `scanned` is for ANY data-driven recipe — regardless of whether the source is cosmic, mesh, or textured
+- `mesh`, `radial`, `noise-gradient` etc. are fixed-recipe presets — use them when you want a specific canonical aesthetic
+- `scanned` can reproduce any of the fixed-recipe looks but requires specifying all fields explicitly
+- In practice: synthesizer emits `scanned` when scan confidence is high; users override to fixed types via `--preset` flag
 
 #### `background.noise` (optional — works on ALL background types) — v0.4.3+
 
