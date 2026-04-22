@@ -140,6 +140,14 @@ tells you to:
 This step always runs — every scan produces a screenshot, and the
 synthesizer depends on these visual signals.
 
+### Step 4a: Vision fingerprint (always)
+
+After screenshot-analysis.md produces its abstract classification, also run the vision-fingerprint prompt to capture structured measurements the synthesizer + renderer consume directly.
+
+Follow `${PLUGIN_ROOT}/prompts/vision-fingerprint.md` precisely. Writes `./.brand-scan/vision-fingerprint.json`. This runs alongside vision-analysis.json — the analysis gives abstract mood tags (hierarchy/whitespace/composition/imagery/density/mood enums), the fingerprint gives precise measurements (specific gradient stops, overlay positions, effect parameters). Both feed the synthesizer; scan-first synthesis (Phase 0.75) consumes the fingerprint.
+
+If the hero screenshot is unavailable or vision can't confidently assess, the prompt writes a low-confidence fingerprint with null fields. The synthesizer handles that gracefully by falling back to preset.
+
 ### Step 5: Analyze voice + niche from copy (always)
 
 Follow `${PLUGIN_ROOT}/prompts/voice-niche-analysis.md` precisely. That
