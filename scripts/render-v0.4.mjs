@@ -12,7 +12,10 @@
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { embedFontAsDataUri } from './load-font.mjs';
 
 import {
   TYPE,
@@ -731,30 +734,88 @@ const FONTSHARE_FONTS = {
 };
 
 /**
- * Build one or two @import lines for a brand's display + body fonts.
- * Emits separate imports when fonts come from different sources
- * (Google Fonts vs Fontshare), dedupes when display === body.
- * Returns the string ready to inline inside an SVG <style> block.
+ * Resolve a font field to its family name. Accepts:
+ *   - string ("Instrument Serif")  → "Instrument Serif"
+ *   - object ({family: "Foo", ...}) → "Foo"
+ *   - missing/invalid → "sans-serif"
  */
-function buildFontImports(fonts) {
-  const importOf = (name) => {
-    if (!name) return null;
+function fontFamilyName(font) {
+  if (typeof font === 'string') return font;
+  if (font && typeof font === 'object' && font.family) return font.family;
+  return 'sans-serif';
+}
+
+/**
+ * Build the inline-CSS font declarations for a brand. Handles both v0.7.0
+ * string form (Google Fonts / Fontshare @import) and v0.7.1 object form:
+ *   - `string` family name → Google Fonts or Fontshare @import
+ *   - `{family, file, weight?, style?}` → @font-face with base64 data-URI
+ *   - `{family}` with no file → Google Fonts @import (fallback)
+ *
+ * For the object-with-file form, `font.file` is resolved relative to
+ * `brandProfileDir` (the directory containing brand-profile.json), so relative
+ * paths in the brand profile survive CWD changes. Absolute paths are returned
+ * unchanged by `path.resolve`.
+ *
+ * Emits:
+ *   - one @import line per unique Google/Fontshare family, followed by
+ *   - one @font-face block per embedded font
+ *
+ * Returns a string ready to drop into an SVG <style> block. Empty string if
+ * no fonts configured.
+ */
+function buildFontDeclarations(brand, brandProfileDir) {
+  const fonts = brand?.visual?.fonts || {};
+  const { display, body } = fonts;
+  const googleFamilies = [];
+  const fontshareSlugs = [];
+  const embedded = [];
+
+  const baseDir = brandProfileDir || process.cwd();
+
+  const pushGoogleOrFontshare = (name) => {
+    if (!name) return;
     const slug = FONTSHARE_FONTS[name];
     if (slug) {
-      return `@import url('https://api.fontshare.com/v2/css?f[]=${slug}@400,500,700,900&amp;display=swap');`;
+      if (!fontshareSlugs.includes(slug)) fontshareSlugs.push(slug);
+    } else {
+      if (!googleFamilies.includes(name)) googleFamilies.push(name);
     }
-    const googleSlug = String(name).replace(/\s+/g, '+');
-    return `@import url('https://fonts.googleapis.com/css2?family=${googleSlug}:wght@400;500;700;800&amp;display=swap');`;
   };
-  const seen = new Set();
-  const lines = [];
-  for (const name of [fonts?.display, fonts?.body]) {
-    if (!name || seen.has(name)) continue;
-    seen.add(name);
-    const line = importOf(name);
-    if (line) lines.push(line);
+
+  const collectFont = (font, defaultWeight) => {
+    if (typeof font === 'string') {
+      pushGoogleOrFontshare(font);
+      return;
+    }
+    if (font && typeof font === 'object') {
+      if (font.file) {
+        const resolvedPath = path.resolve(baseDir, font.file);
+        embedded.push(embedFontAsDataUri({
+          family: font.family,
+          file: resolvedPath,
+          weight: font.weight || defaultWeight,
+          style: font.style || 'normal',
+        }));
+      } else if (font.family) {
+        pushGoogleOrFontshare(font.family);
+      }
+    }
+  };
+
+  collectFont(display, 700);
+  collectFont(body, 400);
+
+  const parts = [];
+  for (const name of googleFamilies) {
+    const slug = String(name).replace(/\s+/g, '+');
+    parts.push(`@import url('https://fonts.googleapis.com/css2?family=${slug}:wght@400;500;700;800&amp;display=swap');`);
   }
-  return lines.join('\n      ');
+  for (const slug of fontshareSlugs) {
+    parts.push(`@import url('https://api.fontshare.com/v2/css?f[]=${slug}@400,500,700,900&amp;display=swap');`);
+  }
+  parts.push(...embedded);
+  return parts.join('\n      ');
 }
 
 // ---------------------------------------------------------------------------
@@ -768,11 +829,17 @@ function buildFontImports(fonts) {
  * adds a new placeholder, add it here. Empty-string default for unused keys
  * on a given pattern is fine — `fillTemplate` handles undefined → ''.
  */
-function buildTokenValues(brand, axes, slideNumber, slideTotal) {
+function buildTokenValues(brand, axes, slideNumber, slideTotal, brandProfileDir = null) {
   const fonts = brand.visual.fonts || {};
   const colors = brand.visual.colors || {};
   const brandMeta = brand.brand || {};
   const roles = buildColorRoles(colors);
+
+  // v0.7.1 — fonts may be strings ("Inter") or objects ({family, file, ...}).
+  // Normalize to family names for inline CSS; embed @font-face for file-based
+  // fonts via buildFontDeclarations.
+  const displayFamily = fontFamilyName(fonts.display) || 'serif';
+  const bodyFamily = fontFamilyName(fonts.body) || 'sans-serif';
 
   const centerX = Math.round(CANVAS.width / 2);
   const centerY = Math.round(CANVAS.height / 2);
@@ -919,13 +986,13 @@ function buildTokenValues(brand, axes, slideNumber, slideTotal) {
     BOTTOM_Y: CANVAS.height - 100,
 
     // Fonts
-    FONT_DISPLAY: fonts.display || 'serif',
-    FONT_BODY: fonts.body || 'sans-serif',
-    FONT_DISPLAY_URL: fontUrl(fonts.display || ''),
-    FONT_BODY_URL: fontUrl(fonts.body || ''),
-    FONT_DISPLAY_STACK: fontStack(fonts.display || 'serif', 'serif'),
-    FONT_BODY_STACK: fontStack(fonts.body || 'sans-serif', 'sans'),
-    FONT_IMPORTS: buildFontImports(fonts),
+    FONT_DISPLAY: displayFamily,
+    FONT_BODY: bodyFamily,
+    FONT_DISPLAY_URL: fontUrl(displayFamily),
+    FONT_BODY_URL: fontUrl(bodyFamily),
+    FONT_DISPLAY_STACK: fontStack(displayFamily, 'serif'),
+    FONT_BODY_STACK: fontStack(bodyFamily, 'sans'),
+    FONT_IMPORTS: buildFontDeclarations(brand, brandProfileDir),
     BG_COLOR: brand.visual.background?.color ?? roles.SURFACE,
 
     // Brand meta
@@ -1039,6 +1106,7 @@ function renderPatternSlide({
   rng,
   pluginRoot,
   strategyDir,
+  brandProfileDir,
 }) {
   const patternDef = PATTERN_BY_ID[slide.pattern];
   if (!patternDef) {
@@ -1052,7 +1120,7 @@ function renderPatternSlide({
   const templateStr = readFileSync(templatePath, 'utf8');
 
   // Token values + per-slide data
-  const tokenValues = buildTokenValues(brand, axes, slideNumber, slideTotal);
+  const tokenValues = buildTokenValues(brand, axes, slideNumber, slideTotal, brandProfileDir);
   const slideData = slide.data || {};
   const values = { ...tokenValues, ...slideData };
 
@@ -1137,7 +1205,7 @@ function renderPatternSlide({
 // Carousel orchestration
 // ---------------------------------------------------------------------------
 
-export function renderCarousel({ brand, strategy, outputDir, pluginRoot = PLUGIN_ROOT, strategyDir = null }) {
+export function renderCarousel({ brand, strategy, outputDir, pluginRoot = PLUGIN_ROOT, strategyDir = null, brandProfileDir = null }) {
   if (!strategy || typeof strategy !== 'object') {
     throw new Error('strategy must be an object with { topic, slides[] }');
   }
@@ -1181,6 +1249,7 @@ export function renderCarousel({ brand, strategy, outputDir, pluginRoot = PLUGIN
       rng,
       pluginRoot,
       strategyDir,
+      brandProfileDir,
     });
     const filename = `slide-${String(slideNumber).padStart(2, '0')}.svg`;
     const fullPath = join(outAbs, filename);
@@ -1223,6 +1292,9 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1
       // Relative `icon.file` paths in strategy.json resolve against the
       // strategy file's directory (user's project), not the render script.
       strategyDir: dirname(resolve(strategyPath)),
+      // v0.7.1 — relative `fonts.display.file` / `fonts.body.file` paths in
+      // brand-profile.json resolve against the brand profile's directory.
+      brandProfileDir: dirname(resolve(brandPath)),
     });
   } catch (err) {
     console.error(`\u2717 ${err.message}`);
