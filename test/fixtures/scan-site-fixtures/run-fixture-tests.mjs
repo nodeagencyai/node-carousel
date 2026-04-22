@@ -26,6 +26,7 @@ import {
 import { brandfetch, normalizeBrandfetch, extractDomain, readCache, writeCache, getCacheDir } from '../../../scripts/brandfetch-client.mjs';
 import { extractLogoFromSignals } from '../../../scripts/extract-logo.mjs';
 import { parseViewBox } from '../../../scripts/render-v0.4.mjs';
+import { parsePreferences, validatePreferences, DEFAULTS } from '../../../scripts/preferences.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -1519,6 +1520,182 @@ async function main() {
       'parseViewBox: "0 0 24 24" → {width:24, height:24} (legacy icon)',
       square.width === 24 && square.height === 24,
       `got ${JSON.stringify(square)}`,
+    );
+  }
+
+  // ────────────────────────────────────────────────────────────────────
+  // Preferences parser — Task A.1 for v0.7.1
+  // Covers parsePreferences() + validatePreferences() from scripts/preferences.mjs
+  // ────────────────────────────────────────────────────────────────────
+  {
+    console.log('\n=== preferences parser (v0.7.1 A.1) ===');
+
+    // Test 1: empty input returns defaults
+    const empty = parsePreferences({});
+    total += 1;
+    passed += check(
+      'empty returns defaults',
+      empty.density === 'standard'
+        && empty.visualStyle === 'match-scan'
+        && empty.contentWeight === 'balanced'
+        && empty.moodOverride === 'match-scan'
+        && empty.logoPlacement === 'top-right'
+        && Array.isArray(empty.warnings)
+        && empty.warnings.length === 0
+        && empty.customNotes && Object.keys(empty.customNotes).length === 0,
+      `got ${JSON.stringify(empty)}`,
+    );
+
+    // Test 2: canonical enum values pass through
+    const canonical = parsePreferences({
+      density: 'minimalist',
+      visualStyle: 'paper',
+      contentWeight: 'text-heavy',
+    });
+    total += 1;
+    passed += check(
+      'canonical values preserved',
+      canonical.density === 'minimalist'
+        && canonical.visualStyle === 'paper'
+        && canonical.contentWeight === 'text-heavy'
+        && canonical.warnings.length === 0,
+      `got ${JSON.stringify(canonical)}`,
+    );
+
+    // Test 3: "Custom: foo" escape captured as customNotes
+    const custom = parsePreferences({ density: 'Custom: tight-but-breathable' });
+    total += 1;
+    passed += check(
+      'custom escape captured',
+      custom.density === 'custom'
+        && custom.customNotes.density === 'tight-but-breathable',
+      `got ${JSON.stringify(custom)}`,
+    );
+
+    // Test 4: unknown enum falls back to default + warning
+    const invalid = parsePreferences({ density: 'explosive' });
+    total += 1;
+    passed += check(
+      'unknown falls back to default with warning',
+      invalid.density === 'standard'
+        && invalid.warnings.some((w) => w === 'density: unknown value "explosive"'),
+      `got ${JSON.stringify(invalid)}`,
+    );
+
+    // Test 5: validation rejects non-string scalar
+    const nonStringErrs = validatePreferences({ density: 123 });
+    total += 1;
+    passed += check(
+      'validatePreferences rejects non-string scalar',
+      nonStringErrs.length > 0,
+      `got ${JSON.stringify(nonStringErrs)}`,
+    );
+
+    // Test 6: case-insensitive enum matching
+    const upper = parsePreferences({ density: 'MINIMALIST' });
+    total += 1;
+    passed += check(
+      'case-insensitive: MINIMALIST → minimalist',
+      upper.density === 'minimalist' && upper.warnings.length === 0,
+      `got density=${upper.density} warnings=${JSON.stringify(upper.warnings)}`,
+    );
+
+    // Test 7: leading/trailing whitespace is trimmed
+    const padded = parsePreferences({ density: '  minimalist  ' });
+    total += 1;
+    passed += check(
+      'whitespace trimmed: "  minimalist  " → minimalist',
+      padded.density === 'minimalist' && padded.warnings.length === 0,
+      `got density=${padded.density} warnings=${JSON.stringify(padded.warnings)}`,
+    );
+
+    // Test 8: custom escape with extra whitespace trims inner note
+    const paddedCustom = parsePreferences({ density: '  Custom:   my note  ' });
+    total += 1;
+    passed += check(
+      'custom with extra whitespace: captures "my note" trimmed',
+      paddedCustom.density === 'custom'
+        && paddedCustom.customNotes.density === 'my note',
+      `got ${JSON.stringify(paddedCustom)}`,
+    );
+
+    // Test 9: null input returns all defaults, no crash
+    const nullPrefs = parsePreferences(null);
+    total += 1;
+    passed += check(
+      'null input → defaults, no crash',
+      nullPrefs.density === DEFAULTS.density
+        && nullPrefs.visualStyle === DEFAULTS.visualStyle
+        && nullPrefs.warnings.length === 0,
+      `got ${JSON.stringify(nullPrefs)}`,
+    );
+
+    // Test 9b: undefined input also safe
+    const undefPrefs = parsePreferences(undefined);
+    total += 1;
+    passed += check(
+      'undefined input → defaults, no crash',
+      undefPrefs.density === DEFAULTS.density
+        && undefPrefs.logoPlacement === DEFAULTS.logoPlacement
+        && undefPrefs.warnings.length === 0,
+      `got ${JSON.stringify(undefPrefs)}`,
+    );
+
+    // Test 10: empty string treated as absent (default, no warning)
+    const emptyStr = parsePreferences({ density: '', visualStyle: 'paper' });
+    total += 1;
+    passed += check(
+      'empty string treated as absent (no warning, keeps default)',
+      emptyStr.density === 'standard'
+        && emptyStr.visualStyle === 'paper'
+        && emptyStr.warnings.length === 0,
+      `got ${JSON.stringify(emptyStr)}`,
+    );
+
+    // Test 11: customNotes key on input does NOT get iterated as a preference
+    //   (only DEFAULTS keys are walked — customNotes / warnings are output-only)
+    const roundtripInput = { density: 'dense', customNotes: { density: 'prev' } };
+    const roundtrip = parsePreferences(roundtripInput);
+    total += 1;
+    passed += check(
+      'customNotes on input is not parsed as a preference field',
+      roundtrip.density === 'dense'
+        // customNotes should be a fresh object populated by this parse run
+        // (which had no Custom: escapes), so no 'density' note should exist
+        && roundtrip.customNotes.density === undefined
+        && roundtrip.warnings.length === 0,
+      `got ${JSON.stringify(roundtrip)}`,
+    );
+
+    // Test 12: validatePreferences flags unknown top-level key
+    const unknownKeyErrs = validatePreferences({ density: 'standard', foobar: 'nope' });
+    total += 1;
+    passed += check(
+      'validatePreferences flags unknown top-level key',
+      unknownKeyErrs.some((e) => e === 'unknown key: foobar'),
+      `got ${JSON.stringify(unknownKeyErrs)}`,
+    );
+
+    // Test 13: validatePreferences passes for valid prefs
+    const okErrs = validatePreferences({
+      density: 'minimalist',
+      visualStyle: 'paper',
+      contentWeight: 'balanced',
+    });
+    total += 1;
+    passed += check(
+      'validatePreferences: empty errors for valid input',
+      okErrs.length === 0,
+      `got ${JSON.stringify(okErrs)}`,
+    );
+
+    // Test 14: validatePreferences rejects non-object top-level
+    const nonObjErrs = validatePreferences('not an object');
+    total += 1;
+    passed += check(
+      'validatePreferences rejects non-object top-level',
+      nonObjErrs.length > 0 && nonObjErrs[0] === 'preferences must be an object',
+      `got ${JSON.stringify(nonObjErrs)}`,
     );
   }
 
