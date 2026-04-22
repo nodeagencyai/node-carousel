@@ -723,34 +723,90 @@ accent:
   keep preset default.
 - Strip CSS fallbacks (e.g. `"Inter", sans-serif` → `Inter`). Strip quotes.
 
-#### Font selection precedence (v0.7 A.2)
+Each font value can be either a string family name (legacy, resolves via
+Google Fonts / Fontshare `@import`) OR an object with `{ family, file,
+weight, style }` (v0.7.1+, self-hosted — renderer base64-embeds the file).
+See `docs/brand-profile-schema.md` § `visual.fonts` for the full dual-form
+schema. Emit whichever form the precedence rules below select.
+
+#### Font selection precedence (v0.7 A.2, updated v0.7.1)
 
 `scan.fonts.display` is derived from the homepage's `<h1>` computed
 font-family. That's a decent default, but header/logo/kicker chips often
-carry the real brand identity font. Apply this 4-level precedence to pick
+carry the real brand identity font. Apply this precedence to pick
 `visual.fonts.display`:
 
-1. **Header wins** — if `scan.fonts.byContext.header` exists (non-null)
-   AND differs from `scan.fonts.byContext.h1`, prefer the header font.
-   Rationale: header typography is the most brand-identity-laden surface
-   of the page and is usually distinct when the brand has an opinion.
-2. **Logo context** — else if `scan.fonts.byContext.logo` exists AND
-   differs from `scan.fonts.byContext.h1`, prefer the logo font. The
-   wordmark font is canonical brand identity when it's not the same as
-   body-aligned h1.
-3. **Vision says mono/technical** — else if
-   `vision-analysis.json.observations` / `mood` contains any of
-   `mono`, `monospace`, `technical`, `code-like`, `terminal` AND any
-   value in `scan.fonts.byContext.*` matches a known mono family
-   (`JetBrains Mono`, `Fira Code`, `Space Mono`, `Source Code Pro`,
-   `IBM Plex Mono`, `Geist Mono`), prefer that mono font. Vision pixel
-   analysis often flags "mono-styled" display even when the h1 element
-   inherited a body sans-serif.
-4. **Fall through** — else use `scan.fonts.display` (h1-derived, v0.6
-   behavior).
+1. **byContext + recognized source** — if scan has `byContext` entries
+   with a recognized `displaySource` (`"google"` or `"fontshare"`), pick
+   the best match via the existing v0.7 A.2 rules:
+   1a. **Header wins** — if `scan.fonts.byContext.header` exists
+       (non-null) AND differs from `scan.fonts.byContext.h1`, prefer the
+       header font. Rationale: header typography is the most
+       brand-identity-laden surface of the page and is usually distinct
+       when the brand has an opinion.
+   1b. **Logo context** — else if `scan.fonts.byContext.logo` exists AND
+       differs from `scan.fonts.byContext.h1`, prefer the logo font. The
+       wordmark font is canonical brand identity when it's not the same
+       as body-aligned h1.
+   1c. **Vision says mono/technical** — else if
+       `vision-analysis.json.observations` / `mood` contains any of
+       `mono`, `monospace`, `technical`, `code-like`, `terminal` AND any
+       value in `scan.fonts.byContext.*` matches a known mono family
+       (`JetBrains Mono`, `Fira Code`, `Space Mono`, `Source Code Pro`,
+       `IBM Plex Mono`, `Geist Mono`), prefer that mono font. Vision
+       pixel analysis often flags "mono-styled" display even when the h1
+       element inherited a body sans-serif.
+   1d. **Fall through (within recognized-source branch)** — else use
+       `scan.fonts.display` (h1-derived, v0.6 behavior).
+   Emit as a STRING form (legacy Google/Fontshare family name).
 
-Always require `displaySource !== "unknown"` on the chosen font; if the
-picked byContext font is unknown-source, fall through to the next level.
+2. **Unknown source, display family present** — else if
+   `scan.fonts.displaySource === "unknown"` AND there's no viable
+   Google/Fontshare family in `scan.fonts.byContext.*`, emit the object
+   form with `file: null` so the user can drop in a local font file:
+
+   ```json
+   "display": {
+     "family": "Gilroy",
+     "file": null,
+     "weight": 700,
+     "__note": "Unknown font — not on Google Fonts / Fontshare. Drop the font file in ./brand-fonts/ and set 'file' to the relative path."
+   }
+   ```
+
+   Also push a resolution warning to the `warnings` array:
+
+   ```json
+   {
+     "type": "font-self-hosted-required",
+     "family": "Gilroy",
+     "message": "Detected font isn't on Google Fonts. Provide file to render correctly. See docs/custom-fonts.md."
+   }
+   ```
+
+   When `file` is `null`, the renderer falls back to a Google Fonts
+   `@import` using `family` as the lookup name — which will fail for
+   truly unknown fonts but at least surfaces the error clearly rather
+   than silently substituting.
+
+3. **Preset font defaults** — else if scan has no usable display family
+   at all, use the selected preset's `fonts.display` (Step 1's preset
+   pick has sensible defaults like `Instrument Serif` for editorial-serif,
+   `JetBrains Mono` for technical-mono, etc.).
+
+4. **Fall through to sans-serif** — else emit
+   `"display": "sans-serif"` and push a stronger warning:
+
+   ```json
+   {
+     "type": "font-unresolved",
+     "message": "No display font could be resolved from scan, preset, or preferences — falling back to generic sans-serif. Set visual.fonts.display manually."
+   }
+   ```
+
+Always require `displaySource !== "unknown"` on the chosen font for
+tier 1; if the picked byContext font is unknown-source, fall through to
+tier 2 (object form with `file: null`).
 
 #### Concrete example (nodeagency.ai)
 

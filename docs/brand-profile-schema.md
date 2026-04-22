@@ -79,12 +79,42 @@ Every node-carousel project has a `brand-profile.json` at its root. Commands rea
 
 ### `visual.fonts` (object, required)
 
-| Field | Type | Required | Default | Notes |
-|---|---|---|---|---|
-| `display` | string | yes | `Playfair Display` | Font family for headlines and large text. Must be a valid [Google Fonts](https://fonts.google.com) or [Fontshare](https://fontshare.com) (for `Satoshi`) family name — fetched via `@import` in the SVG. |
-| `body` | string | yes | `Inter` | Font family for body text, bullets, and supporting copy. Same source rules as `display`. |
+Both `display` and `body` accept two forms: a legacy string (Google Fonts / Fontshare family name) or an object (v0.7.1+ self-hosted).
 
-Custom self-hosted (non-Google / non-Fontshare) fonts are not supported in v0.4. Use the closest match, or fork and embed fonts as base64 in the templates.
+#### String form (legacy, Google Fonts)
+
+```json
+"display": "Inter"
+```
+
+Renderer emits `@import url('https://fonts.googleapis.com/css2?family=Inter')`. Only works for families available on [Google Fonts](https://fonts.google.com) or [Fontshare](https://fontshare.com) (for `Satoshi` in the `satoshi-tech` preset).
+
+#### Object form (v0.7.1+, self-hosted)
+
+```json
+"display": {
+  "family": "Gilroy",
+  "file": "./brand-fonts/Gilroy-Bold.woff2",
+  "weight": 700,
+  "style": "normal"
+}
+```
+
+Renderer base64-embeds the font file as `@font-face` data URI inside the SVG. Makes output portable and self-contained (no external font loading at view-time).
+
+Fields:
+- `family` (required): CSS font-family name used in text elements.
+- `file` (required for object form): relative or absolute path to font file; relative paths resolve from the `brand-profile.json`'s directory (NOT CWD). When `file` is `null`, the renderer falls back to the Google Fonts `@import` using `family` as the lookup name — which fails cleanly for truly unknown fonts but at least surfaces the error.
+- `weight` (optional, default `400` for body / `700` for display): CSS font-weight. Must match the font file's actual weight.
+- `style` (optional, default `"normal"`): `"normal"` or `"italic"`.
+
+Supported file formats: `.woff2` (recommended), `.woff`, `.ttf`, `.otf`. Other extensions are rejected.
+
+Max file size: **500 KB** (rejected above this). Warns at **250 KB**. Larger files bloat every slide SVG.
+
+Licensing: users are responsible for font-license compliance. The plugin embeds what you provide — verify your font's license allows embedding in distributed documents before shipping carousels.
+
+See `docs/custom-fonts.md` for the full walkthrough.
 
 ### `visual.background` (object, required)
 
