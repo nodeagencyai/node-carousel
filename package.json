@@ -1,0 +1,6 @@
+{
+  "name": "node-carousel-runtime",
+  "version": "0.7.0",
+  "type": "module",
+  "private": true
+}
