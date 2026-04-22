@@ -25,7 +25,7 @@ import {
 } from '../../../scripts/scan-site.mjs';
 import { brandfetch, normalizeBrandfetch, extractDomain, readCache, writeCache, getCacheDir } from '../../../scripts/brandfetch-client.mjs';
 import { extractLogoFromSignals } from '../../../scripts/extract-logo.mjs';
-import { parseViewBox } from '../../../scripts/render-v0.4.mjs';
+import { parseViewBox, buildScannedBackground } from '../../../scripts/render-v0.4.mjs';
 import { parsePreferences, validatePreferences, DEFAULTS } from '../../../scripts/preferences.mjs';
 import { loadFont, embedFontAsDataUri, inferFontFormat } from '../../../scripts/load-font.mjs';
 import { parsePngPixel, clusterDominantColors, detectGlow } from '../../../scripts/sample-pixels.mjs';
@@ -2179,6 +2179,239 @@ async function main() {
       'detectGlow: 2 eligible points at center grid → position=center',
       g.detected && g.position === 'center',
       `got ${JSON.stringify(g)}`,
+    );
+  }
+
+  // === scanned background rendering (v0.8 C.2) ===
+  console.log(`\n=== scanned background rendering (v0.8 C.2) ===`);
+
+  {
+    // Baseline: just baseColor → emits base rect, no defs, no overlays.
+    const out = buildScannedBackground({ scanned: { baseColor: '#000000' } }, 'test');
+    total += 1;
+    passed += check(
+      'baseColor only → emits base rect with solid fill',
+      out.includes('<rect width="100%" height="100%" fill="#000000"/>')
+        && !out.includes('<defs>'),
+      `got ${out.slice(0, 120)}…`,
+    );
+  }
+  {
+    // Missing baseColor → warning comment + fallback to bg.color solid.
+    const out = buildScannedBackground({ color: '#111111', scanned: {} }, 'test');
+    total += 1;
+    passed += check(
+      'missing baseColor → warning comment + fallback solid',
+      out.includes('warning: scanned-bg missing baseColor')
+        && out.includes('fill="#111111"'),
+      `got ${out.slice(0, 160)}…`,
+    );
+  }
+  {
+    // Gradient sub-object → <linearGradient> with from/to stops.
+    const out = buildScannedBackground({
+      scanned: {
+        baseColor: '#070708',
+        gradient: { from: '#070708', to: '#0F1F3A', angle: 180 },
+      },
+    }, 'test');
+    total += 1;
+    passed += check(
+      'gradient → emits <linearGradient> with from/to stops',
+      out.includes('<linearGradient')
+        && out.includes('stop-color="#070708"')
+        && out.includes('stop-color="#0F1F3A"')
+        && out.includes('<defs>'),
+      `got ${out.slice(0, 200)}…`,
+    );
+  }
+  {
+    // Starfield low density → ~30 circles.
+    const out = buildScannedBackground({
+      scanned: {
+        baseColor: '#000000',
+        overlays: [{ type: 'starfield', density: 'low', color: '#FFFFFF', opacity: 0.3 }],
+      },
+    }, 'test');
+    const circleCount = (out.match(/<circle /g) || []).length;
+    total += 1;
+    passed += check(
+      'starfield density=low → 30 circles',
+      circleCount === 30,
+      `got ${circleCount} circles`,
+    );
+  }
+  {
+    // Starfield high density → ~180 circles.
+    const out = buildScannedBackground({
+      scanned: {
+        baseColor: '#000000',
+        overlays: [{ type: 'starfield', density: 'high', color: '#FFFFFF' }],
+      },
+    }, 'test');
+    const circleCount = (out.match(/<circle /g) || []).length;
+    total += 1;
+    passed += check(
+      'starfield density=high → 180 circles',
+      circleCount === 180,
+      `got ${circleCount} circles`,
+    );
+  }
+  {
+    // Vortex flanking → TWO radialGradient defs (left + right mirrored).
+    const out = buildScannedBackground({
+      scanned: {
+        baseColor: '#000000',
+        overlays: [{ type: 'vortex', position: 'flanking', color: '#2767F6', radius: 140, opacity: 0.2 }],
+      },
+    }, 'test');
+    const radialCount = (out.match(/<radialGradient /g) || []).length;
+    total += 1;
+    passed += check(
+      'vortex position=flanking → 2 radialGradient defs',
+      radialCount === 2,
+      `got ${radialCount} radialGradient defs`,
+    );
+  }
+  {
+    // Blob with blur → emits radialGradient + filter + fill with filter.
+    const out = buildScannedBackground({
+      scanned: {
+        baseColor: '#000000',
+        overlays: [{ type: 'blob', cx: '15%', cy: '50%', r: '30%', color: '#2767F6', opacity: 0.18, blur: 60 }],
+      },
+    }, 'test');
+    total += 1;
+    passed += check(
+      'blob with blur → emits radialGradient + filter + filtered rect',
+      out.includes('<radialGradient')
+        && out.includes('<filter')
+        && out.includes('<feGaussianBlur')
+        && /fill="url\(#blob-\d+\)" filter="url\(#blob-blur-\d+\)"/.test(out),
+      `got ${out.slice(0, 240)}…`,
+    );
+  }
+  {
+    // Grain paper texture → feTurbulence baseFrequency=0.6.
+    const out = buildScannedBackground({
+      scanned: {
+        baseColor: '#FFFFFF',
+        overlays: [{ type: 'grain', textureType: 'paper', intensity: 0.08 }],
+      },
+    }, 'test');
+    total += 1;
+    passed += check(
+      'grain textureType=paper → feTurbulence baseFrequency=0.6 numOctaves=3',
+      out.includes('<feTurbulence type="fractalNoise" baseFrequency="0.6" numOctaves="3"'),
+      `got ${out.slice(0, 240)}…`,
+    );
+  }
+  {
+    // Unknown overlay type → warning comment, renders rest, does NOT crash.
+    const out = buildScannedBackground({
+      scanned: {
+        baseColor: '#000000',
+        overlays: [{ type: 'nonesuch' }, { type: 'starfield', density: 'low' }],
+      },
+    }, 'test');
+    total += 1;
+    passed += check(
+      'unknown overlay type → warning comment + rest still renders',
+      out.includes('warning: unknown overlay type nonesuch')
+        && (out.match(/<circle /g) || []).length === 30,
+      `got ${out.slice(0, 300)}…`,
+    );
+  }
+  {
+    // Glow present + position=flanking → 2 mirrored glow circles + 2 filters.
+    const out = buildScannedBackground({
+      scanned: {
+        baseColor: '#000000',
+        glow: { present: true, color: '#4A90E8', radius: 80, position: 'flanking', opacity: 0.4 },
+      },
+    }, 'test');
+    const circleCount = (out.match(/<circle /g) || []).length;
+    const filterCount = (out.match(/<filter /g) || []).length;
+    total += 1;
+    passed += check(
+      'glow present + flanking → 2 mirrored glow circles + 2 filters',
+      circleCount === 2 && filterCount === 2
+        && out.includes('fill="#4A90E8"'),
+      `got ${circleCount} circles, ${filterCount} filters`,
+    );
+  }
+  {
+    // Glow present=false → no glow circle emitted.
+    const out = buildScannedBackground({
+      scanned: {
+        baseColor: '#000000',
+        glow: { present: false, color: '#4A90E8', position: 'center' },
+      },
+    }, 'test');
+    const circleCount = (out.match(/<circle /g) || []).length;
+    total += 1;
+    passed += check(
+      'glow.present=false → no glow circle',
+      circleCount === 0,
+      `got ${circleCount} circles`,
+    );
+  }
+  {
+    // Seeded determinism: same seed → identical output.
+    const recipe = {
+      scanned: {
+        baseColor: '#000000',
+        overlays: [{ type: 'starfield', density: 'low', color: '#FFFFFF' }],
+      },
+    };
+    const a = buildScannedBackground(recipe, 'determinism-seed');
+    const b = buildScannedBackground(recipe, 'determinism-seed');
+    const c = buildScannedBackground(recipe, 'different-seed');
+    total += 1;
+    passed += check(
+      'seeded determinism: same seed → byte-identical; different seed → differs',
+      a === b && a !== c,
+      `a===b? ${a === b}  a!==c? ${a !== c}`,
+    );
+  }
+  {
+    // Vortex with missing color → warning comment, no crash.
+    const out = buildScannedBackground({
+      scanned: {
+        baseColor: '#000000',
+        overlays: [{ type: 'vortex', position: 'center' }],
+      },
+    }, 'test');
+    total += 1;
+    passed += check(
+      'vortex missing color → warning comment',
+      out.includes('warning: vortex missing color'),
+      `got ${out.slice(0, 200)}…`,
+    );
+  }
+  {
+    // Full cosmic-dark recipe — integration smoke, check expected element counts.
+    const out = buildScannedBackground({
+      scanned: {
+        baseColor: '#070708',
+        gradient: { from: '#070708', to: '#0F1F3A', angle: 180 },
+        overlays: [
+          { type: 'starfield', density: 'low', color: '#FFFFFF', opacity: 0.15 },
+          { type: 'vortex', position: 'top-center', color: '#2767F6', opacity: 0.2, radius: 140 },
+          { type: 'blob', cx: '15%', cy: '50%', r: '30%', color: '#2767F6', opacity: 0.18, blur: 60 },
+          { type: 'blob', cx: '85%', cy: '50%', r: '30%', color: '#2767F6', opacity: 0.18, blur: 60 },
+        ],
+        glow: { present: true, color: '#4A90E8', radius: 80, position: 'flanking', opacity: 0.4 },
+      },
+    }, 'cosmic-dark::v0.8');
+    const radialCount = (out.match(/<radialGradient /g) || []).length;
+    const linearCount = (out.match(/<linearGradient /g) || []).length;
+    const circleCount = (out.match(/<circle /g) || []).length;
+    total += 1;
+    passed += check(
+      'full cosmic-dark recipe → 1 linearGrad + 3 radialGrad (1 vortex + 2 blobs) + 32 circles (30 stars + 2 glows)',
+      linearCount === 1 && radialCount === 3 && circleCount === 32,
+      `got linear=${linearCount} radial=${radialCount} circles=${circleCount}`,
     );
   }
 

@@ -52,11 +52,13 @@ const PATTERN_BY_ID = Object.fromEntries(MANIFEST.patterns.map((p) => [p.id, p])
 // Shared-render.mjs still owns solid/gradient/mesh/radial/image so v0.3 stays
 // frozen. v0.4-only types are rendered by `renderBackgroundV04` below.
 // v0.4.3 adds `noise-gradient`.
+// v0.8 adds `scanned` — dynamic SVG filter composition from a scanned recipe.
 const V04_BACKGROUND_TYPES = new Set([
   'dot-grid',
   'geometric-shapes',
   'glow-sphere',
   'noise-gradient',
+  'scanned',
 ]);
 const HEX_RE = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
 
@@ -195,6 +197,23 @@ export function validateBrand(brand) {
         fail('background.glow.opacity must be a number between 0 and 1');
       }
     }
+  } else if (type === 'scanned') {
+    // v0.8 — dynamic SVG filter composition from scanned recipe.
+    // Lenient validation: buildScannedBackground falls back gracefully on
+    // missing fields. We only hard-fail on structural type errors.
+    if (bg.scanned !== undefined && bg.scanned !== null && typeof bg.scanned !== 'object') {
+      fail('background.scanned must be an object if present');
+    }
+    const sc = bg.scanned || {};
+    if (sc.overlays !== undefined && sc.overlays !== null && !Array.isArray(sc.overlays)) {
+      fail('background.scanned.overlays must be an array if present');
+    }
+    if (sc.gradient !== undefined && sc.gradient !== null && typeof sc.gradient !== 'object') {
+      fail('background.scanned.gradient must be an object if present');
+    }
+    if (sc.glow !== undefined && sc.glow !== null && typeof sc.glow !== 'object') {
+      fail('background.scanned.glow must be an object if present');
+    }
   } else if (type === 'noise-gradient') {
     // v0.4.3 — noise baked into gradient via mix-blend-mode.
     if (bg.noiseGradient === undefined || bg.noiseGradient === null) {
@@ -285,13 +304,228 @@ function buildV04BackgroundValues(brand, baseValues) {
   return values;
 }
 
+// ---------------------------------------------------------------------------
+// Scanned backgrounds (v0.8) — dynamic SVG filter composition from recipe
+// ---------------------------------------------------------------------------
+//
+// `type: "scanned"` carries a `scanned` sub-object produced by the vision
+// fingerprint pipeline (Phase B). Recipe composes 4 overlay primitives plus
+// an optional bloom glow on top of a base fill + optional gradient:
+//
+//   scanned: {
+//     baseColor: "#070708",                          // required
+//     gradient: { from, to, angle?, stops? },        // optional
+//     overlays: [                                    // optional
+//       { type: "starfield", density, color, opacity },
+//       { type: "vortex",    position, color, radius, opacity },
+//       { type: "blob",      cx, cy, r, color, opacity, blur? },
+//       { type: "grain",     textureType, intensity },
+//     ],
+//     glow: { present: true, color, radius, position, opacity },
+//   }
+//
+// Missing baseColor → fallback to solid fill with warning comment.
+// Unknown overlay type → warning comment, rendering continues.
+// RNG is seeded so starfield positions are deterministic per (brand, topic).
+
+const STARFIELD_DENSITY = { low: 30, medium: 80, high: 180 };
+
+const VORTEX_POSITIONS = {
+  'center':       { cx: '50%', cy: '50%' },
+  'top-center':   { cx: '50%', cy: '10%' },
+  'top-left':     { cx: '15%', cy: '15%' },
+  'top-right':    { cx: '85%', cy: '15%' },
+  'bottom-left':  { cx: '15%', cy: '85%' },
+  'bottom-right': { cx: '85%', cy: '85%' },
+  'left':         { cx: '15%', cy: '50%' },
+  'right':        { cx: '85%', cy: '50%' },
+};
+
+const GLOW_POSITIONS = {
+  'center':       { cx: 540, cy: 675 },
+  'top-center':   { cx: 540, cy: 200 },
+  'left':         { cx: 200, cy: 675 },
+  'right':        { cx: 880, cy: 675 },
+  'top-left':     { cx: 200, cy: 200 },
+  'top-right':    { cx: 880, cy: 200 },
+  'bottom-left':  { cx: 200, cy: 1150 },
+  'bottom-right': { cx: 880, cy: 1150 },
+};
+
+const GRAIN_TEXTURE_PARAMS = {
+  film:    { baseFrequency: 0.9, numOctaves: 2 },
+  digital: { baseFrequency: 2.5, numOctaves: 1 },
+  paper:   { baseFrequency: 0.6, numOctaves: 3 },
+  ink:     { baseFrequency: 0.4, numOctaves: 4 },
+};
+
+function buildStarfieldLayer(overlay, rng) {
+  const count = STARFIELD_DENSITY[overlay.density] ?? STARFIELD_DENSITY.low;
+  const color = overlay.color || '#FFFFFF';
+  const opacity = overlay.opacity ?? 0.3;
+  const stars = [];
+  for (let i = 0; i < count; i++) {
+    const cx = Math.floor(rng.next() * 1080);
+    const cy = Math.floor(rng.next() * 1350);
+    const r = rng.next() * 1.5 + 0.5;
+    stars.push(`<circle cx="${cx}" cy="${cy}" r="${r.toFixed(2)}" fill="${color}" opacity="${opacity}"/>`);
+  }
+  return { def: null, layer: `<g aria-label="starfield">${stars.join('')}</g>` };
+}
+
+function buildVortexLayer(overlay, rng) {
+  const { color, radius = 120, opacity = 0.25 } = overlay;
+  if (!color) {
+    return { def: null, layer: `<!-- warning: vortex missing color -->` };
+  }
+  if (overlay.position === 'flanking') {
+    const left = buildVortexLayer({ ...overlay, position: 'left' }, rng);
+    const right = buildVortexLayer({ ...overlay, position: 'right' }, rng);
+    return {
+      def: [left.def, right.def].filter(Boolean).join('\n'),
+      layer: [left.layer, right.layer].filter(Boolean).join('\n'),
+    };
+  }
+  const pos = VORTEX_POSITIONS[overlay.position] || VORTEX_POSITIONS.center;
+  const gid = `vortex-${Math.floor(rng.next() * 1e9)}`;
+  const fid = `vortex-blur-${Math.floor(rng.next() * 1e9)}`;
+  const clampedRadius = Math.max(20, Math.min(300, radius));
+  const def = `<radialGradient id="${gid}" cx="${pos.cx}" cy="${pos.cy}" r="60%"><stop offset="0%" stop-color="${color}" stop-opacity="${opacity}"/><stop offset="100%" stop-color="${color}" stop-opacity="0"/></radialGradient><filter id="${fid}"><feGaussianBlur stdDeviation="${clampedRadius / 8}"/></filter>`;
+  const layer = `<rect width="100%" height="100%" fill="url(#${gid})" filter="url(#${fid})"/>`;
+  return { def, layer };
+}
+
+function buildBlobLayer(overlay, rng) {
+  const { cx, cy, r = '45%', color, opacity = 0.3, blur = 0 } = overlay;
+  if (!cx || !cy || !color) {
+    return { def: null, layer: `<!-- warning: blob missing cx/cy/color -->` };
+  }
+  const gid = `blob-${Math.floor(rng.next() * 1e9)}`;
+  const fid = blur > 0 ? `blob-blur-${Math.floor(rng.next() * 1e9)}` : null;
+  const defParts = [
+    `<radialGradient id="${gid}" cx="${cx}" cy="${cy}" r="${r}"><stop offset="0%" stop-color="${color}" stop-opacity="${opacity}"/><stop offset="100%" stop-color="${color}" stop-opacity="0"/></radialGradient>`,
+  ];
+  if (fid) {
+    defParts.push(`<filter id="${fid}"><feGaussianBlur stdDeviation="${blur / 4}"/></filter>`);
+  }
+  const layer = fid
+    ? `<rect width="100%" height="100%" fill="url(#${gid})" filter="url(#${fid})"/>`
+    : `<rect width="100%" height="100%" fill="url(#${gid})"/>`;
+  return { def: defParts.join(''), layer };
+}
+
+function buildGrainLayer(overlay, rng) {
+  const { textureType = 'film', intensity = 0.08 } = overlay;
+  const params = GRAIN_TEXTURE_PARAMS[textureType] || GRAIN_TEXTURE_PARAMS.film;
+  const fid = `grain-${Math.floor(rng.next() * 1e9)}`;
+  const clampedIntensity = Math.min(0.25, intensity);
+  const def = `<filter id="${fid}"><feTurbulence type="fractalNoise" baseFrequency="${params.baseFrequency}" numOctaves="${params.numOctaves}"/><feColorMatrix values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 ${clampedIntensity} 0"/></filter>`;
+  const layer = `<rect width="100%" height="100%" filter="url(#${fid})" opacity="${clampedIntensity}"/>`;
+  return { def, layer };
+}
+
+function buildOverlay(overlay, rng) {
+  switch (overlay?.type) {
+    case 'starfield': return buildStarfieldLayer(overlay, rng);
+    case 'vortex':    return buildVortexLayer(overlay, rng);
+    case 'blob':      return buildBlobLayer(overlay, rng);
+    case 'grain':     return buildGrainLayer(overlay, rng);
+    default:
+      return { def: null, layer: `<!-- warning: unknown overlay type ${overlay?.type ?? 'undefined'} -->` };
+  }
+}
+
+function buildGlowLayer(glow, rng) {
+  const { color, radius = 80, position = 'center', opacity = 0.4 } = glow;
+  if (!color) return { def: null, layer: null };
+  if (position === 'flanking') {
+    const left = buildGlowLayer({ ...glow, position: 'left' }, rng);
+    const right = buildGlowLayer({ ...glow, position: 'right' }, rng);
+    return {
+      def: [left.def, right.def].filter(Boolean).join('\n'),
+      layer: [left.layer, right.layer].filter(Boolean).join('\n'),
+    };
+  }
+  const pos = GLOW_POSITIONS[position] || GLOW_POSITIONS.center;
+  const fid = `glow-blur-${Math.floor(rng.next() * 1e9)}`;
+  const clampedRadius = Math.max(20, Math.min(300, radius));
+  const def = `<filter id="${fid}"><feGaussianBlur stdDeviation="${clampedRadius / 4}"/></filter>`;
+  const layer = `<circle cx="${pos.cx}" cy="${pos.cy}" r="${clampedRadius}" fill="${color}" opacity="${opacity}" filter="url(#${fid})"/>`;
+  return { def, layer };
+}
+
+/**
+ * Compose a scanned background from a brand.visual.background object.
+ *
+ * `seed` is a deterministic string (typically the carousel seed + "::scanned-bg")
+ * so the same (brand, topic) always produces the same starfield/IDs — needed
+ * for byte-identical regression guarantees in existing v0.4 tests.
+ *
+ * Returns a raw SVG fragment (no outer <svg>) ready to drop into a pattern's
+ * BACKGROUND slot.
+ */
+export function buildScannedBackground(bg, seed = 'default') {
+  const scanned = (bg && typeof bg === 'object' && bg.scanned) || {};
+  const rng = createRng(`${seed}::scanned-bg`);
+
+  if (!scanned.baseColor) {
+    const fallbackColor = (bg && bg.color) || '#000000';
+    return `<!-- warning: scanned-bg missing baseColor, falling back to solid -->\n<rect width="100%" height="100%" fill="${fallbackColor}"/>`;
+  }
+
+  const layers = [];
+  const defs = [];
+
+  // 1. Base fill
+  layers.push(`<rect width="100%" height="100%" fill="${scanned.baseColor}"/>`);
+
+  // 2. Gradient overlay (optional)
+  if (scanned.gradient && typeof scanned.gradient === 'object') {
+    const g = scanned.gradient;
+    const gid = `scannedGrad-${Math.floor(rng.next() * 1e9)}`;
+    const rad = ((g.angle ?? 135) * Math.PI) / 180;
+    const x1 = (50 - 50 * Math.sin(rad)).toFixed(4);
+    const y1 = (50 + 50 * Math.cos(rad)).toFixed(4);
+    const x2 = (50 + 50 * Math.sin(rad)).toFixed(4);
+    const y2 = (50 - 50 * Math.cos(rad)).toFixed(4);
+    const stops = Array.isArray(g.stops) && g.stops.length > 0
+      ? g.stops
+      : [[0, g.from], [100, g.to]];
+    const stopsXml = stops
+      .map(([pct, color]) => `<stop offset="${pct}%" stop-color="${color}"/>`)
+      .join('');
+    defs.push(`<linearGradient id="${gid}" x1="${x1}%" y1="${y1}%" x2="${x2}%" y2="${y2}%">${stopsXml}</linearGradient>`);
+    layers.push(`<rect width="100%" height="100%" fill="url(#${gid})"/>`);
+  }
+
+  // 3. Overlays
+  const overlays = Array.isArray(scanned.overlays) ? scanned.overlays : [];
+  for (const overlay of overlays) {
+    const result = buildOverlay(overlay, rng);
+    if (result.def) defs.push(result.def);
+    if (result.layer) layers.push(result.layer);
+  }
+
+  // 4. Glow (final bloom)
+  if (scanned.glow && scanned.glow.present) {
+    const gl = buildGlowLayer(scanned.glow, rng);
+    if (gl.def) defs.push(gl.def);
+    if (gl.layer) layers.push(gl.layer);
+  }
+
+  const parts = [];
+  if (defs.length > 0) parts.push(`<defs>${defs.join('\n')}</defs>`);
+  parts.push(...layers);
+  return parts.join('\n');
+}
+
 /**
  * v0.4 background renderer.
  * Routes v0.4-only types through new snippets; delegates others to v0.3 path
  * in shared-render.mjs. Noise overlay is appended for both paths (v0.4.3+);
  * legacy grain config auto-maps to noise.type='film' via resolveNoiseConfig.
  */
-function renderBackgroundV04({ brand, pluginRoot, baseValues }) {
+function renderBackgroundV04({ brand, pluginRoot, baseValues, seed = 'default' }) {
   const bg = brand.visual?.background || {};
   const type = bg.type || 'solid';
 
@@ -332,6 +566,10 @@ function renderBackgroundV04({ brand, pluginRoot, baseValues }) {
       merged = baseValues;
       return out;
     }
+    merged = baseValues;
+  } else if (type === 'scanned') {
+    // v0.8 — dynamic SVG filter composition; no template file.
+    out = buildScannedBackground(bg, seed);
     merged = baseValues;
   } else {
     const fileMap = {
@@ -1107,6 +1345,7 @@ function renderPatternSlide({
   pluginRoot,
   strategyDir,
   brandProfileDir,
+  seed,
 }) {
   const patternDef = PATTERN_BY_ID[slide.pattern];
   if (!patternDef) {
@@ -1143,7 +1382,7 @@ function renderPatternSlide({
   // Background / decorations / numbering — shared-render expects v0.3-style
   // baseValues shape (has BOTTOM_Y, COLOR_ACCENT, etc. — see buildTokenValues).
   // v0.4 wraps renderBackground to also handle dot-grid/geometric-shapes/glow-sphere.
-  const backgroundSvg = renderBackgroundV04({ brand, pluginRoot, baseValues: values });
+  const backgroundSvg = renderBackgroundV04({ brand, pluginRoot, baseValues: values, seed });
   const decorationsSvg = renderDecorations({
     brand,
     slideData,
@@ -1250,6 +1489,7 @@ export function renderCarousel({ brand, strategy, outputDir, pluginRoot = PLUGIN
       pluginRoot,
       strategyDir,
       brandProfileDir,
+      seed,
     });
     const filename = `slide-${String(slideNumber).padStart(2, '0')}.svg`;
     const fullPath = join(outAbs, filename);
