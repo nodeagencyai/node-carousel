@@ -23,6 +23,24 @@ This one is neither. v0.4 is a **procedural design system** — not a template e
 - **8 compositional patterns, 6 aesthetic presets.** Cover, list (bullet / numbered), stat-dominant, quote-pulled, split-comparison, CTA — each pattern has multiple typographic + background variations. Presets pick from well-known brand languages (Stripe / Linear, NYT, Pentagram, Vercel, Fontshare).
 - **Deterministic seeded sampling across 6 variation axes.** Size (compact / standard / oversized), weight contrast, kicker presence, decoration flavor, background variant, noise texture — each is a controlled axis. The seeded RNG picks a coordinate in that space. Output feels hand-designed but is reproducible and version-controllable.
 
+## What's new in v0.8
+
+**Scan as design extractor — not just preset matcher.** Prior versions mapped your scanned site to one of 6 canonical presets (editorial-serif, neo-grotesk, etc.) with the brand's accent color overlaid. v0.8 extracts the actual design system — pixel-sampled colors, glow/effect parameters, composition measurements — and renders those directly.
+
+- **Pixel sampling** (`scripts/sample-pixels.mjs`): 13-point grid samples the hero screenshot, decodes PNG via stdlib zlib, clusters dominant colors with ΔE. No new deps.
+- **Glow detection**: identifies bright saturated accent regions from pixel data, records color + position.
+- **Vision fingerprint** (`prompts/vision-fingerprint.md`): structured measurements of background composition, focal elements, effect parameters, atmosphere — replaces the old 6-enum classification for scan-first synthesis.
+- **New `visual.background.type: "scanned"`**: data-driven background recipe. Renderer composes SVG filters dynamically from 4 overlay types (starfield, vortex, blob, grain) + glow. Documented in `docs/brand-profile-schema.md`.
+- **Synthesizer Phase 0.75**: scan-first synthesis when pixel sampling + vision fingerprint confidence >= 0.7 AND no forced preset. Preset becomes fallback for low-confidence scans.
+
+### Effect on real brands
+
+Scanning `theproducerschool.com` now produces a cosmic-dark recipe with flanking blue glow + subtle starfield — matching TPS's actual hero aesthetic. Prior versions would have picked `neo-grotesk` preset + TPS blue accent on flat dark bg, losing the cosmic signature.
+
+### Forcing preset-first
+
+`--preset <name>` still short-circuits scan-first. Paper-aesthetic editorial-serif is still reachable: `/node-carousel:scan https://yourbrand.com --preset editorial-serif`.
+
 ## What's new in v0.7.1
 
 - **Interactive preference questionnaire.** `/node-carousel:scan <url> --ask` adds a 5-question pass after the scan to capture style preferences CSS can't infer (density, visual style, content weight, mood override, logo placement). Every question has a "Custom: type your own answer" free-text escape — you're never forced into canonical enums. Preferences feed the synthesizer as a 6th input source that outranks scan/vision/voice but defers to `--merge-with`.
@@ -76,7 +94,9 @@ Restart Claude Code. `/node-carousel:setup` should appear in the command palette
 /node-carousel:scan https://yourbrand.com --references ./my-carousels/
 #    NEW in v0.7 — merge scan with your existing brand-profile (existing fields win):
 /node-carousel:scan https://yourbrand.com --merge-with ./brand-profile.json
-#    NEW in v0.7 — force a specific preset, skip auto-matching:
+#    NEW in v0.7 — force a specific preset, skip auto-matching
+#    (v0.8: also short-circuits scan-first synthesis — use this when you want a
+#    canonical recipe instead of extracting the scanned site's own design system):
 /node-carousel:scan https://yourbrand.com --preset technical-mono
 
 # 1b. OR configure brand manually via wizard
@@ -219,13 +239,19 @@ Yes. Strategy + content generation is well within Haiku's reach. Opus produces s
 **Is the output actually editable?**
 Yes. Every slide is standalone SVG — open in Figma / Illustrator / text editor and hand-tune. `strategy.json` is also editable — change a line, re-run `node scripts/render-v0.4.mjs <paths>` without calling Claude again.
 
-## What's planned (v0.8+)
+## What's planned (v0.9+)
 
+Shipped in v0.8: pixel-level color sampling, glow detection, vision fingerprint, scanned-background type with 4 overlay primitives, scan-first synthesizer phase.
+
+- **Layout replication** — extract and replay 3D element positioning, not just background composition
+- **Imagery generation** — AI-generated background images via Gemini (optional, falls back to procedural when no API key)
+- **Typography treatment extraction** — pull weight contrast, letter-spacing, and line-height rhythm from scanned pages
+- **Photography-type backgrounds** — support image-based hero aesthetics (not just procedural overlays)
+- **Multi-page aesthetic synthesis** — fuse design signals across home / pricing / blog rather than trusting one hero
 - **Interactive candidate picker** for `/scan` when confidence is mid-band — pick between 2–3 synthesized profiles instead of accepting or redoing
 - **Archive.org snapshots** — scan historical versions of a site to track brand evolution
 - **Competitor intel mode** — scan 3–5 competitors to surface category conventions worth breaking
 - **WCAG validation** on generated color pairs (AA minimum, AAA target for display text)
-- **AI-generated background images** via Gemini (optional, falls back to procedural when no API key)
 - **Bundled grunge texture PNGs** for heavier analog-print aesthetics (newsprint, mimeograph, risograph)
 - **Tables + bar-chart patterns** for data-heavy topics
 - **Broader icon library** — expand from 30 to 100+ Lucide icons + sector-specific sets (fintech, healthcare, devtools)
