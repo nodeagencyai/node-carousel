@@ -188,49 +188,140 @@ Do not skip reading the images — the whole point is visual analysis.
 
 If `scan.json.askPreferences === true` (set when user passed `--ask`), run the interactive questionnaire BEFORE synthesis. This captures style preferences that scan/vision/voice can't infer from CSS.
 
-Ask questions one at a time, present each as a numbered list with "Custom" option:
+**Use the `AskUserQuestion` tool — don't ask inline.** The tool renders visual option-pickers (same UX as `/plan`), auto-adds an "Other" free-text escape on every question, and avoids making the user type numbers.
 
-**1. Density — how much content per slide?**
-  1. Minimalist (big type, lots of space, 2-3 lines per slide)
-  2. Standard (default)
-  3. Dense (more content per slide, smaller type)
-  4. Custom: type your own direction
+Max 4 questions per `AskUserQuestion` call, so this runs in TWO calls:
 
-**2. Visual style — what's the background feel?**
-  1. Clean gradient (smooth color wash)
-  2. Paper (warm noise texture, editorial)
-  3. Geometric (shapes, grids, technical)
-  4. Photo-heavy (hero imagery)
-  5. Mesh (blurred color blobs)
-  6. Match the scan (use what was auto-detected)
-  7. Custom: type your own direction
+#### Call 1 — four questions in one batch
 
-**3. Content weight — text or visual priority?**
-  1. Text-heavy (headlines do the work)
-  2. Balanced
-  3. Icon + number heavy (data viz, stats, icons)
-  4. Custom
+```
+AskUserQuestion({
+  questions: [
+    {
+      header: "Density",
+      question: "How much content per slide?",
+      multiSelect: false,
+      options: [
+        { label: "Minimalist", description: "Big type, lots of space, 2-3 lines per slide" },
+        { label: "Standard", description: "Preset default — balanced" },
+        { label: "Dense", description: "More content per slide, smaller type" }
+      ]
+    },
+    {
+      header: "Visual style",
+      question: "What's the background feel?",
+      multiSelect: false,
+      options: [
+        { label: "Clean gradient", description: "Smooth two-stop color wash" },
+        { label: "Paper (editorial)", description: "Warm noise + grit texture, Lenny's Newsletter vibe" },
+        { label: "Mesh (blurred blobs)", description: "3-4 soft color blobs, Stripe-style" },
+        { label: "Match the scan", description: "Use what was auto-detected from the site" }
+      ]
+    },
+    {
+      header: "Content weight",
+      question: "Text-heavy or visual-heavy?",
+      multiSelect: false,
+      options: [
+        { label: "Text-heavy", description: "Headlines do the work, sparse visuals" },
+        { label: "Balanced", description: "Mix of text and visual elements" },
+        { label: "Icon + number heavy", description: "Data-viz style, stats and icons dominate" }
+      ]
+    },
+    {
+      header: "Mood",
+      question: "Override the detected mood?",
+      multiSelect: false,
+      options: [
+        { label: "Editorial", description: "Premium, considered, warm — editorial-serif preset" },
+        { label: "Clinical", description: "Stark, minimal, no-nonsense — utilitarian-bold preset" },
+        { label: "Playful", description: "Energetic, bold, electric — satoshi-tech preset" },
+        { label: "Match scan", description: "Use vision-detected mood (recommended if you don't have strong opinion)" }
+      ]
+    }
+  ]
+})
+```
 
-**4. Mood override** (optional, skip with enter):
-  1. Playful / 2. Premium / 3. Clinical / 4. Scrappy / 5. Editorial / 6. Match scan / 7. Custom
+#### Call 2 — the 5th question
 
-**5. Logo placement**:
-  1. Top-right (default) / 2. Top-left / 3. Bottom-right / 4. None / 5. Custom
+```
+AskUserQuestion({
+  questions: [
+    {
+      header: "Logo position",
+      question: "Where should the brand logo sit on cover + CTA slides?",
+      multiSelect: false,
+      options: [
+        { label: "Top-right", description: "Default — logo in the upper-right corner" },
+        { label: "Top-left", description: "Logo in the upper-left corner" },
+        { label: "Bottom-right", description: "Logo in the lower-right corner" },
+        { label: "None", description: "Don't render a logo (omit visual.logo block)" }
+      ]
+    }
+  ]
+})
+```
 
-For each answer, map the user's numeric selection to the canonical enum value. When they pick "Custom", capture their free text and store it under `customNotes.<key>`.
+#### Mapping user answers to canonical enum values
 
-Use `scripts/preferences.mjs` `parsePreferences` to normalize the final object:
-- Pass the raw collected answers (as an object keyed by field name) to `parsePreferences`
-- Write the parsed result to `./.brand-scan/preferences.json`
+The tool returns `answers: { "<question text>": "<label or Other text>" }`. Map labels → enums before writing preferences.json:
 
-Enum value mapping (for the synthesizer's later consumption):
-- density: `minimalist` | `standard` | `dense`
-- visualStyle: `gradient` | `paper` | `geometric` | `photo` | `mesh` | `match-scan`
-- contentWeight: `text-heavy` | `balanced` | `icon-heavy`
-- moodOverride: `playful` | `premium` | `clinical` | `scrappy` | `editorial` | `match-scan`
-- logoPlacement: `top-right` | `top-left` | `bottom-right` | `none`
+| Question | Selected label | Canonical value |
+|---|---|---|
+| Density | "Minimalist" | `minimalist` |
+| Density | "Standard" | `standard` |
+| Density | "Dense" | `dense` |
+| Visual style | "Clean gradient" | `gradient` |
+| Visual style | "Paper (editorial)" | `paper` |
+| Visual style | "Mesh (blurred blobs)" | `mesh` |
+| Visual style | "Match the scan" | `match-scan` |
+| Content weight | "Text-heavy" | `text-heavy` |
+| Content weight | "Balanced" | `balanced` |
+| Content weight | "Icon + number heavy" | `icon-heavy` |
+| Mood | "Editorial" | `editorial` |
+| Mood | "Clinical" | `clinical` |
+| Mood | "Playful" | `playful` |
+| Mood | "Match scan" | `match-scan` |
+| Logo position | "Top-right" | `top-right` |
+| Logo position | "Top-left" | `top-left` |
+| Logo position | "Bottom-right" | `bottom-right` |
+| Logo position | "None" | `none` |
 
-If the user skips all questions (pressing enter through all), write preferences.json with all DEFAULTS — signals to synthesizer "no strong preferences", treat as match-scan everywhere.
+#### Handling "Other" (free-text)
+
+When the user selects "Other" on any question, the tool returns their typed text as the answer. Treat this as the `Custom: <text>` form:
+- Set the field value to `"custom"`
+- Write the free text to `customNotes.<field>`
+- Pass the full raw object (including the `Custom:` prefix) to `parsePreferences` so the parser handles normalization uniformly — e.g. raw input `{ density: "Custom: notebook paper vibes" }` → parsed `{ density: "custom", customNotes: { density: "notebook paper vibes" } }`
+
+**Tip for Other-handling:** before calling `parsePreferences`, convert Other answers to the `Custom: ...` string form:
+```javascript
+const raw = {};
+if (answer1 matched canonical label) raw.density = canonicalValue;
+else raw.density = `Custom: ${answer1}`;  // Other / free text path
+// ... repeat for each field
+```
+
+#### Finalize
+
+Use `scripts/preferences.mjs` `parsePreferences` to validate + normalize:
+```javascript
+import { parsePreferences } from '<PLUGIN_ROOT>/scripts/preferences.mjs';
+const parsed = parsePreferences(raw);
+writeFileSync('./.brand-scan/preferences.json', JSON.stringify(parsed, null, 2));
+```
+
+Enum value reference (what the synthesizer expects):
+- density: `minimalist` | `standard` | `dense` | `custom`
+- visualStyle: `gradient` | `paper` | `geometric` | `photo` | `mesh` | `match-scan` | `custom`
+- contentWeight: `text-heavy` | `balanced` | `icon-heavy` | `custom`
+- moodOverride: `playful` | `premium` | `clinical` | `scrappy` | `editorial` | `match-scan` | `custom`
+- logoPlacement: `top-right` | `top-left` | `bottom-right` | `none` | `custom`
+
+(Note: some canonical enum values — `geometric`, `photo`, `premium`, `scrappy` — aren't in the primary question options. Users who want those pick "Other" and type them. The parser accepts the canonical value directly: e.g. `Custom: scrappy` would be captured as `customNotes: { moodOverride: "scrappy" }` — the synthesizer reads the note and uses it as guidance.)
+
+If the user skips a question (tool returns empty/null for that question), default the field to the canonical "match scan" equivalent: `match-scan` for mood/visualStyle, `standard` for density, `balanced` for content weight, `top-right` for logo. The `parsePreferences` DEFAULTS handle this automatically when the raw object omits the key.
 
 If the user passed `--no-ask` OR the flag is absent, don't write preferences.json. Synthesizer proceeds without this sixth input.
 
