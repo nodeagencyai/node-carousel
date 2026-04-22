@@ -5,3 +5,4 @@ output/
 .env
 scripts/node_modules/
 scripts/package-lock.json
+_overnight-test-*/
