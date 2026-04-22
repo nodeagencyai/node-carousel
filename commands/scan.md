@@ -362,6 +362,12 @@ Repeat until the user says y or n:
 - **Plugin not installed (no `${CLAUDE_PLUGIN_ROOT}`)**: resolve from the
   directory containing `.claude-plugin/plugin.json` upward from CWD. If
   neither works, error with a clear message about installing the plugin.
+- **Scan detected unknown font source** (e.g. Gilroy on a site that
+  self-hosts it): synthesizer emits `visual.fonts.display` as object form
+  with `file: null` and a `font-self-hosted-required` warning. Drop the
+  font file in `./brand-fonts/` (in the same dir as `brand-profile.json`)
+  and fill in the path before running `/node-carousel:generate`. See
+  `docs/custom-fonts.md` for the full workflow.
 
 ## Design principles
 

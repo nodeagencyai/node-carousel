@@ -104,6 +104,8 @@ Outputs land in `./output/<topic-slug>/`:
 - `strategy.json` — slide spec (edit + re-render without re-asking Claude)
 - `_axes.json` — the chosen coordinate on the 6 variation axes (for debugging + reproducibility)
 
+**Using a licensed or self-hosted font?** See [docs/custom-fonts.md](docs/custom-fonts.md) — drop your `.woff2` into `./brand-fonts/` and declare it in your `brand-profile.json`.
+
 ## Configuration
 
 Your `brand-profile.json` lives at the project root. Setup writes it for you; you can hand-edit any field.
@@ -196,7 +198,7 @@ The `_axes.json` file in every output folder logs the chosen coordinate so you c
 Yes. Zero third-party keys. The whole pipeline runs on your Claude Code plan — strategy copy from Claude, SVG render from local Node scripts, PNG export via bundled Playwright. No Gemini, no Stability, no Replicate, no Canva, no Figma.
 
 **Can I use my own fonts?**
-Yes. Any [Google Fonts](https://fonts.google.com) family works — put the name in `visual.fonts.display` / `visual.fonts.body`. The `satoshi-tech` preset uses [Fontshare](https://fontshare.com) (also free). Fonts load via `@import` inside the SVG so they render correctly in both browser preview and PNG export. Custom self-hosted fonts aren't supported yet; fork and embed base64 in the templates if you need that.
+Yes. Any [Google Fonts](https://fonts.google.com) family works — put the name in `visual.fonts.display` / `visual.fonts.body`. The `satoshi-tech` preset uses [Fontshare](https://fontshare.com) (also free). Fonts load via `@import` inside the SVG so they render correctly in both browser preview and PNG export. **New in v0.7.1:** licensed / proprietary fonts (Gilroy, Graphik, in-house type) can now be self-hosted — drop the `.woff2` in `./brand-fonts/` and use the object form in `brand-profile.json`. See [docs/custom-fonts.md](docs/custom-fonts.md) for the walkthrough.
 
 **Can I add custom templates / patterns?**
 Yes. Drop a new SVG in `patterns/` using the `{{PLACEHOLDER}}` token pattern, register it in `patterns/manifest.json`, and add strategy guidance in `prompts/strategy-system.md`. Walkthrough: [`docs/adding-templates.md`](docs/adding-templates.md).
