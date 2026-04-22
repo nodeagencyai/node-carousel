@@ -23,6 +23,13 @@ This one is neither. v0.4 is a **procedural design system** — not a template e
 - **8 compositional patterns, 6 aesthetic presets.** Cover, list (bullet / numbered), stat-dominant, quote-pulled, split-comparison, CTA — each pattern has multiple typographic + background variations. Presets pick from well-known brand languages (Stripe / Linear, NYT, Pentagram, Vercel, Fontshare).
 - **Deterministic seeded sampling across 6 variation axes.** Size (compact / standard / oversized), weight contrast, kicker presence, decoration flavor, background variant, noise texture — each is a controlled axis. The seeded RNG picks a coordinate in that space. Output feels hand-designed but is reproducible and version-controllable.
 
+## What's new in v0.7.1
+
+- **Interactive preference questionnaire.** `/node-carousel:scan <url> --ask` adds a 5-question pass after the scan to capture style preferences CSS can't infer (density, visual style, content weight, mood override, logo placement). Every question has a "Custom: type your own answer" free-text escape — you're never forced into canonical enums. Preferences feed the synthesizer as a 6th input source that outranks scan/vision/voice but defers to `--merge-with`.
+- **Self-hosted brand fonts.** `visual.fonts.{display,body}` now accepts `{family, file, weight, style}` object form alongside the legacy string form. The renderer base64-embeds `.woff2` / `.woff` / `.ttf` / `.otf` files as `@font-face` data URIs with a 500KB hard cap (250KB warning), so licensed brand fonts (Gilroy, proprietary type) render correctly without external loading. See [docs/custom-fonts.md](docs/custom-fonts.md) for the workflow and licensing notes.
+
+Backwards-compatible: zero-question scans and string-form fonts are preserved byte-identically against v0.7.0.
+
 ## What's new in v0.7 — Brand Authorship
 
 v0.6 made `/node-carousel:scan` honest. v0.7 makes it yours. The scan is a strong default, but you're the brand owner — if Node's site is green and our carousels are cyan, no amount of auto-detection will guess that. v0.7 gives you the levers to override, plus a round of audit hardening.
